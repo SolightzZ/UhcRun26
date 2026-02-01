@@ -1,7 +1,7 @@
 // จัดการเริ่มเกม: กระจายทีม, countdown bar, effect แบบ FP + ชื่อสั้น
 // Minecraft Bedrock Script API v1.21.120+ @minecraft/server v2.4.0-beta
 
-import { world, system, GameMode } from "@minecraft/server";
+import { world, system, GameMode, InputPermissionCategory } from "@minecraft/server";
 import { teamList } from "./data.js";
 import { num, txt } from "./config.js";
 
@@ -14,7 +14,7 @@ export function ok(player) {
   try {
     return !!player.dimension && !!player.location && player.isValid();
   } catch {
-    return false;
+    console.warn("[UHC] Player not ok: " + player.name);
   }
 }
 
@@ -59,7 +59,7 @@ function boom() {
       dim.spawnParticle("minecraft:huge_explosion_emitter", { x, y: y + 2.5, z });
       done.add(team);
     } catch (e) {
-      console.warn("[UHC] particle " + team + ": " + e.message);
+      console.warn("[UHC] particle " + team + ": ", e);
     }
   }
 }
@@ -86,61 +86,60 @@ export function showBar(player) {
 }
 
 // effect ภาพ/เสียง ตาม tick (title, fade, sound) ให้ทุกคน
-function effect(players) {
-  for (const p of players) {
-    if (!ok(p)) continue;
-
-    switch (tick) {
-      case 1:
-        p.onScreenDisplay.setTitle(txt.startLogo, {
-          stayDuration: 200,
-          fadeInDuration: 5,
-          fadeOutDuration: 40,
-        });
-        p.camera.fade({
-          fadeTime: { fadeInTime: 0, holdTime: 10, fadeOutTime: 10 },
-          fadeColor: { red: 0.1, green: 0.1, blue: 0.1 },
-        });
-        break;
-      case 2:
-        p.playSound("start", { volume: 0.5, pitch: 1 });
-        break;
-      case 39:
-        world.gameRules.showCoordinates = true;
-        if (p.inputPermissions) p.inputPermissions.movementEnabled = true;
-        p.onScreenDisplay.setTitle(txt.goodLuck);
-        p.playSound("startPlayer", { volume: 1.5, pitch: 0.9 });
-        p.playSound("random.explode", { volume: 0.7, pitch: 0.9 });
-        break;
-    }
+function effect(p) {
+  switch (tick) {
+    case 1:
+      console.warn(`[UHC] Effect start for player: ${p.name}`);
+      p.onScreenDisplay.setTitle(txt.startLogo, {
+        stayDuration: 200,
+        fadeInDuration: 5,
+        fadeOutDuration: 40,
+      });
+      p.camera.fade({
+        fadeTime: { fadeInTime: 0, holdTime: 10, fadeOutTime: 10 },
+        fadeColor: { red: 0.1, green: 0.1, blue: 0.1 },
+      });
+      break;
+    case 2:
+      console.warn(`[UHC] Effect fade for player: ${p.name}`);
+      p.playSound("start", { volume: 0.5, pitch: 1 });
+      break;
+    case 39:
+      console.warn(`[UHC] Effect good luck for player: ${p.name}`);
+      world.gameRules.showCoordinates = true;
+      p.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true);
+      p.onScreenDisplay.setTitle(txt.goodLuck);
+      p.playSound("startPlayer", { volume: 1.5, pitch: 0.9 });
+      p.playSound("random.explode", { volume: 0.7, pitch: 0.9 });
+      break;
   }
 }
 
 // ตั้งค่าเฉพาะผู้เล่น uhc ตาม tick (โหมด, ไอเทม, เทเลพอร์ต)
-function setup(players) {
-  for (const p of players) {
-    if (!ok(p)) continue;
-
-    switch (tick) {
-      case 1:
-        p.setGameMode(GameMode.Adventure);
-        if (p.inputPermissions) p.inputPermissions.movementEnabled = false;
-        break;
-      case 7:
-        spread();
-        break;
-      case 24:
-        p.runCommand(`loot replace entity @a[tag=uhc] slot.hotbar 0 loot "solight/stone_axe"`);
-        p.runCommand(`loot replace entity @a[tag=uhc] slot.hotbar 1 loot "solight/stone_pickaxe"`);
-        p.runCommand(`replaceitem entity @a[tag=uhc] slot.hotbar 2 minecraft:cooked_beef 3`);
-        p.runCommand(`replaceitem entity @a[tag=uhc] slot.hotbar 3 minecraft:boat`);
-        break;
-      case 39:
-        boom();
-        p.removeEffect("invisibility");
-        p.setGameMode(GameMode.Survival);
-        break;
-    }
+function setup(p) {
+  switch (tick) {
+    case 1:
+      console.warn(`[UHC] Setup player: ${p.name}`);
+      p.setGameMode(GameMode.Adventure);
+      p.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, false);
+      break;
+    case 7:
+      console.warn(`[UHC] Spread team for player: ${p.name}`);
+      spread();
+      break;
+    case 24:
+      console.warn(`[UHC] Give starting items to player: ${p.name}`);
+      p.runCommand(`loot replace entity @a[tag=uhc] slot.hotbar 0 loot "solight/stone_axe"`);
+      p.runCommand(`loot replace entity @a[tag=uhc] slot.hotbar 1 loot "solight/stone_pickaxe"`);
+      p.runCommand(`replaceitem entity @a[tag=uhc] slot.hotbar 2 minecraft:cooked_beef 3`);
+      p.runCommand(`replaceitem entity @a[tag=uhc] slot.hotbar 3 minecraft:boat`);
+      break;
+    case 39:
+      console.warn(`[UHC] Start game for player: ${p.name}`);
+      boom();
+      p.removeEffect("invisibility");
+      p.setGameMode(GameMode.Survival);
+      break;
   }
 }
 
@@ -148,9 +147,12 @@ function setup(players) {
 export function run(uhcPlayers) {
   tick++;
   const all = world.getPlayers();
+  console.warn(`[UHC] Starting... Tick: ${tick}`);
 
-  effect(all);
-  setup(uhcPlayers);
+  for (const p of uhcPlayers) {
+    effect(p);
+    setup(p);
+  }
 
   if (tick > num.startBarFrom) {
     all.forEach((p) => showBar(p));

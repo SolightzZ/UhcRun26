@@ -254,6 +254,7 @@ function loop() {
     if (!on) return;
 
     tick++;
+    console.warn(`[UHC] Tick: ${tick}, Radius: ${radius}`);
     const players = world.getPlayers();
     const uhc = players.filter((p) => p.hasTag("uhc"));
 
