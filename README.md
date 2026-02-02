@@ -51,25 +51,16 @@ uhc-run/
     │   └── blockEvents.js                  # อีเวนต์บล็อก
 
     ├── systems/
-    │   ├── lobby/
-    │   │   └── lobbySystem.js              # ล็อบบี้
-    │   ├── team/
-    │   │   └── teamSystem.js               # ทีม
-    │   ├── game/
-    │   │   ├── gameStartSystem.js          # เริ่มเกม
-    │   │   └── winConditionSystem.js       # เงื่อนไขชนะ
-    │   ├── combat/
-    │   │   ├── pvpSystem.js                # PvP
-    │   │   └── damageSystem.js             # ดาเมจ
-    │   ├── world/
-    │   │   └── worldRuleSystem.js          # กฎโลก
-    │   ├── progression/
-    │   │   └── rankSystem.js               # แรงค์
-    │   ├── economy/
-    │   │   └── economySystem.js            # เงิน
-    │   └── admin/
-    │       └── adminSystem.js              # แอดมิน
-
+    │   ├── lobbySystem.js            # ล็อบบี้
+    │   ├── teamSystem.js             # ทีม
+    │   ├── gameStartSystem.js        # เริ่มเกม
+    │   ├── winConditionSystem.js     # เงื่อนไขชนะ
+    │   ├── pvpSystem.js              # PvP
+    │   ├── damageSystem.js           # ดาเมจ
+    │   ├── worldRuleSystem.js        # กฎโลก
+    │   ├── rankSystem.js             # แรงค์
+    │   ├── economySystem.js          # เงิน
+    │   └── adminSystem.js            # แอดมิน
     ├── ui/
     │   ├── lobbyForm.js                    # ฟอร์มล็อบบี้
     │   ├── teamForm.js                     # ฟอร์มทีม
