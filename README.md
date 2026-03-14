@@ -2,13 +2,15 @@
 
 # ⚔️ UHCRun Add-on
 
-**ระบบ UHC สำหรับ Minecraft Bedrock Edition**
+**ระบบ UHC สำหรับ Minecraft Bedrock Edition ที่เน้นประสิทธิภาพสูง**
 
-![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.26.xx-00AA00?style=flat-square&logo=minecraft&logoColor=white)
-![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.xx-0078D4?style=flat-square)
+![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.21+-00AA00?style=flat-square&logo=minecraft&logoColor=white)
+![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.0.2-0078D4?style=flat-square)
 ![Language](https://img.shields.io/badge/Language-JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Players](https://img.shields.io/badge/Players-20--30-red?style=flat-square)
+![GitHub Stars](https://img.shields.io/github/stars/SolightzZ/uhcrun-addon?style=flat-square&logo=github)
+![Last Commit](https://img.shields.io/github/last-commit/SolightzZ/uhcrun-addon?style=flat-square)
 
 </div>
 
@@ -37,8 +39,8 @@ UHCRun คือ addon ระบบ **Ultra Hardcore** ที่พัฒนา�
 
 ## ความต้องการของระบบ
 
-- Minecraft Bedrock Edition `1.26.xx`
-- `@minecraft/server` `1.26.xx`
+- Minecraft Bedrock Edition `1.21+`
+- `@minecraft/server` `1.26.0.2`
 - `@minecraft/server-ui`
 - Behavior Pack ที่เปิดใช้งาน Script API
 
@@ -107,26 +109,22 @@ const CONFIG = { adminTag: "admin", comPass: "uhc" };
 │   └── border.js                  World border, shrink state machine, damage, particle render
 ├── Manager/
 │   ├── TeamManager.js             ระบบทีม, kill/death tracking, scoreboard, cache
-│   ├── Leaderboard.js             NPC leaderboard rendering
-│   ├── ScoreboardManager.js       Scoreboard utilities
-│   └── constants.js               ข้อมูลทีมที่ใช้ร่วมกัน
+│   └── Leaderboard.js             NPC leaderboard rendering
 ├── customCommand/
 │   ├── command.js                 Custom command registry
 │   └── function.js                Command handlers (setup, start, reset, end)
-├── plugin/
-│   ├── axe.js                     Custom axe mechanics
-│   ├── AutoSmelt.js               Auto-smelt เมื่อขุด
-│   ├── cps.js                     CPS counter
-│   ├── enchant.js                 Enchant tweaks
-│   ├── fishing_hod.js             Fishing HoD mechanic
-│   ├── golden_order.js            Golden order system
-│   ├── Knockback.js               Custom knockback
-│   └── sounds.js                  Sound events
-├── utils/
-│   └── nametag.js                 จัดรูปแบบ nametag
-└── FormData/
-    ├── CompassMenu.js             Compass UI หลัก
-    └── DeathOnForm.js             Death screen UI
+└── plugin/
+    ├── axe.js                     Custom axe mechanics
+    ├── AutoSmelt.js               Auto-smelt เมื่อขุด
+    ├── anticheat_cps.js           Anti-cheat CPS detection
+    ├── blockInteractGuard.js      ป้องกันการ interact block
+    ├── enchant.js                 Enchant tweaks
+    ├── fishing_hod.js             Fishing HoD mechanic
+    ├── Knockback.js               Custom knockback
+    ├── plateKnockback.js          Pressure plate knockback
+    ├── projectile_hit_souns.js    เสียงเมื่อโดนกระสุน
+    ├── tnt_instant.js             TNT จุดระเบิดทันที
+    └── Util.js                    Utility functions
 ```
 
 ---
@@ -157,7 +155,7 @@ system.runInterval (ทุก 20 ticks)
 
 | เครื่องมือ | วัตถุประสงค์ |
 |---|---|
-| `@minecraft/server` 1.26.xx | Core API — entity, world, event, scoreboard |
+| `@minecraft/server` 1.26.0.2 | Core API — entity, world, event, scoreboard |
 | `@minecraft/server-ui` | ActionFormData menu |
 | JavaScript (ESM) | ภาษาที่ใช้พัฒนา |
 | DynamicProperty | เก็บข้อมูลทีมและสถิติแบบถาวร |
@@ -170,9 +168,65 @@ system.runInterval (ทุก 20 ticks)
 | ส่วนประกอบ | สเปค |
 |---|---|
 | CPU | Intel Core i5 Gen 11 |
-| RAM | 16GB DDR5-5200 |
+| RAM | 16GB DDR4-3200 |
 | Storage | SSD NVMe |
-| จำนวนผู้เล่นที่รองรับ | 20–30  |
+| จำนวนผู้เล่นที่รองรับ | 20–30 คนต่อ session |
+
+---
+
+## สเปคเครื่องผู้พัฒนา
+
+| ส่วนประกอบ | สเปค |
+|---|---|
+| CPU | Intel Core i5-13420H |
+| RAM | 32GB DDR5-5200 |
+| Storage | SSD NVMe Samsung 512GB |
+| GPU | NVIDIA GeForce RTX 4050 Laptop GPU |
+
+---
+
+---
+
+## Gameplay Flow
+
+```
+1. Setup      /addon:uhcsetup  →  โหลด structure + แจก kit + ตั้งค่า gamerule
+2. Lobby      ผู้เล่นเลือกทีมผ่าน Compass → Team
+3. Start      /addon:uhcstart  →  กระจายทีม + เปิด World Border (500 blocks)
+4. Shrink     Border หดผ่าน checkpoint อัตโนมัติ (500 → 2) แบบ smooth lerp
+5. Combat     ระบบ Kill/Death, Announcer, Leaderboard ทำงาน real-time
+6. End        /addon:uhcend    →  ประกาศผู้ชนะ + ส่งผู้เล่นกลับ lobby
+7. Reset      /addon:uhcreset  →  ล้างข้อมูลทั้งหมดพร้อมเริ่มรอบใหม่
+```
+
+---
+
+## Known Issues / Limitations
+
+- ต้องเปิดใช้งาน **Beta APIs** ใน Experiments — เป็น requirement ของ Script API
+- NPC Leaderboard ต้อง refresh ด้วยตนเอง (Sneak + interact) ไม่ได้ update แบบ real-time
+- Script API ของ Bedrock ไม่รองรับ persistent world data นอกจาก DynamicProperty — ข้อมูลอาจหายหาก pack ถูก reload กลางเกม
+- รองรับสูงสุด 9 ทีม ตามข้อจำกัดของ UI และ scoreboard design
+
+---
+
+## Changelog
+
+### v1.0.0 — Initial Release
+- ระบบทีม 9 ทีม พร้อม Compass menu
+- World Border แบบ dynamic shrink ผ่าน checkpoint
+- Kill/Death tracking ลง Scoreboard และ DynamicProperty
+- NPC Leaderboard (Top Players, Top Teams, Top Deaths)
+- Announcer: First Blood, Multi Kill, Kill Streak
+- Plugin suite: AutoSmelt, Axe, CPS Anticheat, Enchant, Fishing HoD, Knockback, TNT Instant
+- Admin Panel ผ่าน Compass
+
+---
+
+## Contributing
+
+โปรเจกต์นี้เปิดรับ suggestions และ bug reports ผ่าน [GitHub Issues](https://github.com/SolightzZ/uhcrun-addon/issues)  
+หากพบปัญหาหรืออยากเสนอ feature ใหม่ เปิด issue ได้เลย
 
 ---
 
