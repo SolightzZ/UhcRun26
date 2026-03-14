@@ -9,8 +9,9 @@
 ![Language](https://img.shields.io/badge/Language-JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Players](https://img.shields.io/badge/Players-20--30-red?style=flat-square)
-![GitHub Stars](https://img.shields.io/github/stars/SolightzZ/uhcrun-addon?style=flat-square&logo=github)
-![Last Commit](https://img.shields.io/github/last-commit/SolightzZ/uhcrun-addon?style=flat-square)
+![GitHub Stars](https://img.shields.io/github/stars/SolightzZ/UhcRun26?style=flat-square&logo=github)
+![Last Commit](https://img.shields.io/github/last-commit/SolightzZ/UhcRun26?style=flat-square)
+![Version](https://img.shields.io/badge/Version-beta_0.1-orange?style=flat-square)
 
 </div>
 
@@ -49,7 +50,7 @@ UHCRun คือ addon ระบบ **Ultra Hardcore** ที่พัฒนา�
 ## การติดตั้ง
 
 ```bash
-git clone https://github.com/SolightzZ/uhcrun-addon.git
+git clone https://github.com/SolightzZ/UhcRun26.git
 ```
 
 1. คัดลอกโฟลเดอร์ behavior pack ไปไว้ใน `behavior_packs/` ของ world
@@ -212,7 +213,7 @@ system.runInterval (ทุก 20 ticks)
 
 ## Changelog
 
-### v1.0.0 — Initial Release
+### v0.1.0-beta — Initial Beta Release
 - ระบบทีม 9 ทีม พร้อม Compass menu
 - World Border แบบ dynamic shrink ผ่าน checkpoint
 - Kill/Death tracking ลง Scoreboard และ DynamicProperty
@@ -225,7 +226,7 @@ system.runInterval (ทุก 20 ticks)
 
 ## Contributing
 
-โปรเจกต์นี้เปิดรับ suggestions และ bug reports ผ่าน [GitHub Issues](https://github.com/SolightzZ/uhcrun-addon/issues)  
+โปรเจกต์นี้เปิดรับ suggestions และ bug reports ผ่าน [GitHub Issues](https://github.com/SolightzZ/UhcRun26/issues)  
 หากพบปัญหาหรืออยากเสนอ feature ใหม่ เปิด issue ได้เลย
 
 ---
