@@ -2,10 +2,10 @@
 
 # ⚔️ UHCRun Add-on
 
-**ระบบ UHC สำหรับ Minecraft Bedrock Edition ที่เน้นประสิทธิภาพสูง**
+**ระบบ UHC สำหรับ Minecraft Bedrock Edition**
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.26.3-00AA00?style=flat-square&logo=minecraft&logoColor=white)
-![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.0.2-0078D4?style=flat-square)
+![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.0-0078D4?style=flat-square)
 ![Language](https://img.shields.io/badge/Language-JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Players](https://img.shields.io/badge/Players-20--30-red?style=flat-square)
@@ -41,7 +41,7 @@ UHCRun คือ Add-on ระบบ **Ultra Hardcore** ที่พัฒนา
 ## ความต้องการของระบบ
 
 - Minecraft Bedrock Edition `1.26.3`
-- `@minecraft/server` `1.26.0.2`
+- `@minecraft/server` `1.26.0`
 - `@minecraft/server-ui`
 - Behavior Pack ที่เปิดใช้งาน Script API
 
@@ -55,7 +55,7 @@ git clone https://github.com/SolightzZ/UhcRun26.git
 
 1. คัดลอกโฟลเดอร์ behavior pack ไปไว้ใน `behavior_packs/` ของ world
 2. เปิดใช้งาน pack ใน **World Settings → Add-Ons → Behavior Packs**
-3. เปิดใช้งาน **Beta APIs** ใน Experiments (หากเวอร์ชันต้องการ)
+3. เปิดใช้งาน **Beta APIs** ใน Experiments
 
 ---
 
@@ -156,7 +156,7 @@ system.runInterval (ทุก 20 ticks)
 
 | เครื่องมือ | วัตถุประสงค์ |
 |---|---|
-| `@minecraft/server` 1.26.0.2 | Core API — entity, world, event, scoreboard |
+| `@minecraft/server` 1.26.0 | Core API — entity, world, event, scoreboard |
 | `@minecraft/server-ui` | ActionFormData menu |
 | JavaScript (ESM) | ภาษาที่ใช้ในการพัฒนา |
 | DynamicProperty | จัดเก็บข้อมูลทีมและสถิติแบบถาวร |
@@ -189,13 +189,13 @@ system.runInterval (ทุก 20 ticks)
 ## Gameplay Flow
 
 ```
-1. Setup      /addon:uhcsetup  →  โหลด structure + จัดสรร kit + ตั้งค่า gamerule
-2. Lobby      ผู้เล่นเลือกทีมผ่าน Compass → Team
-3. Start      /addon:uhcstart  →  กระจายทีม + เปิด World Border (500 blocks)
-4. Shrink     Border หดผ่าน checkpoint อัตโนมัติ (500 → 2) แบบ smooth lerp
-5. Combat     ระบบ Kill/Death, Announcer, Leaderboard ทำงาน real-time
-6. End        /addon:uhcend    →  ประกาศผู้ชนะ + ส่งผู้เล่นกลับ lobby
-7. Reset      /addon:uhcreset  →  ลบข้อมูลทั้งหมดเพื่อเริ่มรอบใหม่
+1. Setup      /addon:uhcsetup  →  เตรียมระบบเกม โหลดแผนที่ จัดของเริ่มต้น และตั้งค่ากฎของเกม
+2. Lobby      ผู้เล่นเข้าไปเลือกทีมผ่านเข็มทิศ (Compass)
+3. Start      /addon:uhcstart  →  กระจายผู้เล่นแต่ละทีมไปเกิดในแผนที่ และเปิดขอบเขตโลก (500 บล็อก)
+4. Shrink     ขอบเขตโลกจะค่อย ๆ เล็กลงอัตโนมัติจาก 500 เหลือ 2 บล็อก
+5. Combat     ระบบนับการฆ่า การตาย และตารางคะแนนจะแสดงผลแบบทันที
+6. End        /addon:uhcend    →  ประกาศทีมผู้ชนะ และพาผู้เล่นกลับไปที่ล็อบบี้
+7. Reset      /addon:uhcreset  →  ล้างข้อมูลเกมทั้งหมด เพื่อเตรียมเริ่มเกมรอบใหม่
 ```
 
 ---
