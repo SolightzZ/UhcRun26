@@ -1,4 +1,4 @@
-MIT LICENSE
+MIT License
 
 Copyright (c) 2026 SolightzZ
 
@@ -9,41 +9,13 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-
-============================================================
-MIT LICENSE (ฉบับแปลภาษาไทย - เพื่อความเข้าใจ)
-============================================================
-
-Copyright (c) 2026 SolightzZ
-
-อนุญาตให้บุคคลใด ๆ สามารถใช้ซอฟต์แวร์นี้ได้โดยไม่เสียค่าใช้จ่าย
-สำหรับผู้ที่ได้รับสำเนาของซอฟต์แวร์นี้และไฟล์เอกสารที่เกี่ยวข้อง
-(เรียกรวมว่า “ซอฟต์แวร์”) โดยสามารถดำเนินการกับซอฟต์แวร์ได้โดยไม่มี
-ข้อจำกัด ซึ่งรวมถึงแต่ไม่จำกัดเพียงสิทธิ์ในการใช้งาน คัดลอก แก้ไข รวม
-เผยแพร่ แจกจ่าย ให้สิทธิ์ช่วงต่อ (sublicense) และ/หรือจำหน่ายสำเนา
-ของซอฟต์แวร์ รวมทั้งอนุญาตให้บุคคลที่ได้รับซอฟต์แวร์สามารถทำเช่น
-เดียวกันได้ ภายใต้เงื่อนไขดังต่อไปนี้:
-
-ประกาศลิขสิทธิ์ข้างต้น และข้อความอนุญาตนี้ จะต้องถูกรวมอยู่ในสำเนา
-ทั้งหมด หรือในส่วนสำคัญของซอฟต์แวร์
-
-ซอฟต์แวร์นี้ถูกจัดให้ใช้งานในลักษณะ "ตามสภาพที่เป็นอยู่ (AS IS)"
-โดยไม่มีการรับประกันใด ๆ ทั้งโดยชัดแจ้งหรือโดยนัย ซึ่งรวมถึงแต่ไม่
-จำกัดเพียงการรับประกันด้านความสามารถในการใช้งานเชิงพาณิชย์
-ความเหมาะสมสำหรับวัตถุประสงค์เฉพาะ และการไม่ละเมิดสิทธิ์ของผู้อื่น
-
-ไม่ว่าในกรณีใดก็ตาม ผู้เขียนหรือผู้ถือครองลิขสิทธิ์จะไม่รับผิดชอบต่อ
-ความเสียหาย การเรียกร้อง หรือความรับผิดอื่นใด ไม่ว่าจะเกิดจากการ
-ทำสัญญา การละเมิด หรือเหตุอื่นใด ที่เกิดขึ้นจากการใช้ซอฟต์แวร์ หรือ
-การดำเนินการอื่นใดที่เกี่ยวข้องกับซอฟต์แวร์
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
