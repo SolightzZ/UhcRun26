@@ -2,7 +2,7 @@
 
 # ⚔️ UHCRun Add-on
 
-**ระบบ UHC สำหรับ Minecraft Bedrock Edition ที่เน้นประสิทธิภาพสูง**
+**ระบบ UHC สำหรับ Minecraft Bedrock Edition**
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.26.xx-00AA00?style=flat-square&logo=minecraft&logoColor=white)
 ![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.xx-0078D4?style=flat-square)
