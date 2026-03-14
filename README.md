@@ -9,8 +9,6 @@
 ![Language](https://img.shields.io/badge/Language-JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Players](https://img.shields.io/badge/Players-20--30-red?style=flat-square)
-![GitHub Stars](https://img.shields.io/github/stars/SolightzZ/UhcRun26?style=flat-square&logo=github)
-![Last Commit](https://img.shields.io/github/last-commit/SolightzZ/UhcRun26?style=flat-square)
 ![Version](https://img.shields.io/badge/Version-beta_0.1-orange?style=flat-square)
 
 </div>
