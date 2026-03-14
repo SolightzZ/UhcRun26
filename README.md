@@ -2,7 +2,7 @@
 
 # ⚔️ UHCRun Add-on
 
-**A high-performance UHC gameplay system for Minecraft Bedrock Edition**
+**ระบบ UHC สำหรับ Minecraft Bedrock Edition ที่เน้นประสิทธิภาพสูง**
 
 ![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.21+-00AA00?style=flat-square&logo=minecraft&logoColor=white)
 ![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.0.2-0078D4?style=flat-square)
@@ -14,107 +14,108 @@
 
 ---
 
-## Overview
+## ภาพรวม
 
-UHCRun is a fully custom **Ultra Hardcore** gameplay addon built on the Minecraft Bedrock Script API.  
-It handles everything from team management, dynamic world border shrinking, kill tracking, to an in-world NPC leaderboard — all optimized for competitive multiplayer sessions of 20–30 players.
-
----
-
-## Features
-
-- ⚔️ **Team System** — 9 teams, join via Compass menu, persistent across sessions via DynamicProperty
-- 🗺️ **Dynamic World Border** — smooth lerp shrink through checkpoints (500 → 2), particle rendering, fog & damage outside border
-- 📊 **Kill / Death Tracking** — per-player and per-team stats stored in Scoreboard + DynamicProperty
-- 🏆 **NPC Leaderboard** — in-world NPCs showing Top Players, Top Teams, and Top Deaths
-- 🔔 **Announcer System** — First Blood, Multi Kill (up to ACE), Kill Streak
-- 🪓 **Plugins** — AutoSmelt, custom Axe mechanics, CPS counter, Enchant tweaks, Fishing HoD, Knockback
-- 🎮 **Admin Panel** — full in-game UI for team management, teleport, stats viewer, debug maps
-- ⚡ **Optimized** — tick-cached player lists, dirty-flag scoreboard updates, grouped particle rendering
+UHCRun คือ addon ระบบ **Ultra Hardcore** ที่พัฒนาบน Minecraft Bedrock Script API  
+ครอบคลุมตั้งแต่ระบบทีม, World Border แบบ dynamic, การติดตาม kill/death, ไปจนถึง NPC Leaderboard ภายใน world  
+ออกแบบมาสำหรับการแข่งขันแบบ multiplayer รองรับผู้เล่น 20–30 คนต่อ session
 
 ---
 
-## Requirements
+## คุณสมบัติหลัก
+
+- ⚔️ **ระบบทีม** — รองรับ 9 ทีม, เข้าร่วมผ่าน Compass menu, บันทึกข้อมูลถาวรด้วย DynamicProperty
+- 🗺️ **World Border แบบ dynamic** — Shrink แบบ smooth lerp ผ่าน checkpoint (500 → 2), render particle, fog และ damage เมื่อออกนอก border
+- 📊 **ระบบติดตาม Kill/Death** — เก็บสถิติรายผู้เล่นและรายทีมลง Scoreboard และ DynamicProperty
+- 🏆 **NPC Leaderboard** — แสดงอันดับ Top Players, Top Teams และ Top Deaths ภายใน world
+- 🔔 **ระบบ Announcer** — First Blood, Multi Kill (สูงสุด ACE), Kill Streak
+- 🪓 **Plugins เสริม** — AutoSmelt, Axe mechanics, CPS counter, Enchant, Fishing HoD, Knockback
+- 🎮 **Admin Panel** — UI สำหรับจัดการทีม, teleport, ดูสถิติ และ debug ข้อมูล
+- ⚡ **ปรับแต่งประสิทธิภาพ** — Tick-cached player list, dirty-flag scoreboard update, grouped particle rendering
+
+---
+
+## ความต้องการของระบบ
 
 - Minecraft Bedrock Edition `1.21+`
 - `@minecraft/server` `1.26.0.2`
 - `@minecraft/server-ui`
-- Behavior Pack with Script API enabled
+- Behavior Pack ที่เปิดใช้งาน Script API
 
 ---
 
-## Installation
+## การติดตั้ง
 
 ```bash
 git clone https://github.com/SolightzZ/uhcrun-addon.git
 ```
 
-1. Copy the behavior pack folder into your world's `behavior_packs/`
-2. Enable the pack in **World Settings → Add-Ons → Behavior Packs**
-3. Enable **Beta APIs** in Experiments (if required by your version)
+1. คัดลอกโฟลเดอร์ behavior pack ไปไว้ใน `behavior_packs/` ของ world
+2. เปิดใช้งาน pack ใน **World Settings → Add-Ons → Behavior Packs**
+3. เปิดใช้งาน **Beta APIs** ใน Experiments (หากเวอร์ชันต้องการ)
 
 ---
 
-## Usage
+## การใช้งาน
 
-### Admin Commands
+### คำสั่ง Admin
 
-| Command | Description |
+| คำสั่ง | คำอธิบาย |
 |---|---|
-| `/addon:uhcsetup` | Load structure, set gamerules, distribute kits to all players |
-| `/addon:uhcstart` | Start the game — scatter teams, open border, begin countdown |
-| `/addon:uhcreset` | Full reset — clear teams, stats, tags, and scoreboard |
-| `/addon:uhcend` | End the game and return players to lobby |
-| `/addon:tpa` | Spectator teleport menu (Spectators / Admins only) |
+| `/addon:uhcsetup` | โหลด structure, ตั้งค่า gamerule, แจก kit ให้ผู้เล่นทุกคน |
+| `/addon:uhcstart` | เริ่มเกม — กระจายทีม, เปิด border, เริ่ม countdown |
+| `/addon:uhcreset` | Reset ทั้งหมด — ล้างทีม, สถิติ, tag และ scoreboard |
+| `/addon:uhcend` | จบเกมและส่งผู้เล่นกลับ lobby |
+| `/addon:tpa` | เมนู teleport สำหรับ Spectator และ Admin |
 
-### In-Game
+### การใช้งานภายในเกม
 
-| Action | How |
+| การกระทำ | วิธี |
 |---|---|
-| Open main menu | Use **Compass** |
-| Join / leave team | Compass → Team |
-| Admin panel | Compass → Admin *(requires `admin` tag)* |
-| Refresh leaderboard | **Sneak + interact** with NPC |
+| เปิดเมนูหลัก | ใช้ **Compass** |
+| เข้าร่วม / ออกจากทีม | Compass → Team |
+| Admin panel | Compass → Admin *(ต้องมี tag `admin`)* |
+| Refresh leaderboard | **Sneak + interact** กับ NPC |
 
 ---
 
-## Configuration
+## การตั้งค่า
 
-Edit values directly in the source files:
+แก้ไขค่าได้โดยตรงในไฟล์ source:
 
 **`system/border.js`**
 ```js
 const CHECKPOINTS = [500, 450, 400, 350, 300, 250, 200, 150, 100, 80, 50, 25, 16, 10, 5, 2];
-const FIRST_SHRINK_DELAY = 300; // ticks before first shrink
+const FIRST_SHRINK_DELAY = 300; // ticks ก่อน shrink ครั้งแรก
 const BORDER_RENDER = { VIEW_DISTANCE: 35, PARTICLE_Y: 100 };
 ```
 
 **`Manager/TeamManager.js`**
 ```js
-const TEAMS = [ /* add/remove teams here */ ];
+const TEAMS = [ /* เพิ่ม/ลบทีมได้ที่นี่ */ ];
 const CONFIG = { adminTag: "admin", comPass: "uhc" };
 ```
 
 ---
 
-## Project Structure
+## โครงสร้างโปรเจกต์
 
 ```
 📦 UHCRun
-├── main.js                        Entry point — imports all modules
+├── main.js                        Entry point — import ทุก module
 ├── system/
 │   └── border.js                  World border, shrink state machine, damage, particle render
 ├── Manager/
-│   ├── TeamManager.js             Team system, kill/death tracking, scoreboard, caches
+│   ├── TeamManager.js             ระบบทีม, kill/death tracking, scoreboard, cache
 │   ├── Leaderboard.js             NPC leaderboard rendering
 │   ├── ScoreboardManager.js       Scoreboard utilities
-│   └── constants.js               Shared team definitions
+│   └── constants.js               ข้อมูลทีมที่ใช้ร่วมกัน
 ├── customCommand/
 │   ├── command.js                 Custom command registry
 │   └── function.js                Command handlers (setup, start, reset, end)
 ├── plugin/
 │   ├── axe.js                     Custom axe mechanics
-│   ├── AutoSmelt.js               Auto-smelt on mine
+│   ├── AutoSmelt.js               Auto-smelt เมื่อขุด
 │   ├── cps.js                     CPS counter
 │   ├── enchant.js                 Enchant tweaks
 │   ├── fishing_hod.js             Fishing HoD mechanic
@@ -122,31 +123,31 @@ const CONFIG = { adminTag: "admin", comPass: "uhc" };
 │   ├── Knockback.js               Custom knockback
 │   └── sounds.js                  Sound events
 ├── utils/
-│   └── nametag.js                 Nametag formatting
+│   └── nametag.js                 จัดรูปแบบ nametag
 └── FormData/
-    ├── CompassMenu.js             Main compass UI
+    ├── CompassMenu.js             Compass UI หลัก
     └── DeathOnForm.js             Death screen UI
 ```
 
 ---
 
-## Architecture
+## สถาปัตยกรรมระบบ
 
 ```
-system.runInterval (every 20 ticks)
+system.runInterval (ทุก 20 ticks)
 │
 ├── refreshPlayerCaches()          world.getPlayers() → allPlayersCache / uhcPlayersCache
 │
 ├── WorldTick(uhcPlayers)
-│   ├── eventBorders()             checkpoint timer → applyBorderShrink()
+│   ├── eventBorders()             ตรวจ checkpoint timer → applyBorderShrink()
 │   ├── updateSmoothBorder()       lerp borderRadius → syncWorldBorderGeometry()
-│   ├── updateScore()              dirty-flag scoreboard lines
+│   ├── updateScore()              อัปเดต scoreboard เฉพาะ line ที่เปลี่ยน (dirty-flag)
 │   └── BorderTick()
-│       ├── handleBorderDamage()   every 2 ticks — fog + applyDamage
-│       └── renderBorderAABB()     every 4 ticks — grouped particle spawn
+│       ├── handleBorderDamage()   ทุก 2 ticks — fog + applyDamage
+│       └── renderBorderAABB()     ทุก 4 ticks — grouped particle spawn
 │
 └── PlayersTick(allPlayers)
-    ├── handleGameStart()          tick 1–26 only
+    ├── handleGameStart()          tick 1–26 เท่านั้น
     └── displayGameStart()         action bar countdown
 ```
 
@@ -154,28 +155,28 @@ system.runInterval (every 20 ticks)
 
 ## Tech Stack
 
-| Tool | Purpose |
+| เครื่องมือ | วัตถุประสงค์ |
 |---|---|
-| `@minecraft/server` 1.26.0.2 | Core game API — entities, world, events, scoreboard |
-| `@minecraft/server-ui` | ActionFormData menus |
-| JavaScript (ESM) | Scripting language |
-| DynamicProperty | Persistent team & stats storage |
-| Scoreboard | Real-time kill tracking & leaderboard |
+| `@minecraft/server` 1.26.0.2 | Core API — entity, world, event, scoreboard |
+| `@minecraft/server-ui` | ActionFormData menu |
+| JavaScript (ESM) | ภาษาที่ใช้พัฒนา |
+| DynamicProperty | เก็บข้อมูลทีมและสถิติแบบถาวร |
+| Scoreboard | ติดตาม kill แบบ real-time และ leaderboard |
 
 ---
 
-## Server Spec (Reference)
+## สเปคเซิร์ฟเวอร์อ้างอิง
 
-| Component | Spec |
+| ส่วนประกอบ | สเปค |
 |---|---|
 | CPU | Intel Core i5 Gen 11 |
 | RAM | 16GB DDR4-3200 |
 | Storage | SSD NVMe |
-| Target Players | 20–30 per session |
+| จำนวนผู้เล่นที่รองรับ | 20–30 คนต่อ session |
 
 ---
 
-## Author
+## ผู้พัฒนา
 
 **SolightzZ**  
 Minecraft Bedrock Script API Developer
@@ -184,4 +185,4 @@ Minecraft Bedrock Script API Developer
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — ดูรายละเอียดได้ที่ [LICENSE](LICENSE)
