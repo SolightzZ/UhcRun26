@@ -4,8 +4,8 @@
 
 **ระบบ UHC สำหรับ Minecraft Bedrock Edition ที่เน้นประสิทธิภาพสูง**
 
-![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.21+-00AA00?style=flat-square&logo=minecraft&logoColor=white)
-![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.0.2-0078D4?style=flat-square)
+![Minecraft](https://img.shields.io/badge/Minecraft-Bedrock_1.26.xx-00AA00?style=flat-square&logo=minecraft&logoColor=white)
+![API](https://img.shields.io/badge/@minecraft%2Fserver-1.26.xx-0078D4?style=flat-square)
 ![Language](https://img.shields.io/badge/Language-JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 ![Players](https://img.shields.io/badge/Players-20--30-red?style=flat-square)
@@ -37,8 +37,8 @@ UHCRun คือ addon ระบบ **Ultra Hardcore** ที่พัฒนา�
 
 ## ความต้องการของระบบ
 
-- Minecraft Bedrock Edition `1.21+`
-- `@minecraft/server` `1.26.0.2`
+- Minecraft Bedrock Edition `1.26.xx`
+- `@minecraft/server` `1.26.xx`
 - `@minecraft/server-ui`
 - Behavior Pack ที่เปิดใช้งาน Script API
 
@@ -157,7 +157,7 @@ system.runInterval (ทุก 20 ticks)
 
 | เครื่องมือ | วัตถุประสงค์ |
 |---|---|
-| `@minecraft/server` 1.26.0.2 | Core API — entity, world, event, scoreboard |
+| `@minecraft/server` 1.26.xx | Core API — entity, world, event, scoreboard |
 | `@minecraft/server-ui` | ActionFormData menu |
 | JavaScript (ESM) | ภาษาที่ใช้พัฒนา |
 | DynamicProperty | เก็บข้อมูลทีมและสถิติแบบถาวร |
@@ -170,9 +170,9 @@ system.runInterval (ทุก 20 ticks)
 | ส่วนประกอบ | สเปค |
 |---|---|
 | CPU | Intel Core i5 Gen 11 |
-| RAM | 16GB DDR4-3200 |
+| RAM | 16GB DDR5-5200 |
 | Storage | SSD NVMe |
-| จำนวนผู้เล่นที่รองรับ | 20–30 คนต่อ session |
+| จำนวนผู้เล่นที่รองรับ | 20–30  |
 
 ---
 
