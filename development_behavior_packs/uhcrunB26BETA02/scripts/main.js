@@ -1,0 +1,19 @@
+// Commmands
+import "./customCommand/command.js";
+// Plugins
+import "./plugin/AutoSmelt.js";
+import "./plugin/blockInteractGuard.js";
+import "./plugin/Knockback.js";
+import "./plugin/plateKnockback.js";
+import "./plugin/anticheat_cps.js";
+import "./plugin/tnt_instant.js";
+import "./plugin/projectile_hit_souns.js";
+import "./plugin/enchant.js";
+import "./plugin/fishing_hod.js";
+import "./plugin/axe.js";
+// System Games
+import "./system/border.js";
+// TeamManager
+import "./Manager/TeamManager.js";
+// Leaderboard
+import "./Manager/Leaderboard.js";

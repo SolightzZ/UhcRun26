@@ -1,0 +1,18 @@
+{
+  	"kill": {"_use_legacy_max_distance": "true", "category": "player", "max_distance": 512,"sounds": [ "sounds/kill/k1", "sounds/kill/k2", "sounds/kill/k3","sounds/kill/k4", "sounds/kill/k5" ] },
+
+	"kill1": { "category": "music", "sounds": [{ "name": "sounds/kill/k1", "stream": true }] },
+	"kill2": { "category": "music", "sounds": [{ "name": "sounds/kill/k2", "stream": true }] },
+	"kill3": { "category": "music", "sounds": [{ "name": "sounds/kill/k3", "stream": true }] },
+	"kill4": { "category": "music", "sounds": [{ "name": "sounds/kill/k4", "stream": true }] },
+	"kill5": { "category": "music", "sounds": [{ "name": "sounds/kill/k5", "stream": true }] },
+
+  "players": { "category": "music", "sounds": [{ "name": "sounds/uhc/player", "stream": true }] },
+  "iphone": { "category": "music", "sounds": [{ "name": "sounds/uhc/iPhone", "stream": true }] },
+  "noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/noti", "stream": true }] },
+  "startPlayer": { "category": "music","sounds": [{ "name": "sounds/2025/go", "stream": true }]},
+  "spawn": { "category": "music", "sounds": [{ "name": "sounds/uhc/spawn", "stream": true }] },
+  "start": { "category": "music", "sounds": [{ "name": "sounds/2025/spawns", "stream": true }] },
+  "win": { "category": "music", "sounds": [{ "name": "sounds/2025/win", "stream": true }] },
+  "world_noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/world_noti", "stream": true }] }
+}
