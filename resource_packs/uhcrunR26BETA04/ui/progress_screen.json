@@ -248,7 +248,6 @@
   },
   "progress_screen": {
     "type": "screen",
-    "vr_mode": "$is_holographic",
     "$screen_content|default": "common.base_screen_empty_panel",
     "$additional_screen_content|default": "common.base_screen_empty_panel",
     "$screen_bg_content|default": "common.base_screen_empty_panel",

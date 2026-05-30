@@ -2,6 +2,17 @@ level.dat
 level.dat_old
 db/
 db
+node_modules
+skills
+skills/
+
 
 levelname.txt
 levelname.txt
+
+
+AGENTS.md
+package.json
+SKILL.html
+UHCRUN.zip
+world_icon.jpeg
