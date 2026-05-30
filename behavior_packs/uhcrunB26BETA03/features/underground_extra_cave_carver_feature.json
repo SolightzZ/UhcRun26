@@ -1,0 +1,37 @@
+{
+  "format_version": "1.16.100",
+  "minecraft:cave_carver_feature": {
+    "description": {
+      "identifier": "minecraft:underground_extra_cave_carver_feature"
+    },
+
+    "fill_with": "minecraft:air",
+
+    "width_modifier": 0.08,
+    // ↓ ลดจาก 0.12
+    // ลด cost ต่อ tunnel (ช่วย performance)
+
+    "skip_carve_chance": 38,
+    // ↓ จาก 48
+    // เพิ่ม density ชัดเจน (ถ้ำถี่ขึ้นมาก)
+
+    "y_scale": [0.18, 0.98],
+    // ↑ ดันขึ้นเกือบสุด
+    // ทำให้ cave "ชนกันทุก layer"
+
+    "height_limit": 96,
+    // ↓ จาก 110
+    // กันไม่ให้ carve สูงเกิน → ลด chunk update / lag
+
+    "horizontal_radius_multiplier": [0.6, 1.1],
+    // ↓ ลด range
+    // tunnel สั้นลง แต่จำนวนมากขึ้น
+
+    "vertical_radius_multiplier": [0.7, 1.0],
+    // ↓ ทำให้ถ้ำไม่สูง → ไม่เป็นโพรงใหญ่
+
+    "floor_level": [-1.0, -0.65]
+    // ↓ กดพื้นเพิ่ม
+    // ลดโอกาสเปิดทะลุ surface
+  }
+}

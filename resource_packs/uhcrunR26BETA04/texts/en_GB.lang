@@ -1,0 +1,75 @@
+resourcePack.subpackResolution=%s
+map.position=XYZ: %s %s %s
+
+commands.tp.success=%1$s to %2$s 
+
+commands.kill.successful=§cKilled §7%1$s
+
+death.attack.player=%2$s §ckill §7%1$s
+death.attack.arrow=%2$s §ckill §7%1$s
+death.attack.lava.player=%2$s §ckill §7%1$s
+
+## multiplayer
+
+multiplayer.player.joined=§a[+] §7%s §7joined
+multiplayer.player.left=§c[-] §7%s §7left
+multiplayer.playersSleeping=§7[-] %s/%s §7sleeping
+multiplayer.playersSkippingNight=§7[-] skipping night  
+
+death.attack.anvil=%1$s was crushed by an anvil
+death.attack.arrow.item=%2$s shot %1$s using %3$s
+death.attack.bullet=%2$s sniped %1$s
+death.attack.cactus=%1$s died to cactus
+death.attack.cactus.player=%1$s died escaping %2$s
+death.attack.drown=%1$s drowned
+death.attack.drown.player=%1$s drowned escaping %2$s
+death.attack.explosion=%1$s exploded
+death.attack.explosion.by.bed=%1$s was killed by bed explosion
+death.attack.explosion.player=%2$s blew up %1$s
+death.attack.fall=%1$s fell to death
+death.attack.fallingBlock=%1$s was crushed
+death.attack.fireball=%2$s fireballed %1$s
+death.attack.fireball.item=%2$s fireballed %1$s using %3$s
+death.attack.fireworks=%1$s exploded
+death.attack.flyIntoWall=%1$s hit a wall
+death.attack.generic=%1$s died
+death.attack.indirectMagic=%2$s killed %1$s using magic
+death.attack.indirectMagic.item=%2$s killed %1$s using %3$s
+death.attack.inFire=%1$s burned
+death.attack.inFire.player=%1$s burned fighting %2$s
+death.attack.inWall=%1$s suffocated
+death.attack.lava=%1$s died in lava
+death.attack.lightningBolt=%1$s was struck by lightning
+death.attack.maceSmash.player=%2$s smashed %1$s
+death.attack.maceSmash.player.item=%2$s smashed %1$s with %3$s
+death.attack.magic=%1$s died to magic
+death.attack.magma=%1$s burned on magma
+death.attack.magma.player=%1$s died to magma due to %2$s
+death.attack.mob=%2$s killed %1$s
+death.attack.mob.item=%2$s killed %1$s using %3$s
+death.attack.onFire=%1$s burned to death
+death.attack.onFire.player=%1$s burned fighting %2$s
+death.attack.outOfWorld=%1$s fell into void
+death.attack.player.item=%2$s killed %1$s using %3$s
+death.attack.spit=%2$s hit %1$s
+death.attack.starve=%1$s starved
+death.attack.sweetBerry=%1$s died to berry bush
+death.attack.thorns=%1$s died to thorns from %2$s
+death.attack.thrown=%2$s hit %1$s
+death.attack.thrown.item=%2$s hit %1$s using %3$s
+death.attack.trident=%2$s impaled %1$s
+death.attack.wither=%1$s withered
+death.attack.freeze=%1$s froze
+death.attack.sonicBoom=%1$s was obliterated
+death.attack.sonicBoom.player=%1$s was obliterated escaping %2$s
+death.attack.stalactite=%1$s was impaled
+death.attack.stalagmite=%1$s was impaled
+death.fell.accident.generic=%1$s fell
+death.fell.accident.ladder=%1$s fell from ladder
+death.fell.accident.vines=%1$s fell from vines
+death.fell.accident.water=%1$s fell out of water
+death.fell.assist=%2$s caused %1$s to fall
+death.fell.assist.item=%2$s caused %1$s to fall using %3$s
+death.fell.finish=%2$s finished %1$s after fall
+death.fell.finish.item=%2$s finished %1$s after fall using %3$s
+death.fell.killer=%1$s was knocked to fall
