@@ -9,44 +9,21 @@ import warningDamageInstance from './BorderManager_WarningDamage.js';
 
 export const icons = Object.freeze({
     Sword: '',
-    Bow: '',
     shield: '',
-    Helmet: '',
     Border: '',
-    Mojang: '',
     Bot: '',
-    Sailboat: '',
-    FourGrid: '',
-    Corners: '',
-    Diagonal: '',
-    Burst: '',
-    Clock: '',
-    Square: '',
-    Bars: '',
-    Frame: '',
     Hourglass: '',
 });
 
 export const MinecraftColor = Object.freeze({
-    black: '§0',
-    darkBlue: '§1',
-    darkGreen: '§2',
     darkAqua: '§3',
-    darkRed: '§4',
-    darkPurple: '§5',
-    gold: '§6',
     gray: '§7',
-    darkGray: '§8',
-    blue: '§9',
     green: '§a',
-    aqua: '§b',
     red: '§c',
-    lightPurple: '§d',
     yellow: '§e',
     white: '§f',
-    minecoinGold: '§g',
-    h: '§h',
-    n: '§n',
+    darkBlue: '§1',
+    cyan: '§b',
 });
 
 export const CHECKPOINTS = [500, 450, 400, 350, 300, 250, 200, 150, 100, 80, 50, 25, 16, 10, 5, 2];
@@ -92,19 +69,13 @@ export function GameContext() {
 
 export const ctx = GameContext();
 
-bf.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
-
 const titleConfig = Object.freeze({ stayDuration: 200, fadeInDuration: 10, fadeOutDuration: 20 });
 const soundConfig = Object.freeze({ volume: 0.8, pitch: 1 });
 
-const reusableTitleOptions = {
-    stayDuration: titleConfig.stayDuration,
-    fadeInDuration: titleConfig.fadeInDuration,
-    fadeOutDuration: titleConfig.fadeOutDuration,
-    subtitle: '',
-};
-
 class BorderManager {
+    init() {
+        bf.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
+    }
     resetBorderState() {
         ctx.nextShrinkIndex = 1;
         ctx.nextShrinkTick = 300;
@@ -200,8 +171,12 @@ class BorderManager {
 
         let titleOptions;
         if (hasTitle) {
-            reusableTitleOptions.subtitle = typeof subtitle === 'string' ? subtitle : '';
-            titleOptions = reusableTitleOptions;
+            titleOptions = {
+                stayDuration: titleConfig.stayDuration,
+                fadeInDuration: titleConfig.fadeInDuration,
+                fadeOutDuration: titleConfig.fadeOutDuration,
+                subtitle: typeof subtitle === 'string' ? subtitle : '',
+            };
         }
 
         for (let i = 0; i < targets.length; i++) {
@@ -231,73 +206,29 @@ class BorderManager {
         }
     }
 
-    // Scoreboard delegates
     scoreboardInit() {
         return scoreboardInstance.scoreboardInit();
     }
     scoreboardClear() {
         return scoreboardInstance.scoreboardClear();
     }
-    scoreboardMakeLineId(text, index) {
-        return scoreboardInstance.scoreboardMakeLineId(text, index);
-    }
-    scoreboardUpdateLine(obj, index, text) {
-        return scoreboardInstance.scoreboardUpdateLine(obj, index, text);
-    }
-    scoreboardComputeNextLabel() {
-        return scoreboardInstance.scoreboardComputeNextLabel();
-    }
-    scoreboardComputeNextBorder() {
-        return scoreboardInstance.scoreboardComputeNextBorder();
-    }
-    scoreboardCollectAliveTeams(players) {
-        return scoreboardInstance.scoreboardCollectAliveTeams(players);
-    }
-    scoreboardGetAliveTeamBar(players) {
-        return scoreboardInstance.scoreboardGetAliveTeamBar(players);
-    }
-    scoreboardGetGameState() {
-        return scoreboardInstance.scoreboardGetGameState();
-    }
     scoreboardUpdate(obj, uhcPlayers) {
         return scoreboardInstance.scoreboardUpdate(obj, uhcPlayers);
     }
-
-    // Warning/Damage delegates
     borderManagerApplyDamage(player) {
         return warningDamageInstance.borderManagerApplyDamage(player);
     }
-
-    // Shrink delegates
     getTeamsCached() {
         return shrinkInstance.getTeamsCached();
     }
-    lookupShrinkConfig(target) {
-        return shrinkInstance.lookupShrinkConfig(target);
-    }
-    borderManagerGetShrinkDuration(target) {
-        return shrinkInstance.borderManagerGetShrinkDuration(target);
-    }
-    borderManagerGetRestTime(target) {
-        return shrinkInstance.borderManagerGetRestTime(target);
-    }
     borderManagerSyncGeometry() {
         return shrinkInstance.borderManagerSyncGeometry();
-    }
-    borderManagerSetRadius(r) {
-        return shrinkInstance.borderManagerSetRadius(r);
     }
     borderManagerIsOutside(x, z) {
         return shrinkInstance.borderManagerIsOutside(x, z);
     }
     borderManagerTickShrink() {
         return shrinkInstance.borderManagerTickShrink();
-    }
-    borderManagerApplyShrink() {
-        return shrinkInstance.borderManagerApplyShrink();
-    }
-    borderManagerBroadcastWarning() {
-        return shrinkInstance.borderManagerBroadcastWarning();
     }
 }
 

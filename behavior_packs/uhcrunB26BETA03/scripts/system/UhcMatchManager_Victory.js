@@ -3,8 +3,6 @@ import { getAllPlayers, getPlayerTeam, getTeamInfo, showVictoryMessage } from '.
 import bm, { ctx, icons, MinecraftColor } from './BorderManager.js';
 import umm from './UhcMatchManager.js';
 
-const explosionLocPool = { x: 0, y: 0, z: 0 };
-
 class UhcMatchManagerVictory {
     countdownRunning = false;
     aliveTeamsSet = new Set();
@@ -49,10 +47,7 @@ class UhcMatchManagerVictory {
             const loc = p.location,
                 dim = p.dimension;
             if (loc && dim) {
-                explosionLocPool.x = loc.x;
-                explosionLocPool.y = loc.y + 2.5;
-                explosionLocPool.z = loc.z;
-                dim.spawnParticle('minecraft:huge_explosion_emitter', explosionLocPool);
+                dim.spawnParticle('minecraft:huge_explosion_emitter', { x: loc.x, y: loc.y + 2.5, z: loc.z });
             }
         }
 

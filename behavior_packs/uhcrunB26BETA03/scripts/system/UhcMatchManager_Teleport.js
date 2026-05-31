@@ -97,10 +97,9 @@ class UhcMatchManagerTeleport {
     teleportLeaderToPreload(leader, x, z, dimension, teamTag) {
         try {
             leader.teleport({ x, y: TELEPORT_CONFIG.PRELOAD_Y, z }, { dimension });
-            world.sendMessage(`${MinecraftColor.green}[DEBUG] Leader ${leader.name} (${teamTag}) teleported to preload position`);
             return true;
         } catch {
-            world.sendMessage(`${MinecraftColor.red}[DEBUG] Leader ${leader.name} (${teamTag}) failed to teleport to preload position`);
+            console.warn(`[UHC] Leader ${leader.name} (${teamTag}) failed to teleport to preload position`);
             return false;
         }
     }
@@ -123,13 +122,11 @@ class UhcMatchManagerTeleport {
 
         try {
             player.teleport(loc, { dimension });
-            const role = retryCount > 0 ? `(retry ${retryCount})` : '';
-            world.sendMessage(`${MinecraftColor.green}[DEBUG] ${player.name} teleported to final position ${role}`);
             return { success: true, shouldRetry: false };
         } catch {
             const shouldRetry = retryCount < entry.maxRetries;
             if (!shouldRetry) {
-                world.sendMessage(`${MinecraftColor.red}[UHC] Failed to teleport ${player.name} after ${entry.maxRetries + 1} attempts`);
+                world.sendMessage(`${MinecraftColor.red}[x] Failed to scatter ${player.name}`);
             }
             return { success: false, shouldRetry };
         }
@@ -152,8 +149,7 @@ class UhcMatchManagerTeleport {
 
         const finishQueue = () => {
             removeAbortHandler();
-            const failMsg = totalFail > 0 ? ` ${MinecraftColor.red}fail:${totalFail}` : '';
-            world.sendMessage(`[UHC] All teams teleported. ${MinecraftColor.gray}(Queue: ${totalOk}${failMsg}${MinecraftColor.gray})`);
+            world.sendMessage(`${MinecraftColor.green}[/] All players scattered across the map!`);
         };
 
         const validTeams = [];
@@ -225,29 +221,20 @@ class UhcMatchManagerTeleport {
 
         if (memberQueue.length === 0) return finishCallback();
 
-        const totalPlayers = memberQueue.length;
-        world.sendMessage(`${MinecraftColor.gray}[DEBUG] Phase 2: Starting teleport queue with ${totalPlayers} players`);
-
         let qIdx = 0;
         let processedRetries = false;
-        let successCount = 0;
-        let failCount = 0;
 
         const processNextMember = () => {
             if (isAborted()) {
-                world.sendMessage(`${MinecraftColor.red}[DEBUG] Teleport queue aborted. Progress: ${qIdx}/${totalPlayers}`);
                 return;
             }
 
             if (qIdx >= memberQueue.length) {
                 if (retryQueue.length > 0 && !processedRetries) {
-                    world.sendMessage(`${MinecraftColor.yellow}[DEBUG] Main queue complete. Processing ${retryQueue.length} retry entries`);
                     memberQueue.push(...retryQueue);
                     retryQueue.length = 0;
                     processedRetries = true;
-                    world.sendMessage(`${MinecraftColor.cyan}[DEBUG] Retry phase started. Total queue size: ${memberQueue.length}`);
                 } else {
-                    world.sendMessage(`${MinecraftColor.green}[DEBUG] All teleports complete. Success: ${successCount}, Failed: ${failCount}, Total: ${totalPlayers}`);
                     return finishCallback();
                 }
             }
@@ -255,41 +242,20 @@ class UhcMatchManagerTeleport {
             if (qIdx >= memberQueue.length) return finishCallback();
 
             const entry = memberQueue[qIdx++];
-            const currentNum = qIdx;
-            const totalNum = memberQueue.length;
-
-            world.sendMessage(`${MinecraftColor.gray}[DEBUG] Player ${entry.player.name} (${currentNum}/${totalNum})`);
 
             const result = this.teleportPlayer(entry, dimension);
 
             if (result.success) {
-                successCount++;
                 onSuccess();
-                world.sendMessage(`${MinecraftColor.green}[DEBUG] [/] ${entry.player.name} teleported successfully`);
             } else if (result.shouldRetry && !processedRetries) {
                 const retryEntry = { ...entry, retryCount: entry.retryCount + 1 };
                 retryQueue.push(retryEntry);
 
-                world.sendMessage(`${MinecraftColor.yellow}[DEBUG] [x] ${entry.player.name} failed, added to retry queue (${retryQueue.length} pending)`);
-
                 if (entry.retryCount === 0) {
-                    world.sendMessage(`${MinecraftColor.yellow}[UHC] Retrying teleport for ${entry.player.name} (attempt ${entry.retryCount + 2}/${entry.maxRetries + 1})`);
+                    world.sendMessage(`${MinecraftColor.yellow}[x] Retrying teleport for ${entry.player.name}...`);
                 }
             } else {
-                failCount++;
                 onFail();
-
-                if (result.shouldRetry && processedRetries) {
-                    world.sendMessage(`${MinecraftColor.red}[DEBUG] [x] ${entry.player.name} final failure - retry phase already completed`);
-                } else {
-                    world.sendMessage(`${MinecraftColor.red}[DEBUG] [x] ${entry.player.name} failed - max attempts reached`);
-                }
-            }
-
-            if (currentNum % 5 === 0 || currentNum === totalNum) {
-                const phase = processedRetries ? 'Retry' : 'Main';
-                const remaining = totalNum - currentNum;
-                world.sendMessage(`${MinecraftColor.gray}[DEBUG] ${phase} Progress: ${currentNum}/${totalNum} processed, ${remaining} remaining (/:${successCount} x:${failCount})`);
             }
 
             system.runTimeout(processNextMember, TELEPORT_CONFIG.MEMBER_INTERVAL);
@@ -303,7 +269,7 @@ class UhcMatchManagerTeleport {
         if (!Number.isFinite(radius)) radius = ctx.borderRadius;
 
         if (!ctx.cachedDimension) {
-            world.sendMessage(MinecraftColor.red + '[UHC] Error: Dimension not initialized');
+            world.sendMessage(MinecraftColor.red + '§c[x] Server error: Cannot initialize world dimension');
             return;
         }
 
@@ -312,33 +278,10 @@ class UhcMatchManagerTeleport {
 
         if (teamsData.length === 0) return;
 
-        world.sendMessage(`${MinecraftColor.gray}[UHC] Spreading ${teamsData.length} teams...`);
-
-        this.logTeamInfo(teamsData);
+        world.sendMessage(`${MinecraftColor.aqua}§l» §r${MinecraftColor.gray}Scattering ${teamsData.length} teams across the map...`);
 
         const positions = this.teleportManagerGenerateXZ(teamsData.length, radius);
         this.teleportManagerRunQueue(teamsData, positions, ctx.cachedDimension);
-    }
-
-    logTeamInfo(teamsData) {
-        for (let i = 0; i < teamsData.length; i++) {
-            const [teamTag, members] = teamsData[i];
-            const validMembers = members.filter((p) => p?.isValid && p.hasTag('uhc'));
-
-            if (validMembers.length === 0) {
-                world.sendMessage(`${MinecraftColor.gray}[DEBUG] ${teamTag}: 0 valid UHC players`);
-                continue;
-            }
-
-            const leader = validMembers[0];
-            const memberNames = validMembers
-                .slice(1)
-                .map((p) => p.name)
-                .join(', ');
-            const memberInfo = memberNames ? `${MinecraftColor.cyan} | Members: ${memberNames}` : '';
-
-            world.sendMessage(`${MinecraftColor.gray}[DEBUG] ${teamTag}: ${validMembers.length} players` + `${MinecraftColor.yellow} | Leader: ${leader.name}${memberInfo}`);
-        }
     }
 
     abortAllTeleportQueues() {

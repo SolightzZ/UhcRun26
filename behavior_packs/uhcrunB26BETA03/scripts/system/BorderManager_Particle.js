@@ -1,6 +1,6 @@
 import { MolangVariableMap } from '@minecraft/server';
 
-import bm, { ctx } from './BorderManager.js';
+import { ctx } from './BorderManager.js';
 
 const BORDER_RENDER = Object.freeze({
     VIEW_DISTANCE: 35,
@@ -167,11 +167,6 @@ class BorderManagerParticle {
 
     particleRendererTick(players) {
         if (!ctx.isRunning || !ctx.borderReady || !ctx.wbBounds) return;
-
-        for (let i = 0; i < players.length; i++) {
-            bm.borderManagerApplyDamage(players[i]);
-        }
-
         if (ctx.uhcTick % 4 !== 0) return;
         this.particleRendererGroupByCell(players);
         if (!this.groupsLen) return;

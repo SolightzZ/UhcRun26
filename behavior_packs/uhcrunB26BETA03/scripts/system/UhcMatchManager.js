@@ -3,7 +3,6 @@ import { Difficulty, GameMode, InputPermissionCategory, system, world } from '@m
 import {
     clearAllPlayerNametags,
     clearAllTaguhcAndDynamicProperty,
-    getAllPlayers,
     getPlayerTeam,
     getUhcPlayers,
     refreshPlayerCaches,
@@ -32,7 +31,6 @@ const PVP_CD2 = PVP_TICK - 2;
 const PVP_CD1 = PVP_TICK - 1;
 const actionBar = 25;
 const actionNum = 5;
-const CRITICAL_TICKS = new Set([1, 2, 4, 24, 26]);
 
 const explosionLocPool = { x: 0, y: 0, z: 0 };
 const soundOptionsStart = { volume: 0.8, pitch: 1 };
@@ -64,20 +62,10 @@ class UhcMatchManager {
         });
     }
 
-    handlePlayerSpawn() {
+    handlePlayerSpawn(_ev) {
         if (ctx.isRunning && ctx.checkInterval === null) {
             this.gameLoopRun();
         }
-    }
-
-    getAllPlayersCached() {
-        const players = getAllPlayers();
-        if (players.length > 0) return players;
-
-        if (world.getPlayers().length === 0) return players;
-
-        refreshPlayerCaches();
-        return getAllPlayers();
     }
 
     getUhcPlayersCached() {
@@ -201,13 +189,12 @@ class UhcMatchManager {
         if (!players.length || ctx.uhcTick > 26) return;
 
         const tick = ctx.uhcTick;
-        const needsUpdate = CRITICAL_TICKS.has(tick);
 
         for (let i = 0; i < players.length; i++) {
             const p = players[i];
             if (!p?.isValid) continue;
 
-            if (needsUpdate) this.playerSetupHandleGameStart(p, tick);
+            this.playerSetupHandleGameStart(p, tick);
             this.playerSetupDisplayGameStart(p);
         }
     }
@@ -217,6 +204,9 @@ class UhcMatchManager {
         bm.borderManagerTickShrink();
         if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
         if (ctx.objective && ctx.uhcTick % 2 === 0) bm.scoreboardUpdate(ctx.objective, uhcPlayers);
+        for (let i = 0; i < uhcPlayers.length; i++) {
+            bm.borderManagerApplyDamage(uhcPlayers[i]);
+        }
         bm.particleRendererTick(uhcPlayers);
     }
 
@@ -225,7 +215,7 @@ class UhcMatchManager {
             if (!ctx.isRunning) return;
             ctx.uhcTick++;
 
-            if (ctx.uhcTick % 60 === 0) this.victoryManagerCheck();
+            if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
 
             const uhcPlayers = this.getUhcPlayersCached();
             this.gameLoopWorld(uhcPlayers);
@@ -259,6 +249,7 @@ class UhcMatchManager {
         tlm.abortAllTeleportQueues();
 
         setGameRunningState(true);
+        bm.init();
         bm.resetBorderState();
         bm.resetUiState();
         bm.scoreboardInit();
@@ -354,22 +345,6 @@ class UhcMatchManager {
         bm.borderManagerSyncGeometry();
         world.gameRules.pvp = false;
         world.gameRules.showCoordinates = prevShowCoordinates;
-    }
-
-    victoryManagerCheck() {
-        return vic.victoryManagerCheck();
-    }
-    victoryManagerTriggerDraw() {
-        return vic.victoryManagerTriggerDraw();
-    }
-    victoryManagerTriggerWin(winTag) {
-        return vic.victoryManagerTriggerWin(winTag);
-    }
-    victoryManagerStartCountdown() {
-        return vic.victoryManagerStartCountdown();
-    }
-    resetCountdownRunning() {
-        return vic.resetCountdownRunning();
     }
 }
 
