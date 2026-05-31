@@ -1,7 +1,7 @@
 import { system } from '@minecraft/server';
 import bf from './BlockFiller.js';
 import taskBuilder from './BlockFiller_TaskBuilder.js';
-import util from './BlockFiller_Util';
+import util from './BlockFiller_Util.js';
 
 class BlockFillerPatternEnqueue {
     ACTIVE_LAYERED_TASKS = [];

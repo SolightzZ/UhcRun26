@@ -1,6 +1,6 @@
 import { MolangVariableMap } from '@minecraft/server';
 
-import bm, { ctx } from './BorderManager';
+import bm, { ctx } from './BorderManager.js';
 
 const BORDER_RENDER = Object.freeze({
     VIEW_DISTANCE: 35,
@@ -10,7 +10,8 @@ const BORDER_RENDER = Object.freeze({
 const worldborder_ew = 'worldborder:worldborder_ew';
 const worldborder = 'worldborder:worldborder';
 
-const GROUPS_POOL_CAP = 64;
+const GROUPS_POOL_CAP = 54;
+const GROUPS_RENDER_CAP = 36;
 const CELL_SIZE = 16;
 const CELL_OFFSET = 32;
 const CELL_RANGE = 64;
@@ -121,7 +122,8 @@ class BorderManagerParticle {
         const [east, west, north, south] = ctx.wbBounds,
             view = BORDER_RENDER.VIEW_DISTANCE;
         this.spawnedThisTick.clear();
-        for (let i = 0; i < this.groupsLen; i++) {
+        const limit = Math.min(this.groupsLen, GROUPS_RENDER_CAP);
+        for (let i = 0; i < limit; i++) {
             const rep = this.groupsPool[i].rep;
             if (!rep?.isValid) continue;
             const loc = rep.location;

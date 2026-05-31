@@ -141,8 +141,8 @@ export const uhcPlayerIds = {
 
 export const isUHC = (e) => e && uhcPlayerIds.has(e.id);
 
-for (let i = 0; i < TEAMS.length; i++) {
-    teamStats.set(TEAMS[i].id, { kills: 0, deaths: 0 });
+for (const team of TEAMS) {
+    teamStats.set(team.id, { kills: 0, deaths: 0 });
 }
 
 export const particleLocPool = { x: 0, y: 0, z: 0 };

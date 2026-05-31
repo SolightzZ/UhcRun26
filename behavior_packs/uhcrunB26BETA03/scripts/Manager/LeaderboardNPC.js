@@ -9,8 +9,8 @@ function collectNpcsByTag(allNpcs) {
     const playerNpcs = [];
     const deathNpcs = [];
 
-    for (let i = 0; i < allNpcs.length && i < 3; i++) {
-        const npcEntity = allNpcs[i];
+    for (const [i, npcEntity] of allNpcs.entries()) {
+        if (i >= 3) break;
         if (!npcEntity?.isValid) continue;
         if (i === 0) teamNpcs.push(npcEntity);
         else if (i === 1) playerNpcs.push(npcEntity);
@@ -58,8 +58,7 @@ export function renderBoard() {
 }
 
 function updateNpcText(npcList, displayText) {
-    for (let i = 0; i < npcList.length; i++) {
-        const npcEntity = npcList[i];
+    for (const npcEntity of npcList) {
         if (!npcEntity?.isValid) continue;
         if (typeof npcEntity.nameTag !== 'string') continue;
         if (npcEntity.nameTag === displayText) continue;
@@ -71,12 +70,11 @@ function spawnLeaderboardNPCNow() {
     const overworldDimension = world.getDimension('overworld');
 
     const existingNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
-    for (let i = 0; i < existingNpcs.length; i++) {
-        existingNpcs[i].remove();
+    for (const npc of existingNpcs) {
+        npc.remove();
     }
 
-    for (let i = 0; i < NPCS.length; i++) {
-        const npcConfig = NPCS[i];
+    for (const [i, npcConfig] of NPCS.entries()) {
         try {
             const newNpcEntity = overworldDimension.spawnEntity('minecraft:npc', {
                 x: npcConfig.x,
@@ -108,3 +106,10 @@ export function spawnLeaderboardNPC() {
 }
 
 system.run(renderBoard);
+
+export function HandlerCancelNPC(eventData) {
+    const { target } = eventData;
+    if (target.typeId === 'minecraft:npc') {
+        eventData.cancel = true;
+    }
+}

@@ -43,8 +43,7 @@ function viewDynamicProperty(admin) {
     refreshPlayerCaches();
     const players = getCachedPlayers();
     let body = '';
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p?.isValid) continue;
         body += `§7${p.name} §8= §c${p.getDynamicProperty(CONFIG.key) ?? 'null'}\n`;
     }
@@ -102,8 +101,7 @@ function viewPlayerStatus(admin) {
     const players = getCachedPlayers();
     let body = '';
 
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p?.isValid) continue;
         let gm = 'Unknown';
         if (typeof p.getGameMode === 'function') {
@@ -120,8 +118,7 @@ function viewUhcPlayerList(admin) {
     if (!admin?.isValid) return;
     refreshPlayerCaches();
     let body = `Total Online UHC Players: §c${uhcPlayersCache.length}\n\n`;
-    for (let i = 0; i < uhcPlayersCache.length; i++) {
-        const p = uhcPlayersCache[i];
+    for (const p of uhcPlayersCache) {
         const team = TEAM_LOOKUP.get(playerTeamCache.get(p.id));
         body += team ? `§7${p.name} §8- ${team.color}${team.name}\n` : `§7${p.name} §8- §cNo Team\n`;
     }
@@ -132,15 +129,14 @@ function viewTeamStats(admin) {
     if (!admin?.isValid) return;
     refreshPlayerCaches();
     let body = '';
-    for (let i = 0; i < TEAMS.length; i++) {
-        const team = TEAMS[i];
+    for (const team of TEAMS) {
         const stats = teamStats.get(team.id) ?? { kills: 0, deaths: 0 };
         const alive = teamCounts.get(team.id) ?? 0;
         const players = getPlayersByTeam(team.id);
 
         body += `${team.color}${team.name} §8| Alive: §a${alive} §8| Kills: §c${stats.kills} §8| Deaths: §4${stats.deaths}\n`;
-        for (let j = 0; j < players.length; j++) {
-            body += `${team.color} - ${players[j].name}\n`;
+        for (const player of players) {
+            body += `${team.color} - ${player.name}\n`;
         }
         if (players.length) body += '\n';
     }
@@ -220,7 +216,7 @@ function Features(player) {
     );
     form.divider();
     form.header('§eTeam & Revive');
-    form.label('§7• Team size: §f1–3 players\n§7• Revive using player head (§f30s§7)\n§7• Team chat & colored nametags');
+    form.label('§7• สูงสุด §f54 §7คน (9 ทีม)\n§7• Revive using player head (§f30s§7)\n§7• Team chat & colored nametags');
     form.divider();
     form.header('§eUtilities');
     form.label('§7• Scoreboard\n§7• Interaction guard');
@@ -266,8 +262,7 @@ function Managements(admin) {
         return form.show(admin).then(() => AdminMenu(admin));
     }
 
-    for (let i = 0; i < pLen; i++) {
-        const p = players[i];
+    for (const p of players) {
         const teamId = playerTeamCache.get(p.id) || p.getDynamicProperty(CONFIG.key);
         const team = TEAM_LOOKUP.get(teamId);
         const label = team ? `${p.name}\n§8[ ${team.color}${team.name} §8]` : `§f${p.name}\n§8[ §cNo Team §8]`;
@@ -297,8 +292,7 @@ function editPlayerMenu(admin, target) {
     form.body(`Select a team for ${target.name}.\n§7Current: ${currentTeam ? currentTeam.color + currentTeam.name : '§cUnassigned'}`);
     form.button('Remove from Team', 'textures/ui/permissions_visitor_hand');
 
-    for (let i = 0; i < TEAMS.length; i++) {
-        const team = TEAMS[i];
+    for (const team of TEAMS) {
         const isCurrent = team.id === currentTeamId ? ' §a(Selected)' : '';
         form.button(`${team.color}${team.name}${isCurrent}`, team.icon);
     }
@@ -358,8 +352,7 @@ function playerLists(player) {
     const pLen = players.length;
     let count = 0;
     let consoleBody = '';
-    for (let i = 0; i < pLen; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p) continue;
         const teamId = getPlayerTeam(p);
         let label = p.name + ' | No Team';
@@ -411,8 +404,7 @@ function killList(player) {
     if (!participants) return;
     const pLen = participants.length;
 
-    for (let i = 0; i < pLen; i++) {
-        const p = participants[i];
+    for (const p of participants) {
         if (!p) continue;
         const score = kdHistoryObj.getScore(p);
         if (!score) continue;
@@ -451,8 +443,7 @@ function killList(player) {
 
     let body = '§f=== TOTAL KILLS ===\n';
     const sortedTotals = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
-    for (let i = 0; i < sortedTotals.length; i++) {
-        const entry = sortedTotals[i];
+    for (const entry of sortedTotals) {
         body += '§7' + entry[0] + ' §8= §c' + entry[1] + '\n';
     }
     body += '\n§f=== HISTORY ===\n';
@@ -550,15 +541,14 @@ export function showTeleportForm(player, isAdmin) {
 
     const teamCountLocal = new Map();
 
-    for (let i = 0; i < others.length; i++) {
-        const tid = playerTeamCache.get(others[i].id);
+    for (const target of others) {
+        const tid = playerTeamCache.get(target.id);
         if (tid) {
             teamCountLocal.set(tid, (teamCountLocal.get(tid) ?? 0) + 1);
         }
     }
 
-    for (let i = 0; i < TEAMS.length; i++) {
-        const team = TEAMS[i];
+    for (const team of TEAMS) {
         const count = teamCountLocal.get(team.id) ?? 0;
         if (count > 0) {
             form.button(team.color + team.name + ' §8(' + count + ')', team.icon);
@@ -626,8 +616,7 @@ function teleportShowAllPlayers(player, mode) {
         return;
     }
 
-    for (let i = 0; i < others.length; i++) {
-        const p = others[i];
+    for (const p of others) {
         let label = p.name + ' §8| No Team';
         const teamId = playerTeamCache.get(p.id);
         if (teamId) {
@@ -669,8 +658,8 @@ function teleportShowTeamPlayers(player, teamId, mode) {
         return form.show(player).then(() => showTeleportForm(player, mode));
     }
 
-    for (let i = 0; i < teamPlayers.length; i++) {
-        form.button(`${team.color}${teamPlayers[i].name}`, team.icon);
+    for (const target of teamPlayers) {
+        form.button(`${team.color}${target.name}`, team.icon);
     }
     form.button('Back');
 

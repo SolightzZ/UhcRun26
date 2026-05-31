@@ -1,11 +1,11 @@
 import { getAllPlayers, getUhcPlayers } from '../Manager/TeamManager.js';
 import { dynamicToast } from '../plugin/Util.js';
 import bf from './BlockFiller.js';
-import { END_SEQUENCE_STATE } from './BlockFillerUtil';
-import particleInstance from './BorderManager_Particle';
-import scoreboardInstance from './BorderManager_Scoreboard';
-import shrinkInstance from './BorderManager_Shrink';
-import warningDamageInstance from './BorderManager_WarningDamage';
+import { END_SEQUENCE_STATE } from './BlockFillerUtil.js';
+import particleInstance from './BorderManager_Particle.js';
+import scoreboardInstance from './BorderManager_Scoreboard.js';
+import shrinkInstance from './BorderManager_Shrink.js';
+import warningDamageInstance from './BorderManager_WarningDamage.js';
 
 export const icons = Object.freeze({
     Sword: '',
@@ -89,15 +89,6 @@ export function GameContext() {
         lastTargetRadius: null,
         borderMolang: null,
     };
-}
-
-export function resetContext(target) {
-    if (!target) return;
-    const fresh = GameContext();
-    const keys = Object.keys(fresh);
-    for (let i = 0; i < keys.length; i++) {
-        target[keys[i]] = fresh[keys[i]];
-    }
 }
 
 export const ctx = GameContext();

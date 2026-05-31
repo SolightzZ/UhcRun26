@@ -35,8 +35,8 @@ function getObjectivePlayerStats() {
     const objectiveScores = kdHistoryObjective.getScores();
     if (!objectiveScores?.length) return playerStatsMap;
 
-    for (let i = 0; i < objectiveScores.length; i++) {
-        processScoreEntry(objectiveScores[i], playerStatsMap);
+    for (const score of objectiveScores) {
+        processScoreEntry(score, playerStatsMap);
     }
 
     return playerStatsMap;
@@ -50,9 +50,7 @@ export function getStats() {
     const playerStatsMap = new Map();
     if (!rawPlayerStats?.size) return playerStatsMap;
 
-    const playerEntries = Array.from(rawPlayerStats.entries());
-    for (let i = 0; i < playerEntries.length; i++) {
-        const [playerId, playerStats] = playerEntries[i];
+    for (const [playerId, playerStats] of rawPlayerStats) {
         const killCount = playerStats?.kills ?? 0;
         const deathCount = playerStats?.deaths ?? 0;
         if (!killCount && !deathCount) continue;
@@ -80,13 +78,11 @@ function getObjectiveTeamList(teamKillObjective) {
     if (!objectiveScores?.length) return teamList;
 
     const teamMap = new Map();
-    for (let i = 0; i < allTeams.length; i++) {
-        const team = allTeams[i];
+    for (const [i, team] of allTeams.entries()) {
         teamMap.set(team.color + team.name, { team, index: i });
     }
 
-    for (let i = 0; i < objectiveScores.length; i++) {
-        const scoreEntry = objectiveScores[i];
+    for (const scoreEntry of objectiveScores) {
         const teamDisplayName = scoreEntry?.participant?.displayName;
         if (!teamDisplayName) continue;
 
@@ -119,8 +115,7 @@ function getRuntimeTeamList() {
     const teamList = [];
     if (!allTeams?.length) return teamList;
 
-    for (let i = 0; i < allTeams.length; i++) {
-        const teamInfo = allTeams[i];
+    for (const [i, teamInfo] of allTeams.entries()) {
         const teamStats = teamStatsMap?.size ? teamStatsMap.get(teamInfo.id) : null;
         const killCount = teamStats?.kills ?? 0;
         const memberCount = getPlayersByTeam(teamInfo.id).length;
@@ -154,8 +149,7 @@ export function getTeamText() {
     }
 
     let teamHash = '';
-    for (let i = 0; i < teamList.length; i++) {
-        const team = teamList[i];
+    for (const team of teamList) {
         teamHash += `${team.name}${team.kills}${team.members}${team.order}`;
     }
 

@@ -34,9 +34,7 @@ function getPlayerById(id) {
     const cached = playerCache.get(id);
     if (cached?.isValid) return cached;
 
-    const players = world.getPlayers();
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i];
+    for (const player of world.getPlayers()) {
         if (!player?.isValid) continue;
         playerCache.set(player.id, player);
         if (player.id === id) return player;
@@ -69,9 +67,7 @@ function getDeadPlayersInTeam(player) {
     const teamId = getPlayerTeam(player);
     if (!teamId) return deadPlayers;
 
-    const players = getCachedPlayers();
-    for (let i = 0; i < players.length; i++) {
-        const target = players[i];
+    for (const target of getCachedPlayers()) {
         if (!target?.isValid) continue;
         if (target.id === player.id) continue;
         if (!isPlayerDead(target.id)) continue;
@@ -142,9 +138,7 @@ function isSameTeam(playerA, playerB) {
 
 function sendReviveTeamActionBar(teamId, message) {
     if (!teamId || !message) return;
-    const players = getCachedPlayers();
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i];
+    for (const player of getCachedPlayers()) {
         if (!player?.isValid) continue;
         if (getPlayerTeam(player) !== teamId) continue;
         player.onScreenDisplay.setActionBar(message);
@@ -384,12 +378,11 @@ function tryStartRevive(reviver, target) {
 function openReviveUI(player, deadList) {
     if (!player?.isValid) return;
     const form = new ActionFormData();
-    form.title(CONFIG.title);
-    form.body('Revive Player');
+    form.title('§l§cRevive Player');
     form.body('Select dead teammate');
 
-    for (let i = 0; i < deadList.length; i++) {
-        form.button(deadList[i].name, 'textures/ui/heart_new');
+    for (const target of deadList) {
+        form.button(target.name, 'textures/ui/heart_new');
     }
 
     form.button('Back', 'textures/ui/cancel');

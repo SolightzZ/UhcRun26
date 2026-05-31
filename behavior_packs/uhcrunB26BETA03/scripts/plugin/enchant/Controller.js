@@ -1,42 +1,40 @@
-import { EquipmentSlot, system, world } from '@minecraft/server';
+import { EquipmentSlot, system } from '@minecraft/server';
 import { dynamicToast } from '../Util.js';
 import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-    register = () => {
-        world.afterEvents.playerHotbarSelectedSlotChange.subscribe(({ player }) => {
-            if (!player?.isValid) return;
+    onPlayerHotbarSelectedSlotChange = ({ player }) => {
+        if (!player?.isValid) return;
 
-            const currentTick = system.currentTick;
-            const lastTick = model.lastEnchantTick.get(player.id) ?? -model.ENCHANT_WINDOW_TICKS;
-            if (currentTick - lastTick < model.ENCHANT_WINDOW_TICKS) return;
+        const currentTick = system.currentTick;
+        const lastTick = model.lastEnchantTick.get(player.id) ?? -model.ENCHANT_WINDOW_TICKS;
+        if (currentTick - lastTick < model.ENCHANT_WINDOW_TICKS) return;
 
-            const equip = player.getComponent('minecraft:equippable');
-            if (!equip) return;
+        const equip = player.getComponent('minecraft:equippable');
+        if (!equip) return;
 
-            const item = equip.getEquipment(EquipmentSlot.Mainhand);
-            if (!item) return;
+        const item = equip.getEquipment(EquipmentSlot.Mainhand);
+        if (!item) return;
 
-            const tool = model.TOOLS.get(item.typeId);
-            if (!tool) return;
+        const tool = model.TOOLS.get(item.typeId);
+        if (!tool) return;
 
-            const loreArr = item.getLore();
-            if (loreArr.indexOf(model.LORE_MARKER) !== -1) return;
+        const loreArr = item.getLore();
+        if (loreArr.indexOf(model.LORE_MARKER) !== -1) return;
 
-            model.lastEnchantTick.set(player.id, currentTick);
+        model.lastEnchantTick.set(player.id, currentTick);
 
-            const newItem = service.buildEnchantedItem(item, loreArr);
-            if (!newItem) return;
+        const newItem = service.buildEnchantedItem(item, loreArr);
+        if (!newItem) return;
 
-            equip.setEquipment(EquipmentSlot.Mainhand, newItem);
-            player.sendMessage(dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`));
-            player.playSound(model.SOUND);
-        });
+        equip.setEquipment(EquipmentSlot.Mainhand, newItem);
+        player.sendMessage(dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`));
+        player.playSound(model.SOUND);
+    };
 
-        world.afterEvents.playerLeave.subscribe(({ playerId }) => {
-            model.lastEnchantTick.delete(playerId);
-        });
+    onPlayerLeave = ({ playerId }) => {
+        model.lastEnchantTick.delete(playerId);
     };
 }
 

@@ -1,7 +1,7 @@
 import { system } from '@minecraft/server';
 import bf from './BlockFiller.js';
-import util from './BlockFiller_Util';
-import { CHECKPOINTS, ctx } from './BorderManager';
+import util from './BlockFiller_Util.js';
+import { CHECKPOINTS, ctx } from './BorderManager.js';
 
 class BlockFillerFillQueue {
     TASK_QUEUE = [];

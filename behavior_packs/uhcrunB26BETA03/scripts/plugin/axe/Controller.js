@@ -1,4 +1,4 @@
-import { system, world } from '@minecraft/server';
+import { system } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
@@ -7,14 +7,16 @@ class Controller {
         system.run(() => {
             model.getAir();
         });
+    };
 
-        world.afterEvents.playerBreakBlock.subscribe(service.onPlayerBreakBlock);
+    onPlayerBreakBlock = (ev) => {
+        service.onPlayerBreakBlock(ev);
+    };
 
-        world.afterEvents.playerLeave.subscribe(({ playerId }) => {
-            model.lastFellTick.delete(playerId);
-            model.playerJobCount.delete(playerId);
-            model.lastEnqueueTick.delete(playerId);
-        });
+    onPlayerLeave = ({ playerId }) => {
+        model.lastFellTick.delete(playerId);
+        model.playerJobCount.delete(playerId);
+        model.lastEnqueueTick.delete(playerId);
     };
 }
 

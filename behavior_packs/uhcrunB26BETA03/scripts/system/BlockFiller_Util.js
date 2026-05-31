@@ -1,24 +1,25 @@
 import { BlockPermutation } from '@minecraft/server';
 
-import { BLOCK_CATEGORIES, MODE } from './BlockFillerUtil';
-
-const WORLD_MIN_Y = -64;
-const WORLD_MAX_Y = 319;
-const BATCH_SIZE_NORMAL = 120;
-const BATCH_SIZE_ENDGAME = 400;
-const FILL_INTERVAL_TICKS = 1;
-const TICKS_PER_SECOND = 20;
-const TASK_QUEUE_HARD_CAP = 8000;
-const MAX_PENDING_BLOCKS = 80000;
-const MAX_BLOCKS_PER_TASK = 250_000;
-const COMPACT_THRESHOLD = 256;
-const UPWARD_Y = 1;
-const DOWNWARD_Y = -1;
-const RETRY_QUEUE_LIMIT = 4000;
-const RETRY_BASE_DELAY_TICKS = 12;
-const MAX_CACHE_SIZE = 256;
+import { BLOCK_CATEGORIES, MODE } from './BlockFillerUtil.js';
 
 class BlockFillerUtil {
+    // Constants — instance fields for external access via util.X
+    WORLD_MIN_Y = -64;
+    WORLD_MAX_Y = 319;
+    BATCH_SIZE_NORMAL = 120;
+    BATCH_SIZE_ENDGAME = 400;
+    FILL_INTERVAL_TICKS = 1;
+    TICKS_PER_SECOND = 20;
+    TASK_QUEUE_HARD_CAP = 8000;
+    MAX_PENDING_BLOCKS = 80000;
+    MAX_BLOCKS_PER_TASK = 250_000;
+    COMPACT_THRESHOLD = 256;
+    UPWARD_Y = 1;
+    DOWNWARD_Y = -1;
+    RETRY_QUEUE_LIMIT = 4000;
+    RETRY_BASE_DELAY_TICKS = 12;
+    MAX_CACHE_SIZE = 256;
+
     CATEGORY_MAP = new Map();
     PERM_CACHE = new Map();
     AIR;
@@ -32,7 +33,7 @@ class BlockFillerUtil {
     resolveBlock(id) {
         if (this.PERM_CACHE.has(id)) return this.PERM_CACHE.get(id);
 
-        if (this.PERM_CACHE.size >= MAX_CACHE_SIZE) {
+        if (this.PERM_CACHE.size >= this.MAX_CACHE_SIZE) {
             const firstKey = this.PERM_CACHE.keys().next().value;
             this.PERM_CACHE.delete(firstKey);
         }
@@ -112,8 +113,8 @@ class BlockFillerUtil {
         const maxX = Math.max(x1, x2);
         const minZ = Math.min(z1, z2);
         const maxZ = Math.max(z1, z2);
-        const minY = Math.max(WORLD_MIN_Y, Math.min(y1, y2));
-        const maxY = Math.min(WORLD_MAX_Y, Math.max(y1, y2));
+        const minY = Math.max(this.WORLD_MIN_Y, Math.min(y1, y2));
+        const maxY = Math.min(this.WORLD_MAX_Y, Math.max(y1, y2));
 
         if (minX < -30000000 || maxX > 30000000 || minZ < -30000000 || maxZ > 30000000) {
             return null;
@@ -125,7 +126,7 @@ class BlockFillerUtil {
         return (bounds.maxX - bounds.minX + 1) * (bounds.maxZ - bounds.minZ + 1) * (bounds.maxY - bounds.minY + 1);
     }
 
-    splitBounds(bounds, stack, yDirection = UPWARD_Y) {
+    splitBounds(bounds, stack, yDirection = this.UPWARD_Y) {
         const sizeX = bounds.maxX - bounds.minX;
         const sizeY = bounds.maxY - bounds.minY;
         const sizeZ = bounds.maxZ - bounds.minZ;
@@ -148,7 +149,7 @@ class BlockFillerUtil {
         const lower = { minX: bounds.minX, maxX: bounds.maxX, minY: bounds.minY, maxY: mid, minZ: bounds.minZ, maxZ: bounds.maxZ };
         const upper = { minX: bounds.minX, maxX: bounds.maxX, minY: mid + 1, maxY: bounds.maxY, minZ: bounds.minZ, maxZ: bounds.maxZ };
 
-        if (yDirection === DOWNWARD_Y) {
+        if (yDirection === this.DOWNWARD_Y) {
             stack.push(lower);
             stack.push(upper);
         } else {

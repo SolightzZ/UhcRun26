@@ -1,18 +1,5 @@
-import './customCommand/command.js';
-
 // Plugins
-import './plugin/anticheat-cps/Routes.js';
-import './plugin/auto-smelt/Routes.js';
 import './plugin/axe/Routes.js';
-import './plugin/block-interact-guard/Routes.js';
-import './plugin/enchant/Routes.js';
-import './plugin/fishing-hod/Routes.js';
-import './plugin/item-consume-effects/Routes.js';
-import './plugin/item-pickup/Routes.js';
-import './plugin/knockback/Routes.js';
-import './plugin/plate-knockback/Routes.js';
-import './plugin/projectile-hit-sounds/Routes.js';
-import './plugin/tnt-instant/Routes.js';
 
 // System Games
 import './system/border.js';
@@ -21,4 +8,28 @@ import './system/border.js';
 import './Manager/TeamManager.js';
 
 // Leaderboard
-import './Manager/Leaderboard.js';
+import './Manager/LeaderboardNPC.js';
+
+// Router — startup
+import './Router/system-startup.js';
+
+// Router — world events
+import './Router/world-chatSend.js';
+import './Router/world-entityDie.js';
+import './Router/world-entityHurt.js';
+import './Router/world-itemUse.js';
+import './Router/world-playerInteractWithEntity.js';
+import './Router/world-playerLeave.js';
+import './Router/world-playerSpawn.js';
+import './Router/world-playerBreakBlock.js';
+import './Router/world-playerPlaceBlock.js';
+import './Router/world-playerInteractWithBlock.js';
+import './Router/world-entityHitEntity.js';
+import './Router/world-playerBreakBlockAfter.js';
+import './Router/world-entitySpawn.js';
+import './Router/world-playerHotbarSelectedSlotChange.js';
+import './Router/world-projectileHitEntity.js';
+import './Router/world-itemCompleteUse.js';
+import './Router/world-entityItemPickup.js';
+import './Router/world-pressurePlatePush.js';
+import './Router/world-playerPlaceBlockAfter.js';

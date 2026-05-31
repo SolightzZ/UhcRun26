@@ -16,14 +16,6 @@ class BorderEvents {
     forceFinalShrinkQueue = [];
     forceFinalShrinkScheduled = false;
 
-    constructor() {
-        world.beforeEvents.playerBreakBlock.subscribe((ev) => this.handlePlayerBreakBlock(ev));
-        world.beforeEvents.playerPlaceBlock.subscribe((ev) => this.handlePlayerPlaceBlock(ev));
-        world.beforeEvents.playerInteractWithEntity.subscribe((ev) => this.handlePlayerInteractWithEntity(ev));
-        world.beforeEvents.playerInteractWithBlock.subscribe((ev) => this.handlePlayerInteractWithBlock(ev));
-        world.beforeEvents.chatSend.subscribe((ev) => this.handleChatSend(ev));
-    }
-
     isUhcPlayer(player) {
         if (!ctx.isRunning) return false;
         if (!player?.isValid) return false;

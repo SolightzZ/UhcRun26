@@ -140,9 +140,7 @@ export function resetAnnouncer() {
     killStreak.clear();
     setFirstBloodDone(false);
 
-    const players = world.getPlayers();
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of world.getPlayers()) {
         if (!p?.isValid) continue;
         const tag = p.nameTag;
         if (!tag) continue;
@@ -199,7 +197,7 @@ export function trackHit(attacker, victim, cause) {
     existing.tick = currentTick;
 }
 
-system.runInterval(() => {
+export function handlerHit() {
     const currentTick = system.currentTick;
     for (const [victimId, entry] of hitRegistry.entries()) {
         if (!entry) continue;
@@ -207,7 +205,7 @@ system.runInterval(() => {
             hitRegistry.delete(victimId);
         }
     }
-}, 200);
+}
 
 function getRecentHitEntry(victimId) {
     if (!victimId) return null;

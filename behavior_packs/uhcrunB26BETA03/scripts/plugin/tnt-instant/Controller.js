@@ -1,19 +1,14 @@
-import { world } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-    register = () => {
-        world.afterEvents.playerPlaceBlock.subscribe(
-            ({ block, player }) => {
-                service.placeTnt(block, player);
-            },
-            { blockTypes: [model.TNT] },
-        );
+    onPlayerPlaceBlock = ({ block, player }) => {
+        if (block?.typeId !== model.TNT) return;
+        service.placeTnt(block, player);
+    };
 
-        world.afterEvents.playerLeave.subscribe(({ playerId }) => {
-            model.cdMap.delete(playerId);
-        });
+    onPlayerLeave = ({ playerId }) => {
+        model.cdMap.delete(playerId);
     };
 }
 

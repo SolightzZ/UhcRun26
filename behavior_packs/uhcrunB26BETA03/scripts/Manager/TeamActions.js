@@ -28,6 +28,23 @@ import {
 } from './State.js';
 import { resetAnnouncer, scheduleSaveStats } from './StatsManager.js';
 
+function getTotalTeamPlayers() {
+    let total = 0;
+    for (const count of teamCounts.values()) {
+        total += count;
+    }
+    return total;
+}
+
+function canJoinTeam(newTeamId) {
+    const totalBefore = getTotalTeamPlayers();
+    return totalBefore < CONFIG.maxTotalPlayers;
+}
+
+function getTeamPlayerCount(teamId) {
+    return teamCounts.get(teamId) ?? 0;
+}
+
 export function getCachedPlayers() {
     return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
 }
@@ -108,6 +125,12 @@ export function joinTeam(player, newTeamId) {
 
     const shouldTrack = !isGameRunning || player?.hasTag('uhc');
 
+    if (shouldTrack && !oldTeam && !canJoinTeam(newTeamId)) {
+        player.sendMessage(dynamicToast(`§cเซิร์ฟเวอร์เต็มแล้ว (${CONFIG.maxTotalPlayers} คน)`, 'textures/ui/cancel'));
+        player.playSound('note.bassattack');
+        return;
+    }
+
     if (shouldTrack && oldTeam) {
         const oldCount = teamCounts.get(oldTeam) ?? 0;
         teamCounts.set(oldTeam, oldCount > 0 ? oldCount - 1 : 0);
@@ -150,8 +173,7 @@ export function clearAllTeams(executor) {
 
     clearTeamRuntimeState();
 
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i];
+    for (const player of players) {
         if (!player?.isValid) continue;
 
         const cachedTeam = playerTeamCache.get(player.id);
@@ -163,8 +185,8 @@ export function clearAllTeams(executor) {
     }
 
     const board = getBoard();
-    for (let i = 0; i < teamsLen; i++) {
-        const entry = `${TEAMS[i].color}${TEAMS[i].name}`;
+    for (const team of TEAMS) {
+        const entry = `${team.color}${team.name}`;
         board.removeParticipant(entry);
     }
 }
@@ -179,8 +201,7 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
 
     clearTeamRuntimeState();
 
-    for (let i = 0; i < players.length; i++) {
-        const player = players[i];
+    for (const player of players) {
         if (!player?.isValid) continue;
 
         const teamId = playerTeamCache.get(player.id);
@@ -200,8 +221,8 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
 
     resetAnnouncer();
 
-    for (let i = 0; i < TEAMS.length; i++) {
-        teamStats.set(TEAMS[i].id, { kills: 0, deaths: 0 });
+    for (const team of TEAMS) {
+        teamStats.set(team.id, { kills: 0, deaths: 0 });
     }
 
     playerStats.clear();
@@ -209,15 +230,15 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
     world.setDynamicProperty('uhc_playerStats', undefined);
 
     if (teamKillObj) {
-        for (let i = 0; i < TEAMS.length; i++) {
-            const label = `${TEAMS[i].color}${TEAMS[i].name}`;
+        for (const team of TEAMS) {
+            const label = `${team.color}${team.name}`;
             teamKillObj.removeParticipant(label);
         }
     }
 
     const board = getBoard();
-    for (let i = 0; i < TEAMS.length; i++) {
-        const entry = `${TEAMS[i].color}${TEAMS[i].name}`;
+    for (const team of TEAMS) {
+        const entry = `${team.color}${team.name}`;
         board.removeParticipant(entry);
     }
 
@@ -257,11 +278,12 @@ export function openTeamMenu(player) {
     if (currentTeam) {
         teamDisplay = `${currentTeam.color}${currentTeam.name}`;
     }
-    form.body(`§f${player.name}: ${teamDisplay}`);
+    const totalNow = getTotalTeamPlayers();
+    form.body(`§f${player.name}: ${teamDisplay}\n§7Total: §f${totalNow}§7/§f${CONFIG.maxTotalPlayers}`);
     const teamsLen = TEAMS.length;
-    for (let i = 0; i < teamsLen; i++) {
-        const team = TEAMS[i];
-        form.button(`${team.color}${team.name}`, team.icon);
+    for (const team of TEAMS) {
+        const count = getTeamPlayerCount(team.id);
+        form.button(`${team.color}${team.name} §7(${count})`, team.icon);
     }
     form.button('§cLeave', 'textures/ui/permissions_visitor_hand');
     form.button('§6Refresh', 'textures/ui/refresh_light');
@@ -275,6 +297,12 @@ export function openTeamMenu(player) {
             if (currentTeamId === selectedTeam.id) {
                 player.playSound('note.bassattack');
                 player.sendMessage(dynamicToast('§oAlready', selectedTeam.icon));
+                system.run(() => openTeamMenu(player));
+                return;
+            }
+            if (!currentTeamId && !canJoinTeam(selectedTeam.id)) {
+                player.playSound('note.bassattack');
+                player.sendMessage(dynamicToast(`§cเซิร์ฟเวอร์เต็ม (${CONFIG.maxTotalPlayers})`, 'textures/ui/cancel'));
                 system.run(() => openTeamMenu(player));
                 return;
             }

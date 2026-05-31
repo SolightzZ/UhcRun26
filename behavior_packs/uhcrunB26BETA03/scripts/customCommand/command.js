@@ -1,7 +1,7 @@
 import { CustomCommandStatus, system } from '@minecraft/server';
 import { CommandMap } from './function.js';
 
-system.beforeEvents.startup.subscribe(({ customCommandRegistry }) => {
+export function HandlerCustomCommands({ customCommandRegistry }) {
     for (const name in CommandMap) {
         const data = CommandMap[name];
 
@@ -9,7 +9,7 @@ system.beforeEvents.startup.subscribe(({ customCommandRegistry }) => {
             customCommandRegistry.registerCommand(
                 {
                     name,
-                    description: 'CustomCommand',
+                    description: data.description,
                     permissionLevel: data.permission,
                     cheatsRequired: false,
                 },
@@ -34,4 +34,4 @@ system.beforeEvents.startup.subscribe(({ customCommandRegistry }) => {
             console.warn(`[Command Registry Warning] Failed to register or update custom command '${name}':`, error);
         }
     }
-});
+}

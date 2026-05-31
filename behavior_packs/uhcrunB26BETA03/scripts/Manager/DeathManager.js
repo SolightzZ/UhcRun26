@@ -118,8 +118,7 @@ function processVictimDeath(player, victimTeamId, loc) {
             entityQueryOptions.location.z = snapZ;
 
             const items = dim.getEntities(entityQueryOptions);
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
+            for (const item of items) {
                 if (!item || !item.isValid) continue;
                 item.teleport(cartLoc, { dimension: dim });
             }
@@ -210,7 +209,7 @@ export function handleDeath(player) {
     hitRegistry.delete(id);
 }
 
-export function onHurt(ev) {
+export function HandlerOnHurt(ev) {
     const hurt = ev.hurtEntity;
     if (!hurt) return;
     if (hurt.typeId !== 'minecraft:player') return;

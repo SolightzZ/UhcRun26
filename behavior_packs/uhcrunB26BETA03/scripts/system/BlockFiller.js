@@ -1,9 +1,9 @@
-import { MODE } from './BlockFillerUtil';
-import endSequence from './BlockFiller_EndSequence';
-import fillQueue from './BlockFiller_FillQueue';
-import patternEnqueue from './BlockFiller_PatternEnqueue';
-import taskBuilder from './BlockFiller_TaskBuilder';
-import util from './BlockFiller_Util';
+import { MODE } from './BlockFillerUtil.js';
+import endSequence from './BlockFiller_EndSequence.js';
+import fillQueue from './BlockFiller_FillQueue.js';
+import patternEnqueue from './BlockFiller_PatternEnqueue.js';
+import taskBuilder from './BlockFiller_TaskBuilder.js';
+import util from './BlockFiller_Util.js';
 
 class BlockFiller {
     constructor() {

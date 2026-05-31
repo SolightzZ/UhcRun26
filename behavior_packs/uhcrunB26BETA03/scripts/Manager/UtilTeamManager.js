@@ -4,8 +4,9 @@ export const CONFIG = Object.freeze({
     uhcTag: 'uhc',
     objectiveName: 'uhcBoard',
     displayName: 'UHC',
-    title: '§g§r',
+    title: '§g§r' + '§6UHC',
     key: 'team', // DynamicProperty: { playerId → teamId }
+    maxTotalPlayers: 54,
 });
 
 // TEAMS (config ทีมทั้งหมด)

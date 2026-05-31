@@ -1,6 +1,6 @@
 import bf from './BlockFiller.js';
-import util from './BlockFiller_Util';
-import { END_SEQUENCE_STATE } from './BlockFillerUtil';
+import util from './BlockFiller_Util.js';
+import { END_SEQUENCE_STATE } from './BlockFillerUtil.js';
 
 class BlockFillerEndSequence {
     PATTERN_1_TASK;

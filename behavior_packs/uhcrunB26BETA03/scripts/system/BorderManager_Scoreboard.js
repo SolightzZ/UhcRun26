@@ -4,7 +4,7 @@ import bf from './BlockFiller.js';
 import bm, { borderEnd, CHECKPOINTS, ctx, icons, MinecraftColor } from './BorderManager.js';
 
 const uhc = 'uhc';
-const uhcName = MinecraftColor.h + MinecraftColor.n + 'UhcRun26';
+const uhcName = '§h§nUhcRun26';
 
 const LINE_ID_SUFFIX = Array.from({ length: 10 }, (_, i) => '§r'.repeat(i + 1));
 

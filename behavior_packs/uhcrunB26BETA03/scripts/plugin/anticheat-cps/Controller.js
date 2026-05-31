@@ -1,39 +1,37 @@
-import { system, world } from '@minecraft/server';
+import { system } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-    register = () => {
-        world.afterEvents.playerLeave.subscribe(({ playerId }) => {
-            model.playerState.delete(playerId);
-        });
+    onPlayerLeave = ({ playerId }) => {
+        model.playerState.delete(playerId);
+    };
 
-        world.afterEvents.entityHitEntity.subscribe((event) => {
-            const attacker = event.damagingEntity;
-            if (!attacker || attacker.typeId !== 'minecraft:player') return;
+    onEntityHitEntity = (event) => {
+        const attacker = event.damagingEntity;
+        if (!attacker || attacker.typeId !== 'minecraft:player') return;
 
-            const currentTick = system.currentTick;
-            const playerId = attacker.id;
+        const currentTick = system.currentTick;
+        const playerId = attacker.id;
 
-            let data = model.playerState.get(playerId);
-            if (!data) {
-                data = model.createPlayerData();
-                model.playerState.set(playerId, data);
-            }
+        let data = model.playerState.get(playerId);
+        if (!data) {
+            data = model.createPlayerData();
+            model.playerState.set(playerId, data);
+        }
 
-            data.buf[data.head] = currentTick;
-            data.head = (data.head + 1) % model.BUF_SIZE;
-            if (data.count < model.BUF_SIZE) data.count++;
+        data.buf[data.head] = currentTick;
+        data.head = (data.head + 1) % model.BUF_SIZE;
+        if (data.count < model.BUF_SIZE) data.count++;
 
-            const cps = service.countRecentHits(data, currentTick);
-            if (cps < model.HARD_LIMIT) return;
+        const cps = service.countRecentHits(data, currentTick);
+        if (cps < model.HARD_LIMIT) return;
 
-            service.kickPlayer(attacker, cps);
+        service.kickPlayer(attacker, cps);
 
-            data.buf.fill(0);
-            data.head = 0;
-            data.count = 0;
-        });
+        data.buf.fill(0);
+        data.head = 0;
+        data.count = 0;
     };
 }
 

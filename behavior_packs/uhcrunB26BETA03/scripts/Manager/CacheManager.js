@@ -24,13 +24,7 @@ import {
 
 export function removeCachedPlayerById(list, id) {
     if (!list || list.length === 0) return;
-    let index = -1;
-    for (let i = 0; i < list.length; i++) {
-        if (list[i].id === id) {
-            index = i;
-            break;
-        }
-    }
+    const index = list.findIndex((p) => p?.id === id);
     if (index === -1) return;
     const lastIndex = list.length - 1;
     if (index !== lastIndex) {
@@ -50,8 +44,7 @@ export function rebuildTeamRuntimeState(players) {
     playerTeamCache.clear();
     clearTeamRuntimeState();
 
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p) continue;
         if (!p.isValid) continue;
 
@@ -86,8 +79,7 @@ export function refreshPlayerCaches() {
     uhcPlayerIds.clear();
     playerCache.clear();
 
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p?.isValid) continue;
 
         allPlayersCache.push(p);

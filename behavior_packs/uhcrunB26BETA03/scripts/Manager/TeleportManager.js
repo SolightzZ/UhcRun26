@@ -23,7 +23,7 @@ export function playerTeleport(source, target) {
     if (!source.isValid) return;
     if (!target) return;
     if (!target.isValid) {
-        source.sendMessage('§cผู้เล่นเป้าหมายไม่ได้ออนไลน์หรือไม่ได้อยุ่ในเซิฟปแล้ว');
+        source.sendMessage('§cผู้เล่นเป้าหมายไม่ได้ออนไลน์หรือไม่ได้อยู่ในเซิฟเวอร์แล้ว');
         return;
     }
     source.teleport(target.location, { dimension: target.dimension });
@@ -35,8 +35,7 @@ export const getOtherUhcPlayers = (excludeId) => uhcPlayersCache.filter((p) => p
 export function teleportGetAllPlayers(player) {
     const players = world.getPlayers();
     const result = [];
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p) continue;
         if (!p.isValid) continue;
         if (player) {

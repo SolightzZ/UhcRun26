@@ -3,41 +3,39 @@ import utilUmm from '../system/UtilUhcMatchManager.js';
 import { CONFIG, TEAMS } from './UtilTeamManager.js';
 
 import {
-  aliveTeamDirtyHandler,
-  allPlayersCache,
-  allPlayersCacheIds,
-  deathLocation,
-  GlobalPlayerCaches,
-  isGameRunning,
-  itemVacuumQueue,
-  playerCache,
-  playerStats,
-  playerTeamCache,
-  REVIVE_ITEM_ID,
-  setAliveTeamDirtyHandler,
-  setKdHistoryObj,
-  setTeamKillObj,
-  teamCounts,
-  teamPlayerIndex,
-  teamStats,
-  teleportLocPool,
-  uhcPlayerIds,
-  uhcPlayersCache,
+    aliveTeamDirtyHandler,
+    allPlayersCache,
+    allPlayersCacheIds,
+    deathLocation,
+    GlobalPlayerCaches,
+    isGameRunning,
+    itemVacuumQueue,
+    playerCache,
+    playerStats,
+    playerTeamCache,
+    REVIVE_ITEM_ID,
+    setAliveTeamDirtyHandler,
+    setKdHistoryObj,
+    setTeamKillObj,
+    teamCounts,
+    teamPlayerIndex,
+    teamStats,
+    teleportLocPool,
+    uhcPlayerIds,
+    TEAM_INDEX_MAP,
+    TEAM_LOOKUP,
+    uhcPlayersCache,
 } from './State.js';
 
 import { checkAllCaches, clearAllCaches, clearAllCachesIncludingStats, rebuildTeamRuntimeState, refreshPlayerCaches, removeCachedPlayerById, removePlayerFromRuntimeState } from './CacheManager.js';
-import { handleDeath, onHurt } from './DeathManager.js';
+import { handleDeath } from './DeathManager.js';
 import { AdminMenu, openMainMenu, showTeleportForm, teleportToSpawn, tpa } from './MenuManager.js';
 import { cancelReviveForPlayer, onUseReviveItem } from './ReviveManager.js';
 import { flushSidebarUpdates, refreshScoreboardUI, updateSidebar } from './ScoreboardManager.js';
 import { resetAnnouncer, scheduleSaveStats } from './StatsManager.js';
 import { clearAllTaguhcAndDynamicProperty, clearAllTeams, getCachedPlayers, getPlayersByTeam, getPlayerTeam, setTeam } from './TeamActions.js';
 
-import { TEAM_INDEX_MAP, TEAM_LOOKUP } from './State.js';
-
-// ======================================================
 //  Public API Exports
-// ======================================================
 
 export { getPlayerTeam, refreshPlayerCaches, refreshScoreboardUI };
 export function getTeams() {
@@ -50,19 +48,19 @@ export { getCachedPlayers as getAllPlayers };
 export const getUhcPlayers = () => uhcPlayersCache;
 export { getKdHistoryObjective, getTeamKillObjective, setGameRunningState } from './State.js';
 export {
-  AdminMenu,
-  checkAllCaches,
-  clearAllCaches,
-  clearAllCachesIncludingStats,
-  clearAllTaguhcAndDynamicProperty,
-  clearAllTeams,
-  getPlayersByTeam,
-  openMainMenu,
-  setAliveTeamDirtyHandler as registerAliveTeamDirtyHandler,
-  resetAnnouncer,
-  showTeleportForm,
-  teleportToSpawn,
-  tpa
+    AdminMenu,
+    checkAllCaches,
+    clearAllCaches,
+    clearAllCachesIncludingStats,
+    clearAllTaguhcAndDynamicProperty,
+    clearAllTeams,
+    getPlayersByTeam,
+    openMainMenu,
+    setAliveTeamDirtyHandler as registerAliveTeamDirtyHandler,
+    resetAnnouncer,
+    showTeleportForm,
+    teleportToSpawn,
+    tpa,
 };
 export function getPlayerStats() {
     return playerStats;
@@ -89,8 +87,9 @@ export function clearAllPlayerNametags() {
             console.warn('Clear All Player Nametags');
             return;
         }
-        for (let i = 0; i < 3 && index < total; i++, index++) {
-            const p = players[index];
+        const batch = players.slice(index, index + 3);
+        index += batch.length;
+        for (const p of batch) {
             if (!p?.isValid) continue;
             if (p.nameTag === p.name) continue;
             p.nameTag = p.name;
@@ -122,11 +121,9 @@ export function showVictoryMessage(winnerTeamId, uhcTick = 0) {
     );
 }
 
-// ======================================================
 //  Event Handlers
-// ======================================================
 
-function onDeath(ev) {
+export function HandlerOnDeath(ev) {
     const dead = ev.deadEntity;
     if (!dead) return;
     if (dead.typeId !== 'minecraft:player') return;
@@ -134,7 +131,7 @@ function onDeath(ev) {
     handleDeath(dead);
 }
 
-function onSpawn(ev) {
+export function HandlerOnSpawn(ev) {
     const player = ev.player;
     if (!player) return;
     const id = player.id;
@@ -199,7 +196,7 @@ function onSpawn(ev) {
     setTeam(player, dynamicTeam);
 }
 
-function onLeave(ev) {
+export function HandlerOnLeave(ev) {
     const id = ev.playerId;
     if (!id) return;
     cancelReviveForPlayer(id);
@@ -218,7 +215,7 @@ function onLeave(ev) {
     GlobalPlayerCaches.delete(id);
 }
 
-function onChat(ev) {
+export function HandlerOnChat(ev) {
     const player = ev.sender;
     if (!player || !player.isValid) return;
     const message = ev.message;
@@ -237,17 +234,7 @@ function onChat(ev) {
     world.sendMessage(formattedMessage);
 }
 
-// ======================================================
-//  Event Subscriptions
-// ======================================================
-
-world.beforeEvents.chatSend.subscribe(onChat);
-world.afterEvents.entityDie.subscribe(onDeath);
-world.afterEvents.entityHurt.subscribe(onHurt);
-world.afterEvents.playerSpawn.subscribe(onSpawn);
-world.afterEvents.playerLeave.subscribe(onLeave);
-
-world.afterEvents.itemUse.subscribe((ev) => {
+export function HandlerRevive(ev) {
     const { source, itemStack } = ev;
     if (!source?.isValid) return;
     const itemId = itemStack?.typeId;
@@ -260,16 +247,13 @@ world.afterEvents.itemUse.subscribe((ev) => {
     const isUhc = source.hasTag('uhc');
     if (!isAdmin && isUhc) return;
     system.run(() => openMainMenu(source));
-});
+}
 
-// ======================================================
 //  Init: Player Cache + Scoreboard
-// ======================================================
 
 system.run(() => {
     const players = world.getPlayers();
-    for (let i = 0; i < players.length; i++) {
-        const p = players[i];
+    for (const p of players) {
         if (!p?.isValid) continue;
         playerCache.set(p.id, p);
     }
@@ -277,9 +261,7 @@ system.run(() => {
     flushSidebarUpdates();
 });
 
-// ======================================================
 //  Init: Scoreboard Objectives
-// ======================================================
 
 system.run(() => {
     const sb = world.scoreboard;
@@ -292,17 +274,14 @@ system.run(() => {
     setTeamKillObj(teamObj);
 });
 
-// ======================================================
 //  Init: Stats from Dynamic Properties
-// ======================================================
 
 system.run(() => {
     const dTeam = world.getDynamicProperty('uhc_teamStats');
     const parsedTeamStats = safeParseDynamicMap(dTeam, 'uhc_teamStats');
     if (parsedTeamStats) {
         const entries = Object.entries(parsedTeamStats);
-        for (let i = 0; i < entries.length; i++) {
-            const [k, v] = entries[i];
+        for (const [k, v] of entries) {
             if (!v) continue;
             if (!teamStats.has(k)) continue;
             const kills = Number.isFinite(Number(v.kills)) ? Number(v.kills) : 0;
@@ -315,8 +294,7 @@ system.run(() => {
     const parsedPlayerStats = safeParseDynamicMap(dPlayer, 'uhc_playerStats');
     if (parsedPlayerStats) {
         const entries = Object.entries(parsedPlayerStats);
-        for (let i = 0; i < entries.length; i++) {
-            const [k, v] = entries[i];
+        for (const [k, v] of entries) {
             if (!v) continue;
             if (typeof k !== 'string' || k.length === 0) continue;
             const kills = Number.isFinite(Number(v.kills)) ? Number(v.kills) : 0;
@@ -346,11 +324,7 @@ function safeParseDynamicMap(rawValue, label) {
     }
 }
 
-// ======================================================
-//  Admin Chat Commands (!check, !clear, !clearall)
-// ======================================================
-
-world.beforeEvents.chatSend.subscribe((ev) => {
+export function HandlerchatSendCaches(ev) {
     const player = ev.sender;
     if (!player?.isValid) return;
     const message = ev.message.toLowerCase();
@@ -400,4 +374,4 @@ world.beforeEvents.chatSend.subscribe((ev) => {
             });
             break;
     }
-});
+}

@@ -25,8 +25,14 @@ function drainItemVacuumQueue() {
     }, 3);
 }
 
+const ITEM_VACUUM_MAX_QUEUE = 32;
+
 export function enqueueItemVacuum(job) {
     if (!job) return;
+    if (itemVacuumQueue.length >= ITEM_VACUUM_MAX_QUEUE) {
+        console.warn('[ItemVacuum] Queue full, dropping job');
+        return;
+    }
     itemVacuumQueue.push(job);
     if (itemVacuumRunning) return;
     drainItemVacuumQueue();

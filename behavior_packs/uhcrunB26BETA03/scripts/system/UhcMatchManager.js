@@ -13,7 +13,7 @@ import {
     setGameRunningState,
 } from '../Manager/TeamManager.js';
 
-import { spawnLeaderboardNPC } from '../Manager/Leaderboard.js';
+import { spawnLeaderboardNPC } from '../Manager/LeaderboardNPC.js';
 
 import { dynamicToast } from '../plugin/Util.js';
 import bf from './BlockFiller.js';
@@ -54,20 +54,20 @@ class UhcMatchManager {
         this.startBars = bars;
 
         registerAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
+    }
 
-        world.afterEvents.playerLeave.subscribe(() => {
-            system.run(() => {
-                if (ctx.isRunning && world.getPlayers().length === 0) {
-                    this.stopGameLoop();
-                }
-            });
-        });
-
-        world.afterEvents.playerSpawn.subscribe(() => {
-            if (ctx.isRunning && ctx.checkInterval === null) {
-                this.gameLoopRun();
+    handlePlayerLeave() {
+        system.run(() => {
+            if (ctx.isRunning && world.getPlayers().length === 0) {
+                this.stopGameLoop();
             }
         });
+    }
+
+    handlePlayerSpawn() {
+        if (ctx.isRunning && ctx.checkInterval === null) {
+            this.gameLoopRun();
+        }
     }
 
     getAllPlayersCached() {
@@ -225,6 +225,8 @@ class UhcMatchManager {
             if (!ctx.isRunning) return;
             ctx.uhcTick++;
 
+            if (ctx.uhcTick % 60 === 0) this.victoryManagerCheck();
+
             const uhcPlayers = this.getUhcPlayersCached();
             this.gameLoopWorld(uhcPlayers);
 
@@ -353,6 +355,22 @@ class UhcMatchManager {
         bm.borderManagerSyncGeometry();
         world.gameRules.pvp = false;
         world.gameRules.showCoordinates = prevShowCoordinates;
+    }
+
+    victoryManagerCheck() {
+        return vic.victoryManagerCheck();
+    }
+    victoryManagerTriggerDraw() {
+        return vic.victoryManagerTriggerDraw();
+    }
+    victoryManagerTriggerWin(winTag) {
+        return vic.victoryManagerTriggerWin(winTag);
+    }
+    victoryManagerStartCountdown() {
+        return vic.victoryManagerStartCountdown();
+    }
+    resetCountdownRunning() {
+        return vic.resetCountdownRunning();
     }
 }
 
