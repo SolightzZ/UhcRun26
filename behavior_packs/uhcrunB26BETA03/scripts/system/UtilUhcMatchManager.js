@@ -53,8 +53,8 @@ class UtilUhcMatchManager {
             for (let i = 0; i < UHC_PLAYER_EFFECTS.length; i++) {
                 const [effect, duration] = UHC_PLAYER_EFFECTS[i];
                 player.addEffect(effect, duration, effectOptionsHidden);
-                player.addEffect('conduit_power', 5000, { amplifier: 0, showParticles: false });
             }
+            player.addEffect('conduit_power', 5000, { amplifier: 0, showParticles: false });
             return;
         }
         player.setGameMode(GameMode.Spectator);

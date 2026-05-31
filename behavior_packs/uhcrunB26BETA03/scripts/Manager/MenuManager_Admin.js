@@ -90,8 +90,8 @@ function viewPlayerStatus(admin) {
         if (typeof p.getGameMode === 'function') {
             gm = p.getGameMode();
         }
-        const health = p.getComponent('minecraft:health') || p.getComponent('health');
-        const hp = health && health.currentValue ? health.currentValue.toFixed(1) : '?';
+        const health = p.getComponent('minecraft:health');
+        const hp = health?.currentValue !== undefined ? health.currentValue.toFixed(1) : '?';
         body += `§e${p.name} §8| GM: §7${gm} §8| HP: §c${hp}\n`;
     }
     showDumpViewer(admin, 'Player Status Viewer', body, 'PLAYER STATUS DUMP');

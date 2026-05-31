@@ -1,5 +1,6 @@
 import { isPlayerUhcId } from '../Manager/TeamManager.js';
 
+import { END_SEQUENCE_STATE } from './BlockFiller_Constants.js';
 import bm, { CHECKPOINTS, ctx } from './BorderManager.js';
 
 import umm from './UhcMatchManager.js';
@@ -63,6 +64,8 @@ class BorderEvents {
     shouldLockPlaceBlock(player) {
         if (!ctx.isRunning) return false;
         if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
+        // Don't lock during INITIAL_WAIT or PATTERN3 — allow building until Pattern 1 clears outer ring
+        if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1) return false;
         return this.isUhcPlayer(player);
     }
 

@@ -1,3 +1,4 @@
+import { system, world } from '@minecraft/server';
 import fillQueue from './BlockFiller_FillQueue.js';
 import patternEnqueue from './BlockFiller_PatternEnqueue.js';
 import util from './BlockFiller_Util.js';
@@ -9,6 +10,7 @@ class BlockFillerEndSequence {
     PATTERN_3_TASK;
     pattern1Queued = false;
     pattern2Queued = false;
+    pattern3Queued = false;
 
     setPatternTasks(p1, p2, p3) {
         this.PATTERN_1_TASK = p1;
@@ -97,46 +99,92 @@ class BlockFillerEndSequence {
     }
 
     runEndPattern3(player) {
+        if (this.pattern3Queued) return;
         if (!player?.isValid) return;
-        const dim = player.dimension;
+        this.pattern3Queued = true;
+
+        // Always build Nether wall in overworld to ensure correct dimension
+        const dim = world.getDimension('overworld');
         const startY = ~~player.location.y - 1;
         const pattern = this.PATTERN_3_TASK;
-        for (let y = startY; y >= util.WORLD_MIN_Y; y--) {
-            for (let i = 0; i < pattern.segments.length; i++) {
-                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, { randomize: true });
+        let y = startY;
+
+        const feedFn = () => {
+            if (!player?.isValid) return;
+            let layersFed = 0;
+            while (y >= util.WORLD_MIN_Y && layersFed < 20) {
+                for (let i = 0; i < pattern.segments.length; i++) {
+                    patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, {});
+                }
+                y--;
+                layersFed++;
             }
-        }
+            if (y >= util.WORLD_MIN_Y) {
+                system.run(feedFn);
+            }
+        };
+
+        system.run(feedFn);
     }
 
     runEndPattern1(player) {
         if (this.pattern1Queued) return;
         if (!player?.isValid) return;
         this.pattern1Queued = true;
+
         const dim = player.dimension;
         const pattern = this.PATTERN_1_TASK;
-        for (let y = util.WORLD_MAX_Y; y >= util.WORLD_MIN_Y; y--) {
-            for (let i = 0; i < pattern.segments.length; i++) {
-                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, pattern.fillOptions);
+        let y = util.WORLD_MAX_Y;
+
+        const feedFn = () => {
+            if (!player?.isValid) return;
+            let layersFed = 0;
+            while (y >= util.WORLD_MIN_Y && layersFed < 10) {
+                for (let i = 0; i < pattern.segments.length; i++) {
+                    patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, pattern.fillOptions);
+                }
+                y--;
+                layersFed++;
             }
-        }
+            if (y >= util.WORLD_MIN_Y) {
+                system.run(feedFn);
+            }
+        };
+
+        system.run(feedFn);
     }
 
     runEndPattern2(player) {
         if (this.pattern2Queued) return;
         if (!player?.isValid) return;
         this.pattern2Queued = true;
+
         const dim = player.dimension;
         const pattern = this.PATTERN_2_TASK;
-        for (let y = util.WORLD_MIN_Y; y <= util.WORLD_MAX_Y; y++) {
-            for (let i = 0; i < pattern.segments.length; i++) {
-                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.UPWARD_Y, pattern.fillOptions);
+        let y = util.WORLD_MIN_Y;
+
+        const feedFn = () => {
+            if (!player?.isValid) return;
+            let layersFed = 0;
+            while (y <= util.WORLD_MAX_Y && layersFed < 30) {
+                for (let i = 0; i < pattern.segments.length; i++) {
+                    patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.UPWARD_Y, pattern.fillOptions);
+                }
+                y++;
+                layersFed++;
             }
-        }
+            if (y <= util.WORLD_MAX_Y) {
+                system.run(feedFn);
+            }
+        };
+
+        system.run(feedFn);
     }
 
     resetPatternFlags() {
         this.pattern1Queued = false;
         this.pattern2Queued = false;
+        this.pattern3Queued = false;
     }
 }
 

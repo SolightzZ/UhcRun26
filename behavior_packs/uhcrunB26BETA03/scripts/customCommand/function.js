@@ -68,7 +68,7 @@ function cmd(commandString) {
 
 // PLAYER STATE CONTROL
 function setItemPlayer(player) {
-    const invComp = player.getComponent('inventory');
+    const invComp = player.getComponent('minecraft:inventory');
     if (!invComp) return;
     invComp.container.clearAll();
     invComp.container.setItem(0, new ItemStack('minecraft:compass', 1));

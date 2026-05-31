@@ -235,10 +235,6 @@ export function purgePlayerCacheOnLeave(id) {
     allPlayersCacheIds.delete(id);
     removeCachedPlayerById(uhcPlayersCache, id);
 
-    if (itemVacuumQueue.length > 0) {
-        deathLocation.delete(id);
-    }
-
     aliveTeamDirtyHandler();
     GlobalPlayerCaches.delete(id);
 }

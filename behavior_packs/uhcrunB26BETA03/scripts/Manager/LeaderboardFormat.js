@@ -62,7 +62,7 @@ export function getPlayerText(playerStatsMap) {
 
 export function getDeathsText(playerStatsMap) {
     const currentHash = generateStatsHash(playerStatsMap);
-    if (currentHash === lbCache.lastStatsHash && lbCache.cachedDeathsText) {
+    if (currentHash === lbCache.lastDeathsHash && lbCache.cachedDeathsText) {
         return lbCache.cachedDeathsText;
     }
 
@@ -80,6 +80,7 @@ export function getDeathsText(playerStatsMap) {
     if (deathsList.length > MAX_PLAYERS) deathsList.length = MAX_PLAYERS;
 
     if (!deathsList.length) {
+        lbCache.lastDeathsHash = currentHash;
         lbCache.cachedDeathsText = buildEmptyDeathsText();
         return lbCache.cachedDeathsText;
     }
@@ -91,6 +92,7 @@ export function getDeathsText(playerStatsMap) {
         text += `${rankColor}#${i + 1} §a${playerItem.name}${teamSuffix} §f- §4${playerItem.st.deaths} Deaths §8(§c${playerItem.st.kills} Kills§8)\n`;
     }
 
+    lbCache.lastDeathsHash = currentHash;
     lbCache.cachedDeathsText = text;
     return text;
 }

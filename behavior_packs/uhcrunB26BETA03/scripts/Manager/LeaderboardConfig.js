@@ -25,6 +25,7 @@ export const NPC_QUERY_OPTIONS = Object.freeze({
 
 export const lbCache = {
     lastStatsHash: '',
+    lastDeathsHash: '',
     lastTeamHash: '',
     cachedPlayerText: '',
     cachedTeamText: '',
@@ -33,6 +34,7 @@ export const lbCache = {
 
 export function resetCache() {
     lbCache.lastStatsHash = '';
+    lbCache.lastDeathsHash = '';
     lbCache.lastTeamHash = '';
     lbCache.cachedPlayerText = '';
     lbCache.cachedTeamText = '';
