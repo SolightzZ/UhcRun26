@@ -77,7 +77,10 @@ class BorderEvents {
     }
 
     handlePlayerPlaceBlock(ev) {
-        if (this.handleBorderAction(ev, ev.block)) return;
+        if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
+            ev.cancel = true;
+            return;
+        }
         if (!this.shouldLockPlaceBlock(ev.player)) return;
         ev.cancel = true;
     }
@@ -148,7 +151,9 @@ class BorderEvents {
     }
 
     handlePlayerBreakBlock(ev) {
-        if (this.handleBorderAction(ev, ev.block)) return;
+        if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
+            ev.cancel = true;
+        }
     }
 }
 
