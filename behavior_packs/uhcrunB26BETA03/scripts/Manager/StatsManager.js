@@ -1,24 +1,8 @@
 import { system, world } from '@minecraft/server';
 import { dynamicToast } from '../plugin/Util.js';
-import {
-    HIT_TIMEOUT_TICKS,
-    MULTI_TIMEOUT_TICKS,
-    TEAM_LOOKUP,
-    firstBloodDone,
-    hitRegistry,
-    kdHistoryObj,
-    killStreak,
-    multiKill,
-    playerCache,
-    playerStats,
-    playerTeamCache,
-    setFirstBloodDone,
-    setStatsDirty,
-    setStatsSaveTask,
-    statsDirty,
-    statsSaveTask,
-    teamStats,
-} from './State.js';
+import { allPlayersCacheIds, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache } from './State_Cache.js';
+import { HIT_TIMEOUT_TICKS, MULTI_TIMEOUT_TICKS, firstBloodDone, kdHistoryObj, setFirstBloodDone, setStatsDirty, setStatsSaveTask, statsDirty, statsSaveTask } from './State_Game.js';
+import { TEAM_LOOKUP, playerStats, teamStats } from './State_Team.js';
 
 export function scheduleSaveStats() {
     setStatsDirty(true);
@@ -167,10 +151,15 @@ export function trackHit(attacker, victim, cause) {
 
     const currentTick = system.currentTick;
     const existing = hitRegistry.get(victimId);
+    const nextAttackerId = isSelfInflicted ? null : attackerId;
+
+    if (existing?.tick === currentTick && existing.attackerId === nextAttackerId && existing.cause === finalCause && existing.isSelfInflicted === isSelfInflicted) {
+        return;
+    }
 
     if (!existing) {
         hitRegistry.set(victimId, {
-            attackerId: isSelfInflicted ? null : attackerId,
+            attackerId: nextAttackerId,
             cause: finalCause,
             damageType: finalCause,
             tick: currentTick,
@@ -200,7 +189,14 @@ export function trackHit(attacker, victim, cause) {
 export function handlerHit() {
     const currentTick = system.currentTick;
     for (const [victimId, entry] of hitRegistry.entries()) {
-        if (!entry) continue;
+        if (!entry) {
+            hitRegistry.delete(victimId);
+            continue;
+        }
+        if (!allPlayersCacheIds.has(victimId)) {
+            hitRegistry.delete(victimId);
+            continue;
+        }
         if (currentTick - entry.tick > HIT_TIMEOUT_TICKS) {
             hitRegistry.delete(victimId);
         }

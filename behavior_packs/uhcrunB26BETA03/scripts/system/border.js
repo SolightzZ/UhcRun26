@@ -22,8 +22,6 @@ class BorderEvents {
     }
 
     isOutsideGlobalLimit(target, player) {
-        if (player?.isValid && player.hasTag('admin')) return false;
-
         const bx = this.getTargetAxis(target, 'x');
         const bz = this.getTargetAxis(target, 'z');
         if (bx === undefined) return false;

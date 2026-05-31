@@ -19,6 +19,8 @@ class Model {
         ['minecraft:iron_shovel', { name: 'Iron Shovel', texture: 'iron_shovel' }],
         ['minecraft:golden_shovel', { name: 'Golden Shovel', texture: 'gold_shovel' }],
         ['minecraft:diamond_shovel', { name: 'Diamond Shovel', texture: 'diamond_shovel' }],
+        ['minecraft:wooden_axe', { name: 'Wooden Axe', texture: 'wood_axe' }],
+        ['minecraft:stone_axe', { name: 'Stone Axe', texture: 'stone_axe' }],
     ]);
 
     ENCHANT_WINDOW_TICKS = 3;

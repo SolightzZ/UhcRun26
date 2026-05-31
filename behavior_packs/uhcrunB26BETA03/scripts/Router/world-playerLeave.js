@@ -1,4 +1,5 @@
 import { world } from '@minecraft/server';
+import { runEventHandlers } from '../plugin/Util.js';
 import { HandlerOnLeave } from '../Manager/TeamManager.js';
 import umm from '../system/UhcMatchManager.js';
 import anticheatCps from '../plugin/anticheat-cps/Controller.js';
@@ -20,11 +21,5 @@ const afterEvents = [
 ];
 
 world.afterEvents.playerLeave.subscribe((event) => {
-    try {
-        for (const handler of afterEvents) {
-            handler(event);
-        }
-    } catch (error) {
-        console.error('[PlayerLeave] error:', error.message);
-    }
+    runEventHandlers('PlayerLeave', afterEvents, event);
 });

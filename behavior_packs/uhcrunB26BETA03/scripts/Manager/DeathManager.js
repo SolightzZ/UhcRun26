@@ -1,25 +1,12 @@
 import { GameMode, ItemStack, system } from '@minecraft/server';
 import { removePlayerFromAliveRuntimeState } from './CacheManager.js';
 import { enqueueItemVacuum } from './ItemVacuum.js';
-import { cancelReviveForPlayer } from './ReviveManager.js';
-import {
-    deathBatchRunning,
-    deathLocation,
-    deathQueue,
-    entityQueryOptions,
-    hitRegistry,
-    isUHC,
-    killStreak,
-    multiKill,
-    particleLocPool,
-    playerStats,
-    playerTeamCache,
-    setDeathBatchRunning,
-    spawnEntityLocPool,
-    TEAM_LOOKUP,
-    teamKillObj,
-    teamStats,
-} from './State.js';
+import { cancelReviveForPlayer } from './ReviveManager_Core.js';
+import { hitRegistry, isUHC, killStreak, multiKill, playerTeamCache } from './State_Cache.js';
+import { teamKillObj } from './State_Game.js';
+import { deathBatchRunning, deathQueue, setDeathBatchRunning } from './State_Queue.js';
+import { deathLocation, playerStats, TEAM_LOOKUP, teamStats } from './State_Team.js';
+import { entityQueryOptions, particleLocPool, spawnEntityLocPool } from './State_Util.js';
 
 import {
     getDeathDisplayInfo,
@@ -98,31 +85,77 @@ function processVictimDeath(player, victimTeamId, loc) {
     const snapZ = loc.z;
 
     system.runTimeout(() => {
-        if (!player || !player.isValid) return;
+        try {
+            if (!player || !player.isValid) return;
 
-        player.removeTag('uhc');
-        player.setGameMode(GameMode.Spectator);
-
-        enqueueItemVacuum(() => {
-            spawnEntityLocPool.x = snapX;
-            spawnEntityLocPool.y = snapY + 1.5;
-            spawnEntityLocPool.z = snapZ;
-            dim.spawnItem(new ItemStack('minecraft:player_head', 1), spawnEntityLocPool);
-            const cart = dim.spawnEntity('minecraft:hopper_minecart', spawnEntityLocPool);
-            if (!cart) return;
-
-            const cartLoc = cart.location;
-
-            entityQueryOptions.location.x = snapX;
-            entityQueryOptions.location.y = snapY;
-            entityQueryOptions.location.z = snapZ;
-
-            const items = dim.getEntities(entityQueryOptions);
-            for (const item of items) {
-                if (!item || !item.isValid) continue;
-                item.teleport(cartLoc, { dimension: dim });
+            try {
+                player.removeTag('uhc');
+            } catch (err) {
+                console.warn('[DeathManager] Failed to remove UHC tag:', err);
             }
-        });
+
+            try {
+                player.setGameMode(GameMode.Spectator);
+            } catch (err) {
+                console.warn('[DeathManager] Failed to set game mode to Spectator:', err);
+            }
+
+            enqueueItemVacuum(() => {
+                try {
+                    if (!player || !player.isValid) return;
+                    const activeDim = player.dimension;
+                    if (!activeDim) return;
+
+                    spawnEntityLocPool.x = snapX;
+                    spawnEntityLocPool.y = snapY + 1.5;
+                    spawnEntityLocPool.z = snapZ;
+
+                    try {
+                        activeDim.spawnItem(new ItemStack('minecraft:player_head', 1), spawnEntityLocPool);
+                    } catch (e) {
+                        console.warn('[DeathManager] Failed to spawn player head:', e);
+                    }
+
+                    let cart = null;
+                    try {
+                        cart = activeDim.spawnEntity('minecraft:hopper_minecart', spawnEntityLocPool);
+                    } catch (e) {
+                        console.warn('[DeathManager] Failed to spawn hopper minecart:', e);
+                    }
+
+                    if (!cart || !cart.isValid) return;
+                    const cartLoc = cart.location;
+
+                    entityQueryOptions.location.x = snapX;
+                    entityQueryOptions.location.y = snapY;
+                    entityQueryOptions.location.z = snapZ;
+
+                    const items = activeDim.getEntities(entityQueryOptions);
+                    for (const item of items) {
+                        if (!item || !item.isValid) continue;
+                        try {
+                            item.teleport(cartLoc, { dimension: activeDim });
+                        } catch (e) {
+                            console.warn('[DeathManager] Failed to teleport item to vacuum cart:', e);
+                        }
+                    }
+
+                    system.runTimeout(() => {
+                        try {
+                            if (cart && cart.isValid) {
+                                cart.remove();
+                            }
+                        } catch (err) {
+                            console.warn('[DeathManager] Failed to remove vacuum cart:', err);
+                        }
+                    }, 30);
+                } catch (err) {
+                    console.warn('[DeathManager] Item vacuum execution failed:', err);
+                }
+            });
+        } catch (err) {
+            console.warn('[DeathManager] Deferred spectator transition failed:', err);
+        }
     }, 1);
 
     const victimPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };

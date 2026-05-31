@@ -2,35 +2,20 @@ import { GameMode, system, world } from '@minecraft/server';
 import utilUmm from '../system/UtilUhcMatchManager.js';
 import { CONFIG, TEAMS } from './UtilTeamManager.js';
 
-import {
-    aliveTeamDirtyHandler,
-    allPlayersCache,
-    allPlayersCacheIds,
-    deathLocation,
-    GlobalPlayerCaches,
-    isGameRunning,
-    itemVacuumQueue,
-    playerCache,
-    playerStats,
-    playerTeamCache,
-    REVIVE_ITEM_ID,
-    setAliveTeamDirtyHandler,
-    setKdHistoryObj,
-    setTeamKillObj,
-    teamCounts,
-    teamPlayerIndex,
-    teamStats,
-    teleportLocPool,
-    uhcPlayerIds,
-    TEAM_INDEX_MAP,
-    TEAM_LOOKUP,
-    uhcPlayersCache,
-} from './State.js';
+import { allPlayersCache, allPlayersCacheIds, GlobalPlayerCaches, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from './State_Cache.js';
+import { isGameRunning, setKdHistoryObj, setTeamKillObj } from './State_Game.js';
+import { itemVacuumQueue } from './State_Queue.js';
+import { REVIVE_ITEM_ID } from './State_Revive.js';
+import { aliveTeamDirtyHandler, deathLocation, playerStats, setAliveTeamDirtyHandler, TEAM_INDEX_MAP, TEAM_LOOKUP, teamCounts, teamPlayerIndex, teamStats } from './State_Team.js';
+import { teleportLocPool } from './State_Util.js';
 
-import { checkAllCaches, clearAllCaches, clearAllCachesIncludingStats, rebuildTeamRuntimeState, refreshPlayerCaches, removeCachedPlayerById, removePlayerFromRuntimeState } from './CacheManager.js';
+import { checkAllCaches, clearAllCaches, clearAllCachesIncludingStats, rebuildTeamRuntimeState, refreshPlayerCaches, removeCachedPlayerById, removePlayerFromRuntimeState, purgePlayerCacheOnLeave } from './CacheManager.js';
 import { handleDeath } from './DeathManager.js';
-import { AdminMenu, openMainMenu, showTeleportForm, teleportToSpawn, tpa } from './MenuManager.js';
-import { cancelReviveForPlayer, onUseReviveItem } from './ReviveManager.js';
+import { AdminMenu } from './MenuManager_Admin.js';
+import { openMainMenu, teleportToSpawn } from './MenuManager_Main.js';
+import { showTeleportForm, tpa } from './MenuManager_Teleport.js';
+import { cancelReviveForPlayer } from './ReviveManager_Core.js';
+import { onUseReviveItem } from './ReviveManager_UI.js';
 import { flushSidebarUpdates, refreshScoreboardUI, updateSidebar } from './ScoreboardManager.js';
 import { resetAnnouncer, scheduleSaveStats } from './StatsManager.js';
 import { clearAllTaguhcAndDynamicProperty, clearAllTeams, getCachedPlayers, getPlayersByTeam, getPlayerTeam, setTeam } from './TeamActions.js';
@@ -46,7 +31,7 @@ export function getTeamInfo(teamId) {
 }
 export { getCachedPlayers as getAllPlayers };
 export const getUhcPlayers = () => uhcPlayersCache;
-export { getKdHistoryObjective, getTeamKillObjective, setGameRunningState } from './State.js';
+export { getKdHistoryObjective, getTeamKillObjective, setGameRunningState } from './State_Game.js';
 export {
     AdminMenu,
     checkAllCaches,
@@ -137,15 +122,15 @@ export function HandlerOnSpawn(ev) {
     const id = player.id;
     playerCache.set(id, player);
 
-    const spawnPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
-    spawnPs.name = player.name;
     const cachedTeamId = playerTeamCache.get(id);
     const dynamicProp = player.getDynamicProperty(CONFIG.key);
     const propTeamId = typeof dynamicProp === 'string' ? dynamicProp : null;
     const spawnTeamId = cachedTeamId ?? propTeamId;
+
+    const spawnPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
+    spawnPs.name = player.name;
     if (spawnTeamId) spawnPs.teamId = spawnTeamId;
     playerStats.set(id, spawnPs);
-    scheduleSaveStats();
 
     if (!allPlayersCacheIds.has(id)) {
         allPlayersCache.push(player);
@@ -173,6 +158,7 @@ export function HandlerOnSpawn(ev) {
     if (isGameRunning && !player.hasTag('uhc')) {
         player.setGameMode(GameMode.Spectator);
         player.addEffect('conduit_power', 1, { amplifier: 255, showParticles: false });
+        scheduleSaveStats();
         return;
     }
 
@@ -182,7 +168,10 @@ export function HandlerOnSpawn(ev) {
         utilUmm.playerSetupClearItemsKeepCompass(player);
     }
 
-    if (!dynamicTeam) return;
+    if (!dynamicTeam) {
+        scheduleSaveStats();
+        return;
+    }
 
     const inCache = playerTeamCache.has(id);
 
@@ -193,26 +182,15 @@ export function HandlerOnSpawn(ev) {
         updateSidebar(dynamicTeam);
     }
 
-    setTeam(player, dynamicTeam);
+    setTeam(player, dynamicTeam, { scheduleSave: false });
+    scheduleSaveStats();
 }
 
 export function HandlerOnLeave(ev) {
     const id = ev.playerId;
     if (!id) return;
     cancelReviveForPlayer(id);
-    const teamId = playerTeamCache.get(id);
-    const isCounted = !isGameRunning || uhcPlayerIds.has(id);
-    const countedTeamId = isCounted ? teamId : null;
-    removePlayerFromRuntimeState(id, countedTeamId, true);
-
-    removeCachedPlayerById(allPlayersCache, id);
-    allPlayersCacheIds.delete(id);
-    removeCachedPlayerById(uhcPlayersCache, id);
-
-    if (itemVacuumQueue.length > 0) deathLocation.delete(id);
-
-    aliveTeamDirtyHandler();
-    GlobalPlayerCaches.delete(id);
+    purgePlayerCacheOnLeave(id);
 }
 
 export function HandlerOnChat(ev) {
@@ -236,8 +214,10 @@ export function HandlerOnChat(ev) {
 
 export function HandlerRevive(ev) {
     const { source, itemStack } = ev;
+
     if (!source?.isValid) return;
     const itemId = itemStack?.typeId;
+
     if (itemId === REVIVE_ITEM_ID) {
         system.run(() => onUseReviveItem(source));
         return;

@@ -3,30 +3,51 @@ import { ActionFormData } from '@minecraft/server-ui';
 import { dynamicToast } from '../plugin/Util.js';
 import { clearTeamRuntimeState, refreshPlayerCaches, removePlayerFromRuntimeState } from './CacheManager.js';
 import { getBoard, updateSidebar } from './ScoreboardManager.js';
-import {
-    CONFIG,
-    TEAMS,
-    TEAM_INDEX_MAP,
-    TEAM_LOOKUP,
-    aliveTeamDirtyHandler,
-    allPlayersCache,
-    allPlayersCacheIds,
-    clearAllReviveRuntime,
-    deathLocation,
-    getPlayersByTeamBuf,
-    hitRegistry,
-    isGameRunning,
-    particleLocPool,
-    playerCache,
-    playerStats,
-    playerTeamCache,
-    teamCounts,
-    teamKillObj,
-    teamPlayerIndex,
-    teamStats,
-    uhcPlayersCache,
-} from './State.js';
+import { allPlayersCache, allPlayersCacheIds, hitRegistry, playerCache, playerTeamCache, uhcPlayersCache } from './State_Cache.js';
+import { isGameRunning, teamKillObj } from './State_Game.js';
+import { clearAllReviveRuntime } from './State_Revive.js';
+import { aliveTeamDirtyHandler, deathLocation, playerStats, TEAM_INDEX_MAP, TEAM_LOOKUP, teamCounts, teamPlayerIndex, teamStats } from './State_Team.js';
+import { getPlayersByTeamBuf, particleLocPool } from './State_Util.js';
 import { resetAnnouncer, scheduleSaveStats } from './StatsManager.js';
+import { CONFIG, TEAM_MENU, TEAMS } from './UtilTeamManager.js';
+
+const dirtyNametagIds = new Set();
+let nametagFlushTask = null;
+
+function patchPlayerStats(playerId, patch) {
+    const ps = playerStats.get(playerId) ?? { kills: 0, deaths: 0 };
+    if (patch.name !== undefined) ps.name = patch.name;
+    if (patch.teamId !== undefined) ps.teamId = patch.teamId;
+    playerStats.set(playerId, ps);
+    return ps;
+}
+
+function formatTeamNametag(player, teamId) {
+    const teamInfo = TEAM_LOOKUP.get(teamId);
+    if (!teamInfo) return player.name;
+    const teamIndex = (TEAM_INDEX_MAP.get(teamId) ?? -1) + 1;
+    return `[${teamIndex}] ${teamInfo.color}${player.name}`;
+}
+
+function flushNametagUpdates() {
+    for (const id of dirtyNametagIds) {
+        const player = playerCache.get(id);
+        if (!player?.isValid) continue;
+        const teamId = playerTeamCache.get(id);
+        player.nameTag = teamId ? formatTeamNametag(player, teamId) : player.name;
+    }
+    dirtyNametagIds.clear();
+}
+
+function markNametagDirty(playerId) {
+    if (!playerId) return;
+    dirtyNametagIds.add(playerId);
+    if (nametagFlushTask !== null) return;
+    nametagFlushTask = system.runTimeout(() => {
+        nametagFlushTask = null;
+        flushNametagUpdates();
+    }, 1);
+}
 
 function getTotalTeamPlayers() {
     let total = 0;
@@ -78,8 +99,9 @@ function syncTag(player, oldTeamId, newTeamId) {
     }
 }
 
-export function setTeam(player, teamId) {
+export function setTeam(player, teamId, options = {}) {
     if (!player?.id) return;
+    const scheduleSave = options.scheduleSave !== false;
     const oldTeamId = playerTeamCache.get(player.id) ?? null;
     if (oldTeamId === teamId) return;
     const shouldTrack = !isGameRunning || player?.hasTag('uhc');
@@ -95,22 +117,13 @@ export function setTeam(player, teamId) {
             teamPlayerIndex.get(teamId)?.add(player.id);
         }
 
-        const teamIndex = (TEAM_INDEX_MAP.get(teamId) ?? -1) + 1;
-        const teamInfo = TEAM_LOOKUP.get(teamId);
-        if (teamInfo) {
-            player.nameTag = `[${teamIndex}] ${teamInfo.color}${player.name}`;
-        }
-
-        const ps = playerStats.get(player.id) ?? { kills: 0, deaths: 0 };
-        ps.name = player.name;
-        ps.teamId = teamId;
-        playerStats.set(player.id, ps);
-
-        scheduleSaveStats();
+        patchPlayerStats(player.id, { name: player.name, teamId });
+        markNametagDirty(player.id);
+        if (scheduleSave) scheduleSaveStats();
     } else {
         player.setDynamicProperty(CONFIG.key, null);
         playerTeamCache.delete(player.id);
-        player.nameTag = player.name;
+        markNametagDirty(player.id);
     }
 
     syncTag(player, oldTeamId, teamId ?? null);
@@ -126,7 +139,7 @@ export function joinTeam(player, newTeamId) {
     const shouldTrack = !isGameRunning || player?.hasTag('uhc');
 
     if (shouldTrack && !oldTeam && !canJoinTeam(newTeamId)) {
-        player.sendMessage(dynamicToast(`§cเซิร์ฟเวอร์เต็มแล้ว (${CONFIG.maxTotalPlayers} คน)`, 'textures/ui/cancel'));
+        player.sendMessage(dynamicToast(TEAM_MENU.serverFull(CONFIG.maxTotalPlayers), 'textures/ui/cancel'));
         player.playSound('note.bassattack');
         return;
     }
@@ -266,15 +279,15 @@ export function getPlayersByTeam(teamId) {
 
 export function openTeamMenu(player) {
     if (isGameRunning && player.hasTag('uhc') && !player.hasTag(CONFIG.adminTag)) {
-        player.sendMessage(dynamicToast('§cไม่สามารถเปลี่ยนทีมระหว่างเกมได้', 'textures/ui/cancel'));
+        player.sendMessage(dynamicToast(TEAM_MENU.cannotChangeMidGame, 'textures/ui/cancel'));
         player.playSound('note.bassattack');
         return;
     }
     const form = new ActionFormData();
-    form.title(CONFIG.title + 'Team Manager');
+    form.title(CONFIG.title + TEAM_MENU.titleSuffix);
     const currentTeamId = getPlayerTeam(player);
     const currentTeam = currentTeamId ? TEAM_LOOKUP.get(currentTeamId) : null;
-    let teamDisplay = 'Team?';
+    let teamDisplay = TEAM_MENU.unknownTeam;
     if (currentTeam) {
         teamDisplay = `${currentTeam.color}${currentTeam.name}`;
     }
@@ -285,9 +298,9 @@ export function openTeamMenu(player) {
         const count = getTeamPlayerCount(team.id);
         form.button(`${team.color}${team.name} §7(${count})`, team.icon);
     }
-    form.button('§cLeave', 'textures/ui/permissions_visitor_hand');
-    form.button('§6Refresh', 'textures/ui/refresh_light');
-    form.button('§7Close', 'textures/ui/cancel');
+    form.button(TEAM_MENU.leave, 'textures/ui/permissions_visitor_hand');
+    form.button(TEAM_MENU.refresh, 'textures/ui/refresh_light');
+    form.button(TEAM_MENU.close, 'textures/ui/cancel');
     form.show(player).then((res) => {
         if (!res || res.canceled) return;
         const selection = res.selection;
@@ -296,13 +309,13 @@ export function openTeamMenu(player) {
             const selectedTeam = TEAMS[selection];
             if (currentTeamId === selectedTeam.id) {
                 player.playSound('note.bassattack');
-                player.sendMessage(dynamicToast('§oAlready', selectedTeam.icon));
+                player.sendMessage(dynamicToast(TEAM_MENU.alreadyOnTeam, selectedTeam.icon));
                 system.run(() => openTeamMenu(player));
                 return;
             }
             if (!currentTeamId && !canJoinTeam(selectedTeam.id)) {
                 player.playSound('note.bassattack');
-                player.sendMessage(dynamicToast(`§cเซิร์ฟเวอร์เต็ม (${CONFIG.maxTotalPlayers})`, 'textures/ui/cancel'));
+                player.sendMessage(dynamicToast(TEAM_MENU.serverFullShort(CONFIG.maxTotalPlayers), 'textures/ui/cancel'));
                 system.run(() => openTeamMenu(player));
                 return;
             }
@@ -326,7 +339,7 @@ export function openTeamMenu(player) {
             case 0: {
                 if (!currentTeamId || !currentTeam) {
                     player.playSound('note.bassattack');
-                    player.sendMessage(dynamicToast('§cYou have no team', 'textures/ui/cancel'));
+                    player.sendMessage(dynamicToast(TEAM_MENU.noTeam, 'textures/ui/cancel'));
                     system.run(() => openTeamMenu(player));
                     return;
                 }

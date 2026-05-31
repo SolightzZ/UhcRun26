@@ -12,6 +12,7 @@ import './Manager/LeaderboardNPC.js';
 
 // Router — startup
 import './Router/system-startup.js';
+import './Router/system-runInterval.js';
 
 // Router — world events
 import './Router/world-chatSend.js';

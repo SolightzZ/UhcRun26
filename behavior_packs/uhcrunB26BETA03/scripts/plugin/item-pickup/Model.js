@@ -2,6 +2,7 @@ class Model {
     SMELT = Object.freeze({
         'minecraft:raw_iron': 'minecraft:iron_ingot',
         'minecraft:raw_gold': 'minecraft:gold_ingot',
+        'minecraft:raw_copper': 'minecraft:copper_ingot',
     });
 
     SMELT_TYPES = new Set(Object.keys(this.SMELT));

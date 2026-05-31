@@ -1,26 +1,10 @@
 import { world } from '@minecraft/server';
 import { updateSidebar } from './ScoreboardManager.js';
-import {
-    CONFIG,
-    TEAMS,
-    TEAM_LOOKUP,
-    aliveTeamDirtyHandler,
-    allPlayersCache,
-    allPlayersCacheIds,
-    deathLocation,
-    hitRegistry,
-    isGameRunning,
-    killStreak,
-    multiKill,
-    playerCache,
-    playerStats,
-    playerTeamCache,
-    teamCounts,
-    teamPlayerIndex,
-    teamStats,
-    uhcPlayerIds,
-    uhcPlayersCache,
-} from './State.js';
+import { CONFIG, TEAMS } from './UtilTeamManager.js';
+import { allPlayersCache, allPlayersCacheIds, GlobalPlayerCaches, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from './State_Cache.js';
+import { TEAM_LOOKUP, aliveTeamDirtyHandler, deathLocation, playerStats, teamCounts, teamPlayerIndex, teamStats } from './State_Team.js';
+import { isGameRunning } from './State_Game.js';
+import { itemVacuumQueue } from './State_Queue.js';
 
 export function removeCachedPlayerById(list, id) {
     if (!list || list.length === 0) return;
@@ -194,8 +178,9 @@ export function checkAllCaches() {
     return { info: cacheInfo, message, totalSize };
 }
 
-export function clearAllCaches() {
+function clearRuntimeCaches({ includeStats = false } = {}) {
     const before = checkAllCaches();
+
     playerTeamCache.clear();
     playerCache.clear();
     uhcPlayerIds.clear();
@@ -208,45 +193,52 @@ export function clearAllCaches() {
     killStreak.clear();
     hitRegistry.clear();
 
+    if (includeStats) {
+        for (const team of TEAMS) {
+            teamStats.set(team.id, { kills: 0, deaths: 0 });
+        }
+        playerStats.clear();
+        world.setDynamicProperty('uhc_teamStats', undefined);
+        world.setDynamicProperty('uhc_playerStats', undefined);
+    }
+
     const after = checkAllCaches();
     const cleared = before.totalSize - after.totalSize;
+    const statsNote = includeStats ? ' (including stats)' : '';
 
     return {
         before: before.totalSize,
         after: after.totalSize,
         cleared,
-        message: `[Cache] Cleared ${cleared} entries\n§7Before: ${before.totalSize} → After: ${after.totalSize}`,
+        message: `${includeStats ? '§a' : ''}[Cache] Cleared ${cleared} entries${statsNote}\n§7Before: ${before.totalSize} → After: ${after.totalSize}`,
     };
 }
 
+export function clearAllCaches() {
+    return clearRuntimeCaches({ includeStats: false });
+}
+
 export function clearAllCachesIncludingStats() {
-    const before = checkAllCaches();
-    playerTeamCache.clear();
-    playerCache.clear();
-    uhcPlayerIds.clear();
-    allPlayersCache.length = 0;
-    uhcPlayersCache.length = 0;
-    allPlayersCacheIds.clear();
-    clearTeamRuntimeState();
-    deathLocation.clear();
-    multiKill.clear();
-    killStreak.clear();
-    hitRegistry.clear();
+    return clearRuntimeCaches({ includeStats: true });
+}
 
-    for (const team of TEAMS) {
-        teamStats.set(team.id, { kills: 0, deaths: 0 });
+export function purgePlayerCacheOnLeave(id) {
+    if (!id) return;
+
+    const teamId = playerTeamCache.get(id);
+    const isCounted = !isGameRunning || uhcPlayerIds.has(id);
+    const countedTeamId = isCounted ? teamId : null;
+
+    removePlayerFromRuntimeState(id, countedTeamId, true);
+
+    removeCachedPlayerById(allPlayersCache, id);
+    allPlayersCacheIds.delete(id);
+    removeCachedPlayerById(uhcPlayersCache, id);
+
+    if (itemVacuumQueue.length > 0) {
+        deathLocation.delete(id);
     }
-    playerStats.clear();
-    world.setDynamicProperty('uhc_teamStats', undefined);
-    world.setDynamicProperty('uhc_playerStats', undefined);
 
-    const after = checkAllCaches();
-    const cleared = before.totalSize - after.totalSize;
-
-    return {
-        before: before.totalSize,
-        after: after.totalSize,
-        cleared,
-        message: `§a[Cache] Cleared ${cleared} entries (including stats)\n§7Before: ${before.totalSize} → After: ${after.totalSize}`,
-    };
+    aliveTeamDirtyHandler();
+    GlobalPlayerCaches.delete(id);
 }

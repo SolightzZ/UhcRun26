@@ -1,4 +1,4 @@
-import { KB, clamp } from '../Util.js';
+import { KB, applyKnockbackXZ, normalizeXZ } from '../Util.js';
 import model from './Model.js';
 import service from './Service.js';
 
@@ -8,11 +8,8 @@ class Controller {
         if (!player?.isValid) return;
 
         const dir = player.getViewDirection();
-        const len = Math.hypot(dir.x, dir.z) || 1;
-        const nx = dir.x / len;
-        const nz = dir.z / len;
-
-        player.applyKnockback({ x: clamp(nx * model.PLATE.horizontal, KB.maxHorizontal), z: clamp(nz * model.PLATE.horizontal, KB.maxHorizontal) }, model.PLATE.vertical);
+        const { nx, nz } = normalizeXZ(dir.x, dir.z);
+        applyKnockbackXZ(player, nx, nz, model.PLATE.horizontal, model.PLATE.vertical, KB.maxHorizontal);
         block.dimension.playSound(service.nextSound(), player.location);
     };
 }

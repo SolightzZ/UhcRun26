@@ -47,7 +47,9 @@ class UtilUhcMatchManager {
         if (!player?.isValid) return;
 
         if (getPlayerTeam(player)) {
-            player.addTag('uhc');
+            if (!player.hasTag('uhc')) {
+                player.addTag('uhc');
+            }
             for (let i = 0; i < UHC_PLAYER_EFFECTS.length; i++) {
                 const [effect, duration] = UHC_PLAYER_EFFECTS[i];
                 player.addEffect(effect, duration, effectOptionsHidden);

@@ -278,7 +278,7 @@ class UhcMatchManagerTeleport {
 
         if (teamsData.length === 0) return;
 
-        world.sendMessage(`${MinecraftColor.aqua}§l» §r${MinecraftColor.gray}Scattering ${teamsData.length} teams across the map...`);
+        world.sendMessage(`${MinecraftColor.cyan}§l» §r${MinecraftColor.gray}Scattering ${teamsData.length} teams across the map...`);
 
         const positions = this.teleportManagerGenerateXZ(teamsData.length, radius);
         this.teleportManagerRunQueue(teamsData, positions, ctx.cachedDimension);

@@ -1,5 +1,5 @@
 import { system } from '@minecraft/server';
-import { itemVacuumQueue, itemVacuumRunning, setItemVacuumRunning } from './State.js';
+import { itemVacuumQueue, itemVacuumRunning, setItemVacuumRunning } from './State_Queue.js';
 
 function drainItemVacuumQueue() {
     if (itemVacuumQueue.length === 0) {

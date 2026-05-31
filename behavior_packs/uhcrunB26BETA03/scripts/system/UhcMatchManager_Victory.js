@@ -5,6 +5,7 @@ import umm from './UhcMatchManager.js';
 
 class UhcMatchManagerVictory {
     countdownRunning = false;
+    countdownIntervalId = null;
     aliveTeamsSet = new Set();
 
     victoryManagerTriggerDraw() {
@@ -20,11 +21,14 @@ class UhcMatchManagerVictory {
         if (this.countdownRunning) return;
         this.countdownRunning = true;
         let time = 10;
-        const id = system.runInterval(() => {
+        this.countdownIntervalId = system.runInterval(() => {
             time--;
             if (time <= 5 && time > 0) world.sendMessage(`${MinecraftColor.red}${icons.Hourglass} Game ending in ${time}`);
             if (time <= 0) {
-                system.clearRun(id);
+                if (this.countdownIntervalId !== null) {
+                    system.clearRun(this.countdownIntervalId);
+                    this.countdownIntervalId = null;
+                }
                 this.countdownRunning = false;
                 umm.endGameUhc();
             }
@@ -88,6 +92,10 @@ class UhcMatchManagerVictory {
     }
 
     resetCountdownRunning() {
+        if (this.countdownIntervalId !== null) {
+            system.clearRun(this.countdownIntervalId);
+            this.countdownIntervalId = null;
+        }
         this.countdownRunning = false;
     }
 }

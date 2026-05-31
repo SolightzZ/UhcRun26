@@ -1,3 +1,4 @@
+import { applyKnockbackXZ, normalizeXZ } from '../Util.js';
 import model from './Model.js';
 
 class Service {
@@ -6,9 +7,8 @@ class Service {
     applyKnockback = (target, source) => {
         if (!this.isValidPvP(target, source)) return;
         const dir = source.getViewDirection();
-        const len = Math.hypot(dir.x, dir.z) || 1;
-
-        target.applyKnockback({ x: (dir.x / len) * model.KB_H, z: (dir.z / len) * model.KB_H }, model.KB_V);
+        const { nx, nz } = normalizeXZ(dir.x, dir.z);
+        applyKnockbackXZ(target, nx, nz, model.KB_H, model.KB_V, model.KB_H);
     };
 }
 

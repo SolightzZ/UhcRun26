@@ -1,14 +1,9 @@
 import { world } from '@minecraft/server';
+import { runEventHandlers } from '../plugin/Util.js';
 import anticheatCps from '../plugin/anticheat-cps/Controller.js';
 
 const afterEvents = [(ev) => anticheatCps.onEntityHitEntity(ev)];
 
 world.afterEvents.entityHitEntity.subscribe((event) => {
-    try {
-        for (const handler of afterEvents) {
-            handler(event);
-        }
-    } catch (error) {
-        console.error('[EntityHitEntity] error:', error.message);
-    }
+    runEventHandlers('EntityHitEntity', afterEvents, event);
 });

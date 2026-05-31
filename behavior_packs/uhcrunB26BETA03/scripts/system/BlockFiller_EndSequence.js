@@ -63,6 +63,13 @@ class BlockFillerEndSequence {
                 icon: 'textures/blocks/diamond_ore',
                 run: (player) => this.runEndPattern2(player),
             },
+            {
+                nextState: END_SEQUENCE_STATE.COMPLETED,
+                labelKey: 'completed',
+                message: 'Finished',
+                icon: 'textures/blocks/emerald_block',
+                run: () => {},
+            },
         ];
         return END_SEQUENCE_STEPS[state] ?? null;
     }

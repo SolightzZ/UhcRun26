@@ -8,11 +8,13 @@ class Model {
             emerald: [1, 15],
             redstone: [1, 4],
         }),
-        chance: Object.freeze({ absorption: 16, lapisBook: 12 }),
+        chance: Object.freeze({ absorption: 16, lapisBook: 12, premiumBlock: 30 }),
         redstone: Object.freeze({
             healAmount: 2,
             absorptionDuration: 12000,
-            absorptionMinutes: 10,
+            get absorptionMinutes() {
+                return Math.floor(this.absorptionDuration / 1200);
+            },
         }),
         sounds: Object.freeze({ orb: 'random.orb', level: 'random.levelup' }),
         feedback: Object.freeze({

@@ -1,5 +1,8 @@
 import { DisplaySlotId, system, world } from '@minecraft/server';
-import { cachedBoard, CONFIG, dirtySidebarTeams, isGameRunning, setCachedBoard, setSidebarFlushTask, sidebarFlushTask, TEAM_LOOKUP, teamCounts, TEAMS } from './State.js';
+import { isGameRunning } from './State_Game.js';
+import { cachedBoard, dirtySidebarTeams, setCachedBoard, setSidebarFlushTask, sidebarFlushTask } from './State_Sidebar.js';
+import { TEAM_LOOKUP, teamCounts } from './State_Team.js';
+import { CONFIG, TEAMS } from './UtilTeamManager.js';
 
 function getBoard() {
     if (cachedBoard) {
@@ -56,10 +59,16 @@ function updateSidebar(teamId) {
     );
 }
 
+function bindSidebarIfNeeded(board) {
+    const current = world.scoreboard.getObjectiveAtDisplaySlot(DisplaySlotId.Sidebar);
+    if (current?.objective?.id === board.id) return;
+    world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: board });
+}
+
 export function refreshScoreboardUI() {
     if (isGameRunning) return;
     const board = getBoard();
-    world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: board });
+    bindSidebarIfNeeded(board);
 
     for (const team of TEAMS) {
         dirtySidebarTeams.add(team.id);

@@ -1,5 +1,5 @@
 import { system } from '@minecraft/server';
-import { KB, clamp } from '../Util.js';
+import { KB, applyKnockbackFromDelta } from '../Util.js';
 import model from './Model.js';
 
 class Controller {
@@ -18,17 +18,7 @@ class Controller {
         const aLoc = attacker.location;
         if (!vLoc || !aLoc) return;
 
-        const dx = vLoc.x - aLoc.x;
-        const dz = vLoc.z - aLoc.z;
-        const len = Math.hypot(dx, dz) || 1;
-        const nx = dx / len;
-        const nz = dz / len;
-
-        const max = KB.maxHorizontal;
-        const hx = clamp(nx * KB.horizontal, max);
-        const hz = clamp(nz * KB.horizontal, max);
-
-        victim.applyKnockback({ x: hx, z: hz }, KB.vertical);
+        applyKnockbackFromDelta(victim, aLoc.x, aLoc.z, vLoc.x, vLoc.z, KB.horizontal, KB.vertical, KB.maxHorizontal);
     };
 
     onPlayerLeave = ({ playerId }) => {

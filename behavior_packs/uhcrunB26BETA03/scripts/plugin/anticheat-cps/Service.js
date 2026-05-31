@@ -1,4 +1,4 @@
-import { system } from '@minecraft/server';
+import { system, world } from '@minecraft/server';
 import model from './Model.js';
 
 class Service {
@@ -11,6 +11,27 @@ class Service {
             else break;
         }
         return validCount;
+    };
+
+    warnPlayer = (player, cps) => {
+        if (!player?.isValid) return;
+        player.onScreenDisplay.setActionBar(`§c[CPS Warning] Click Speed: ${cps} CPS (Limit: ${model.MAX_CPS})`);
+        player.playSound('note.bass', { volume: 0.8, pitch: 0.5 });
+    };
+
+    alertAdmins = (attacker, cps) => {
+        const name = attacker.name;
+        console.warn(`[CPS Alert] ${name} is clicking fast: ${cps} hits/${model.WINDOW_TICKS} ticks`);
+
+        system.run(() => {
+            const players = world.getAllPlayers();
+            for (const p of players) {
+                if (p?.isValid && p.hasTag('admin')) {
+                    p.sendMessage(`§c[CPS Anticheat] §e${name} §7approaching click limit: §f${cps} CPS`);
+                    p.playSound('random.screenshot', { volume: 0.5, pitch: 1.0 });
+                }
+            }
+        });
     };
 
     kickPlayer = (player, cps) => {

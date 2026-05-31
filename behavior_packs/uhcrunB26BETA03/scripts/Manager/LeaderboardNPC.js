@@ -1,28 +1,25 @@
 import { system, world } from '@minecraft/server';
+import { refreshPlayerCaches } from './CacheManager.js';
 import { NPCS, NPC_QUERY_OPTIONS, UI, resetCache } from './LeaderboardConfig.js';
 import { getStats, getTeamText } from './LeaderboardData.js';
 import { getDeathsText, getPlayerText } from './LeaderboardFormat.js';
-import { refreshPlayerCaches } from './TeamManager.js';
 
 function collectNpcsByTag(allNpcs) {
     const teamNpcs = [];
     const playerNpcs = [];
     const deathNpcs = [];
 
-    for (const [i, npcEntity] of allNpcs.entries()) {
-        if (i >= 3) break;
+    for (const npcEntity of allNpcs) {
         if (!npcEntity?.isValid) continue;
-        if (i === 0) teamNpcs.push(npcEntity);
-        else if (i === 1) playerNpcs.push(npcEntity);
-        else if (i === 2) deathNpcs.push(npcEntity);
+        if (npcEntity.hasTag('lb:teams')) teamNpcs.push(npcEntity);
+        else if (npcEntity.hasTag('lb:players')) playerNpcs.push(npcEntity);
+        else if (npcEntity.hasTag('lb:deaths')) deathNpcs.push(npcEntity);
     }
 
     return { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs };
 }
 
 export function renderBoard() {
-    refreshPlayerCaches();
-
     const overworldDimension = world.getDimension('overworld');
     let allNpcs = [];
 
@@ -82,9 +79,16 @@ function spawnLeaderboardNPCNow() {
                 z: npcConfig.z,
             });
 
-            if (i === 0) newNpcEntity.nameTag = '§b§lTOP TEAMS (KILLS)';
-            else if (i === 1) newNpcEntity.nameTag = '§e§lTOP PLAYERS (KILLS)';
-            else if (i === 2) newNpcEntity.nameTag = '§c§lTOP PLAYERS (DEATHS)';
+            if (i === 0) {
+                newNpcEntity.nameTag = '§b§lTOP TEAMS (KILLS)';
+                newNpcEntity.addTag('lb:teams');
+            } else if (i === 1) {
+                newNpcEntity.nameTag = '§e§lTOP PLAYERS (KILLS)';
+                newNpcEntity.addTag('lb:players');
+            } else if (i === 2) {
+                newNpcEntity.nameTag = '§c§lTOP PLAYERS (DEATHS)';
+                newNpcEntity.addTag('lb:deaths');
+            }
         } catch (error) {
             console.warn('[Leaderboard] Failed to spawn NPC at:', npcConfig.x, npcConfig.y, npcConfig.z, error);
         }

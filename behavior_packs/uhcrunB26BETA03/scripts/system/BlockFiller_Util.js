@@ -50,10 +50,19 @@ class BlockFillerUtility {
 
         for (let i = 0; i < categorySources.length; i++) {
             const [mode, blockIds] = categorySources[i];
-            const permutations = new Array(blockIds.length);
+            const permutations = [];
 
             for (let j = 0; j < blockIds.length; j++) {
-                permutations[j] = this.resolveBlock(blockIds[j]);
+                try {
+                    const perm = this.resolveBlock(blockIds[j]);
+                    if (perm) permutations.push(perm);
+                } catch (e) {
+                    // ignore invalid block id and continue
+                }
+            }
+
+            if (permutations.length === 0) {
+                permutations.push(this.AIR);
             }
 
             this.CATEGORY_MAP.set(mode, permutations);

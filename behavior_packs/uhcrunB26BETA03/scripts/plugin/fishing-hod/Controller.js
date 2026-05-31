@@ -3,6 +3,27 @@ import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
+    applyRodDurabilityWear = (source) => {
+        const inv = source.getComponent('minecraft:inventory')?.container;
+        if (!inv) return;
+
+        const slot = source.selectedSlotIndex;
+        const item = inv.getItem(slot);
+        if (item?.typeId !== 'minecraft:fishing_rod') return;
+
+        const dur = item.getComponent('minecraft:durability');
+        if (!dur) return;
+
+        const prev = dur.damage;
+        dur.damage = Math.min(dur.damage + 2, dur.maxDurability); // -2 durability on PvP hit
+        if (dur.damage >= dur.maxDurability) {
+            inv.setItem(slot, undefined);
+            source.playSound('random.break', { location: source.location });
+        } else if (dur.damage !== prev) {
+            inv.setItem(slot, item);
+        }
+    };
+
     onProjectileHitEntity = (ev) => {
         const { projectile: proj, source } = ev;
         if (proj?.typeId !== model.HOOK_ID) return;
@@ -12,6 +33,8 @@ class Controller {
         if (!service.isValidPvP(target, source)) return;
 
         service.applyKnockback(target, source);
+
+        this.applyRodDurabilityWear(source);
 
         source.playSound(model.CAST_SOUND, model.SOUND_OPTS);
 

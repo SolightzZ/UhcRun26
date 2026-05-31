@@ -1,17 +1,8 @@
 import { ItemStack, system } from '@minecraft/server';
-import { dynamicToast } from '../Util.js';
+import { dynamicToast, isValidEntity, randomInt } from '../Util.js';
 import Model from './Model.js';
 
-const randomInt = (min, max) => (Math.random() * (max - min + 1) + min) | 0;
 const formatHealth = (v) => v.toFixed(1);
-
-const isValidEntity = (entity) => {
-    try {
-        return !!entity && entity.isValid;
-    } catch {
-        return false;
-    }
-};
 
 export const isValidTool = (tool, action) => {
     if (action === Model.ACTION.GRAVEL) return Model.SHOVELS.has(tool);
@@ -113,12 +104,40 @@ class Service {
         }
     };
 
+    getEnchantLevel = (player, enchantId) => {
+        if (!player?.isValid) return 0;
+        const inv = player.getComponent('minecraft:inventory')?.container;
+        const tool = inv?.getItem(player.selectedSlotIndex);
+        if (!tool) return 0;
+        const enchantable = tool.getComponent('minecraft:enchantable');
+        if (!enchantable) return 0;
+        try {
+            for (const ench of enchantable.getEnchantments()) {
+                if (ench.type.id === enchantId) return ench.level;
+            }
+        } catch {}
+        return 0;
+    };
+
+    handlePremiumBlockEffect = (player) => {
+        if (!isValidEntity(player)) return;
+        if (randomInt(0, 99) >= Model.CONFIG.chance.premiumBlock) return;
+
+        player.addEffect('haste', 100, { amplifier: 1, showParticles: false }); // Haste II for 5s
+        player.onScreenDisplay.setActionBar('§bMining Boost II (5s)');
+        player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
+    };
+
     spawnLapisRewards = (player, dimension, lapisData) => {
         if (!lapisData.total) return;
 
         const pos = lapisData.position;
 
-        if (randomInt(0, 99) < Model.CONFIG.chance.lapisBook) {
+        const fortune = this.getEnchantLevel(player, 'fortune');
+        const baseChance = Model.CONFIG.chance.lapisBook;
+        const finalChance = baseChance + fortune * 4; // +4% per Fortune level
+
+        if (randomInt(0, 99) < finalChance) {
             dimension.spawnItem(safeStack('minecraft:book', 1), pos);
             if (system.currentTick % 2 === 0) {
                 player.sendMessage(dynamicToast(Model.CONFIG.feedback.book.message, Model.CONFIG.feedback.book.texture));
@@ -291,7 +310,10 @@ class Service {
             this.handleRedstone(player);
         }
 
-        if (action === Model.ACTION.EFFECT) return;
+        if (action === Model.ACTION.EFFECT) {
+            this.handlePremiumBlockEffect(player);
+            return;
+        }
 
         this.scheduleBatch(player, spawnLoc(location), action, dimension);
     };

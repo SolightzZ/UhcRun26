@@ -1,6 +1,6 @@
 class Model {
-    MAX_CPS = 20;
-    HARD_LIMIT = 24;
+    MAX_CPS = 18; // Soft warning limit
+    HARD_LIMIT = 24; // Hard kick limit
     WINDOW_TICKS = 20;
     BUF_SIZE = this.HARD_LIMIT;
 
@@ -10,6 +10,7 @@ class Model {
         buf: new Int32Array(this.BUF_SIZE),
         head: 0,
         count: 0,
+        lastWarnTick: 0,
     });
 }
 

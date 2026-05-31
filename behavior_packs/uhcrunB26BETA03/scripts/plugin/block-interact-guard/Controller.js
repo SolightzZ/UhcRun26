@@ -11,8 +11,9 @@ class Controller {
         if (typeId === 'minecraft:ender_chest') return service.handleEnderChest(event, player);
         if (model.BLOCK_DENYLIST.has(typeId)) return (event.cancel = true);
 
-        if (!player.hasTag('uhc') && service.isDoorLike(typeId)) {
+        if (!player.hasTag('uhc') && (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))) {
             event.cancel = true;
+            player.onScreenDisplay.setActionBar('§cSpectators cannot interact with this block!');
         }
     };
 

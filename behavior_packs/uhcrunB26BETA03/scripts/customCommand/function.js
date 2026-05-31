@@ -1,15 +1,8 @@
 import { CommandPermissionLevel, Difficulty, GameMode, InputPermissionCategory, ItemStack, system, world } from '@minecraft/server';
 import { spawnLeaderboardNPC, updateLeaderboard } from '../Manager/LeaderboardNPC.js';
 import { openMainMenu, tpa } from '../Manager/TeamManager.js';
+import { SPAWN_CONFIG, TICKING_AREAS } from '../Manager/UtilTeamManager.js';
 import { endGameUhc, resetGameUhc, startGameUhc } from '../system/border.js';
-
-// CONFIG
-export const SPAWN_CONFIG = Object.freeze({
-    x: 596,
-    y: 130,
-    z: 609,
-    dimension: 'overworld',
-});
 
 const SETUP_RESET_EFFECTS = Object.freeze([
     { type: 'regeneration', duration: 500 },
@@ -17,10 +10,32 @@ const SETUP_RESET_EFFECTS = Object.freeze([
     { type: 'saturation', duration: 500 },
 ]);
 
+let lifecycleLock = null;
+
+function beginLifecycle(opName) {
+    if (lifecycleLock) {
+        world.sendMessage(`§c[UHC] Busy: ${lifecycleLock} is still running.`);
+        return false;
+    }
+    lifecycleLock = opName;
+    return true;
+}
+
+function endLifecycle(opName) {
+    if (lifecycleLock === opName) {
+        lifecycleLock = null;
+    }
+}
+
 // CORE UTILITIES
-function batch({ step, budget = 1 }) {
+function batch({ step, budget = 1, onDone }) {
     const players = world.getPlayers();
     let i = 0;
+
+    if (players.length === 0) {
+        if (typeof onDone === 'function') onDone();
+        return;
+    }
 
     const run = system.runInterval(() => {
         const batchPlayers = players.slice(i, i + budget);
@@ -35,7 +50,10 @@ function batch({ step, budget = 1 }) {
             }
         }
 
-        if (i >= players.length) system.clearRun(run);
+        if (i >= players.length) {
+            system.clearRun(run);
+            if (typeof onDone === 'function') onDone();
+        }
     }, 2);
 }
 
@@ -84,122 +102,153 @@ function end(player) {
     player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true);
 }
 
-// TICKING AREA SETUP
-const TICKING_AREAS = Object.freeze([
-    'tickingarea add -80 0 -80 79 255 79 center',
-    'tickingarea add -80 0 80 79 255 239 north',
-    'tickingarea add -80 0 -240 79 255 -81 south',
-    'tickingarea add 80 0 -80 239 255 79 east',
-    'tickingarea add -240 0 -80 -81 255 79 west',
-    'tickingarea add 80 0 80 239 255 239 ne',
-    'tickingarea add -240 0 80 -81 255 239 nw',
-    'tickingarea add 80 0 -240 239 255 -81 se',
-    'tickingarea add -240 0 -240 -81 255 -81 sw',
-    'tickingarea add -80 0 240 79 255 399 far_north',
-]);
+// Centralized TICKING_AREAS imported from UtilTeamManager.js
 
 // UHC WORLD LIFECYCLE
 function uhcSetup() {
-    world.sendMessage(
-        '§7------------ UHCRun26 -----------\n' +
-            '§f Battle. Survive. Win.\n' +
-            '§f Presented by Sleeplite SMP\n' +
-            '§9Join the community > discord.gg/gtqfbmvTJK\n' +
-            '§7------------------------------',
-    );
+    if (!beginLifecycle('setup')) return;
+    try {
+        world.sendMessage(
+            '§7------------ UHCRun26 -----------\n' +
+                '§f Battle. Survive. Win.\n' +
+                '§f Presented by Sleeplite SMP\n' +
+                '§9Join the community > discord.gg/gtqfbmvTJK\n' +
+                '§7------------------------------',
+        );
 
-    for (const tickCmd of TICKING_AREAS) cmd(tickCmd);
+        for (const tickCmd of TICKING_AREAS) cmd(tickCmd);
 
-    system.runTimeout(() => {
-        try {
-            cmd('structure load uhc1 569 100 569');
-        } catch (e) {
-            console.warn('[UHC] Failed to load structure uhc1: ', e);
-        }
-    }, 10);
+        system.runTimeout(() => {
+            try {
+                cmd(`structure load ${SPAWN_CONFIG.structureName} ${SPAWN_CONFIG.structureLoc}`);
+            } catch (e) {
+                console.warn('[UHC] Failed to load structure uhc1: ', e);
+            }
+        }, 10);
 
-    world.gameRules.sendCommandFeedback = false;
-    world.gameRules.commandBlockOutput = false;
-    world.gameRules.naturalRegeneration = true;
-    world.gameRules.doImmediateRespawn = true;
-    world.gameRules.showCoordinates = false;
-    world.gameRules.doWeatherCycle = false;
-    world.gameRules.doMobSpawning = false;
-    world.gameRules.mobGriefing = false;
-    world.gameRules.fallDamage = false;
-    world.gameRules.doMobLoot = false;
-    world.gameRules.spawnRadius = 1;
-    world.gameRules.pvp = false;
-    world.gameRules.locatorBar = false;
-    world.setDifficulty(Difficulty.Peaceful);
+        world.gameRules.sendCommandFeedback = false;
+        world.gameRules.commandBlockOutput = false;
+        world.gameRules.naturalRegeneration = true;
+        world.gameRules.doImmediateRespawn = true;
+        world.gameRules.showCoordinates = false;
+        world.gameRules.doWeatherCycle = false;
+        world.gameRules.doMobSpawning = false;
+        world.gameRules.mobGriefing = false;
+        world.gameRules.fallDamage = false;
+        world.gameRules.doMobLoot = false;
+        world.gameRules.spawnRadius = 1;
+        world.gameRules.pvp = false;
+        world.gameRules.locatorBar = false;
+        world.setDifficulty(Difficulty.Peaceful);
 
-    cmd('clearspawnpoint @a');
-    cmd('setworldspawn 596 125 622');
+        cmd('clearspawnpoint @a');
+        cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
 
-    batch({ step: setupOrReset, budget: 1 });
+        batch({
+            step: setupOrReset,
+            budget: 1,
+            onDone: () => {
+                endLifecycle('setup');
+            },
+        });
 
-    spawnLeaderboardNPC();
-    updateLeaderboard();
+        spawnLeaderboardNPC();
+        updateLeaderboard();
+    } catch (e) {
+        endLifecycle('setup');
+        throw e;
+    }
 }
 
 function uhcReset() {
-    world.sendMessage('[UHC] Reset complete.');
+    if (!beginLifecycle('reset')) return;
+    try {
+        world.sendMessage('[UHC] Reset complete.');
 
-    resetGameUhc();
+        resetGameUhc();
 
-    world.gameRules.naturalRegeneration = true;
-    world.gameRules.showCoordinates = false;
-    world.gameRules.doMobSpawning = false;
-    world.gameRules.mobGriefing = false;
-    world.gameRules.fallDamage = false;
-    world.gameRules.doMobLoot = false;
-    world.gameRules.pvp = false;
-    world.setDifficulty(Difficulty.Peaceful);
+        world.gameRules.naturalRegeneration = true;
+        world.gameRules.showCoordinates = false;
+        world.gameRules.doMobSpawning = false;
+        world.gameRules.mobGriefing = false;
+        world.gameRules.fallDamage = false;
+        world.gameRules.doMobLoot = false;
+        world.gameRules.pvp = false;
+        world.setDifficulty(Difficulty.Peaceful);
 
-    cmd('clearspawnpoint @a');
-    cmd('setworldspawn 596 125 622');
+        cmd('clearspawnpoint @a');
+        cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
 
-    batch({ step: setupOrReset, budget: 1 });
+        batch({
+            step: setupOrReset,
+            budget: 1,
+            onDone: () => {
+                endLifecycle('reset');
+            },
+        });
 
-    spawnLeaderboardNPC();
-    updateLeaderboard();
+        spawnLeaderboardNPC();
+        updateLeaderboard();
+    } catch (e) {
+        endLifecycle('reset');
+        throw e;
+    }
 }
 
 function uhcStart() {
-    cmd('daylock false');
+    if (!beginLifecycle('start')) return;
+    try {
+        cmd('daylock false');
 
-    startGameUhc();
+        startGameUhc();
 
-    world.gameRules.naturalRegeneration = false;
-    world.gameRules.showCoordinates = true;
-    world.gameRules.doMobSpawning = true;
-    world.gameRules.mobGriefing = true;
-    world.gameRules.fallDamage = true;
-    world.gameRules.doMobLoot = true;
-    world.gameRules.pvp = false;
-    world.setDifficulty(Difficulty.Normal);
-    world.setTimeOfDay(22999);
+        world.gameRules.naturalRegeneration = false;
+        world.gameRules.showCoordinates = true;
+        world.gameRules.doMobSpawning = true;
+        world.gameRules.mobGriefing = true;
+        world.gameRules.fallDamage = true;
+        world.gameRules.doMobLoot = true;
+        world.gameRules.pvp = false;
+        world.setDifficulty(Difficulty.Normal);
+        world.setTimeOfDay(22999);
 
-    cmd('clearspawnpoint @a');
-    cmd('setworldspawn 0 100 0');
+        cmd('clearspawnpoint @a');
+        cmd('setworldspawn 0 100 0');
+        endLifecycle('start');
+    } catch (e) {
+        endLifecycle('start');
+        throw e;
+    }
 }
 
 function uhcEnd() {
-    world.sendMessage('[UHC] The game is over.');
-    cmd('effect @a clear');
+    if (!beginLifecycle('end')) return;
+    try {
+        world.sendMessage('[UHC] The game is over.');
+        cmd('effect @a clear');
 
-    endGameUhc();
+        endGameUhc();
 
-    world.gameRules.pvp = false;
-    world.gameRules.fallDamage = false;
-    world.gameRules.mobGriefing = false;
-    world.gameRules.showCoordinates = false;
-    world.gameRules.naturalRegeneration = true;
-    world.setDifficulty(Difficulty.Peaceful);
+        world.gameRules.pvp = false;
+        world.gameRules.fallDamage = false;
+        world.gameRules.mobGriefing = false;
+        world.gameRules.showCoordinates = false;
+        world.gameRules.naturalRegeneration = true;
+        world.setDifficulty(Difficulty.Peaceful);
 
-    cmd('clearspawnpoint @a');
-    cmd('setworldspawn 596 125 622');
-    batch({ step: end, budget: 1 });
+        cmd('clearspawnpoint @a');
+        cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
+        batch({
+            step: end,
+            budget: 1,
+            onDone: () => {
+                endLifecycle('end');
+            },
+        });
+    } catch (e) {
+        endLifecycle('end');
+        throw e;
+    }
 }
 
 // COMMAND REGISTRY

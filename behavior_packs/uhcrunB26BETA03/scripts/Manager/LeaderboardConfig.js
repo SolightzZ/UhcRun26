@@ -13,9 +13,13 @@ export const NPCS = Object.freeze([
     { x: 599.5, y: 127, z: 600.5 },
 ]);
 
+const avgX = NPCS.reduce((sum, npc) => sum + npc.x, 0) / NPCS.length;
+const avgY = NPCS.reduce((sum, npc) => sum + npc.y, 0) / NPCS.length;
+const avgZ = NPCS.reduce((sum, npc) => sum + npc.z, 0) / NPCS.length;
+
 export const NPC_QUERY_OPTIONS = Object.freeze({
     type: 'minecraft:npc',
-    location: { x: 596, y: 127, z: 600 },
+    location: { x: avgX, y: avgY, z: avgZ },
     maxDistance: 10,
 });
 

@@ -25,13 +25,23 @@ class Controller {
         if (data.count < model.BUF_SIZE) data.count++;
 
         const cps = service.countRecentHits(data, currentTick);
-        if (cps < model.HARD_LIMIT) return;
 
-        service.kickPlayer(attacker, cps);
+        if (cps >= model.HARD_LIMIT) {
+            service.kickPlayer(attacker, cps);
+            data.buf.fill(0);
+            data.head = 0;
+            data.count = 0;
+            return;
+        }
 
-        data.buf.fill(0);
-        data.head = 0;
-        data.count = 0;
+        if (cps >= model.MAX_CPS) {
+            if (currentTick - data.lastWarnTick >= 20) {
+                // 1 second debounce
+                data.lastWarnTick = currentTick;
+                service.warnPlayer(attacker, cps);
+                service.alertAdmins(attacker, cps);
+            }
+        }
     };
 }
 

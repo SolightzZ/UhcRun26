@@ -215,7 +215,7 @@ class UhcMatchManager {
             if (!ctx.isRunning) return;
             ctx.uhcTick++;
 
-            if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
+            // if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
 
             const uhcPlayers = this.getUhcPlayersCached();
             this.gameLoopWorld(uhcPlayers);
@@ -233,6 +233,7 @@ class UhcMatchManager {
     startGameUhc() {
         if (ctx.isRunning) return;
 
+        vic.resetCountdownRunning();
         this.stopGameLoop();
         this.initializeGameState();
         this.setupPlayers();
@@ -306,6 +307,7 @@ class UhcMatchManager {
         world.setDifficulty(Difficulty.Peaceful);
         const prevShowCoordinates = ctx.prevShowCoordinates;
 
+        vic.resetCountdownRunning();
         this.stopGameLoop();
         this.cleanupResetState();
         this.resetAllPlayers();

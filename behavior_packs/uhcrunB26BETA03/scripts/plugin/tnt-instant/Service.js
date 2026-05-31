@@ -24,7 +24,16 @@ class Service {
                 y: y + model.TNT_SPAWN_OFFSET.y,
                 z: z + model.TNT_SPAWN_OFFSET.z,
             });
-            if (entity?.isValid) block.setType('minecraft:air');
+            if (entity?.isValid) {
+                block.setType('minecraft:air');
+                try {
+                    block.dimension.spawnParticle('minecraft:basic_smoke_particle', {
+                        x: x + 0.5,
+                        y: y + 0.5,
+                        z: z + 0.5,
+                    });
+                } catch {}
+            }
         } catch {}
     };
 }
