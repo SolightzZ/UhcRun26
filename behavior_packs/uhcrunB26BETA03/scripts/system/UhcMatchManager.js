@@ -62,7 +62,7 @@ class UhcMatchManager {
         });
     }
 
-    handlePlayerSpawn(_ev) {
+    handlePlayerSpawn(event) {
         if (ctx.isRunning && ctx.checkInterval === null) {
             this.gameLoopRun();
         }
@@ -215,7 +215,7 @@ class UhcMatchManager {
             if (!ctx.isRunning) return;
             ctx.uhcTick++;
 
-            // if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
+            if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
 
             const uhcPlayers = this.getUhcPlayersCached();
             this.gameLoopWorld(uhcPlayers);
