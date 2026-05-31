@@ -26,7 +26,7 @@ export function Credits(player) {
     form.header('§eCredits');
     form.label('§7World Border: §fmyGenGaming\n§7Particles: §fRexoes\n§7Lobby Build: §fOMEGA BLADE\n§7Action Form: §fPablo');
     form.divider();
-    form.label('             - Sleeplite SMP - ');
+    form.label('             - Sleeplite - ');
     form.button('Back', 'textures/uhc/solightzz');
     form.show(player)
         .then((res) => {
@@ -68,7 +68,7 @@ export function Features(player) {
     form.header('§eUtilities');
     form.label('§7• Scoreboard\n§7• Interaction guard');
     form.divider();
-    form.label('             - Sleeplite SMP - ');
+    form.label('             - Sleeplite - ');
     form.button('Back', 'textures/uhc/solightzz');
     form.show(player)
         .then((res) => {
@@ -84,7 +84,7 @@ export function Ranks(player) {
     const form = new ActionFormData();
     form.title('UHCRun26 | Features');
     form.header('Comming Soon');
-    form.label('             - Sleeplite SMP - ');
+    form.label('             - Sleeplite - ');
     form.button('Back', 'textures/uhc/solightzz');
     form.show(player)
         .then((res) => {

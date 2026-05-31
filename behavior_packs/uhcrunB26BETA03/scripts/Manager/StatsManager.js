@@ -327,7 +327,7 @@ function sendDeathMessage(player, deathInfo) {
             `§eSTATS\n` +
             `§7 » Kills: §c${stats.kills}\n` +
             `§7 » Deaths: §c${stats.deaths}\n\n` +
-            `§9 » Sleeplite SMP: discord.gg/gtqfbmvTJK\n\n` +
+            `§9 » Sleeplite: discord.gg/gtqfbmvTJK\n\n` +
             `§7==========================\n\n`,
     );
 }

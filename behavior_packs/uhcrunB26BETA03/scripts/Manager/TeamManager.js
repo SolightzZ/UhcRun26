@@ -9,7 +9,16 @@ import { REVIVE_ITEM_ID } from './State_Revive.js';
 import { aliveTeamDirtyHandler, deathLocation, playerStats, setAliveTeamDirtyHandler, TEAM_INDEX_MAP, TEAM_LOOKUP, teamCounts, teamPlayerIndex, teamStats } from './State_Team.js';
 import { teleportLocPool } from './State_Util.js';
 
-import { checkAllCaches, clearAllCaches, clearAllCachesIncludingStats, rebuildTeamRuntimeState, refreshPlayerCaches, removeCachedPlayerById, removePlayerFromRuntimeState, purgePlayerCacheOnLeave } from './CacheManager.js';
+import {
+    checkAllCaches,
+    clearAllCaches,
+    clearAllCachesIncludingStats,
+    rebuildTeamRuntimeState,
+    refreshPlayerCaches,
+    removeCachedPlayerById,
+    removePlayerFromRuntimeState,
+    purgePlayerCacheOnLeave,
+} from './CacheManager.js';
 import { handleDeath } from './DeathManager.js';
 import { AdminMenu } from './MenuManager_Admin.js';
 import { openMainMenu, teleportToSpawn } from './MenuManager_Main.js';
@@ -102,7 +111,7 @@ export function showVictoryMessage(winnerTeamId, uhcTick = 0) {
     const seconds = totalSeconds % 60;
 
     world.sendMessage(
-        `\n§7=======================================\n§6      UHC RUN26 MATCH FINISHED\n§7=======================================\n\n§eVICTORY ${teamInfo.color}${teamInfo.name}§r\n\n§ePLAYERS\n${playerLine}\n§eSTATS\n§7 » Total Kills: §c${teamStat.kills}\n§7 » Match Time: §e${minutes}m ${seconds}s\n\n§9 » Sleeplite SMP: discord.gg/gtqfbmvTJK\n\n§7=======================================\n\n`,
+        `\n§7=======================================\n§6      UHC RUN26 MATCH FINISHED\n§7=======================================\n\n§eVICTORY ${teamInfo.color}${teamInfo.name}§r\n\n§ePLAYERS\n${playerLine}\n§eSTATS\n§7 » Total Kills: §c${teamStat.kills}\n§7 » Match Time: §e${minutes}m ${seconds}s\n\n§9 » Sleeplite: discord.gg/gtqfbmvTJK\n\n§7=======================================\n\n`,
     );
 }
 

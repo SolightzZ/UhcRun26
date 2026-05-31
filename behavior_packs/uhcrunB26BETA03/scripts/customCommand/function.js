@@ -111,7 +111,7 @@ function uhcSetup() {
         world.sendMessage(
             '§7------------ UHCRun26 -----------\n' +
                 '§f Battle. Survive. Win.\n' +
-                '§f Presented by Sleeplite SMP\n' +
+                '§f Presented by Sleeplite\n' +
                 '§9Join the community > discord.gg/gtqfbmvTJK\n' +
                 '§7------------------------------',
         );
