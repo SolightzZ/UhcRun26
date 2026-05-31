@@ -1,6 +1,7 @@
-import bf from './BlockFiller.js';
+import fillQueue from './BlockFiller_FillQueue.js';
+import patternEnqueue from './BlockFiller_PatternEnqueue.js';
 import util from './BlockFiller_Util.js';
-import { END_SEQUENCE_STATE } from './BlockFillerUtil.js';
+import { END_SEQUENCE_STATE } from './BlockFiller_Constants.js';
 
 class BlockFillerEndSequence {
     PATTERN_1_TASK;
@@ -39,14 +40,14 @@ class BlockFillerEndSequence {
                 labelKey: 'pattern3',
                 message: 'Nether wall border',
                 icon: 'textures/blocks/nether_brick',
-                run: (player) => bf.runEndPattern3(player),
+                run: (player) => this.runEndPattern3(player),
             },
             {
                 nextState: END_SEQUENCE_STATE.PATTERN1,
                 labelKey: 'pattern1',
                 message: 'Outer ring clear',
                 icon: 'textures/blocks/barrier',
-                run: (player) => bf.runEndPattern1(player),
+                run: (player) => this.runEndPattern1(player),
             },
             {
                 nextState: END_SEQUENCE_STATE.COOLDOWN,
@@ -60,7 +61,7 @@ class BlockFillerEndSequence {
                 labelKey: 'pattern2',
                 message: 'Inner ring clear',
                 icon: 'textures/blocks/diamond_ore',
-                run: (player) => bf.runEndPattern2(player),
+                run: (player) => this.runEndPattern2(player),
             },
         ];
         return END_SEQUENCE_STEPS[state] ?? null;
@@ -69,21 +70,16 @@ class BlockFillerEndSequence {
     getEndSequenceLabel(uhcTick, state, startTick, hasPendingWork) {
         const elapsed = startTick === -1 ? 0 : uhcTick - startTick;
         const remTime = Math.max(0, 100 - elapsed);
-        const fillTime = bf.fillEstimateRemainingSeconds();
-        const m = bf.getRuntimeMetrics();
-        const fillStatus = hasPendingWork
-            ? `Filling ${fillTime}s (Blocks ${m.pendingBlocks}, Queue ${m.activeQueueSize})`
-            : `Complete | Blocks ${m.pendingBlocks} | Queue ${m.activeQueueSize} | Retry ${m.retryQueueSize}`;
 
         switch (state) {
             case END_SEQUENCE_STATE.INITIAL_WAIT:
                 return `Starting in ${remTime}s`;
             case END_SEQUENCE_STATE.PATTERN3:
-                return `Nether Wall ${fillStatus}`;
+                return hasPendingWork ? `Filling Nether Wall` : `Nether Wall Done`;
             case END_SEQUENCE_STATE.PATTERN1:
-                return `Outer Clear ${fillStatus}`;
+                return hasPendingWork ? `Clearing Outer Ring` : `Outer Ring Done`;
             case END_SEQUENCE_STATE.PATTERN2:
-                return `Inner Clear ${fillStatus}`;
+                return hasPendingWork ? `Clearing Inner Ring` : `Inner Ring Done`;
             case END_SEQUENCE_STATE.COOLDOWN:
                 return `Cooldown ${remTime}s`;
             case END_SEQUENCE_STATE.COMPLETED:
@@ -100,7 +96,7 @@ class BlockFillerEndSequence {
         const pattern = this.PATTERN_3_TASK;
         for (let y = startY; y >= util.WORLD_MIN_Y; y--) {
             for (let i = 0; i < pattern.segments.length; i++) {
-                bf.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, { randomize: true });
+                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, { randomize: true });
             }
         }
     }
@@ -113,7 +109,7 @@ class BlockFillerEndSequence {
         const pattern = this.PATTERN_1_TASK;
         for (let y = util.WORLD_MAX_Y; y >= util.WORLD_MIN_Y; y--) {
             for (let i = 0; i < pattern.segments.length; i++) {
-                bf.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, pattern.fillOptions);
+                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, pattern.fillOptions);
             }
         }
     }
@@ -126,7 +122,7 @@ class BlockFillerEndSequence {
         const pattern = this.PATTERN_2_TASK;
         for (let y = util.WORLD_MIN_Y; y <= util.WORLD_MAX_Y; y++) {
             for (let i = 0; i < pattern.segments.length; i++) {
-                bf.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.UPWARD_Y, pattern.fillOptions);
+                patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.UPWARD_Y, pattern.fillOptions);
             }
         }
     }

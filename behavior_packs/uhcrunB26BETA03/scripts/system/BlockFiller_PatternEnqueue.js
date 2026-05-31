@@ -1,5 +1,5 @@
 import { system } from '@minecraft/server';
-import bf from './BlockFiller.js';
+import fillQueue from './BlockFiller_FillQueue.js';
 import taskBuilder from './BlockFiller_TaskBuilder.js';
 import util from './BlockFiller_Util.js';
 
@@ -12,7 +12,7 @@ class BlockFillerPatternEnqueue {
         for (let i = 0; i < segments.length; i++) {
             const seg = segments[i];
             if (!seg || typeof seg.task !== 'function') continue;
-            bf.fillAddTask(seg.task, seg.blockCount);
+            fillQueue.fillAddTask(seg.task, seg.blockCount);
         }
     }
 

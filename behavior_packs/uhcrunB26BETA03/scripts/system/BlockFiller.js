@@ -1,4 +1,4 @@
-import { MODE } from './BlockFillerUtil.js';
+import { MODE } from './BlockFiller_Constants.js';
 import endSequence from './BlockFiller_EndSequence.js';
 import fillQueue from './BlockFiller_FillQueue.js';
 import patternEnqueue from './BlockFiller_PatternEnqueue.js';
@@ -7,6 +7,7 @@ import util from './BlockFiller_Util.js';
 
 class BlockFiller {
     constructor() {
+        fillQueue.setMainTickHandler(() => this.mainTick());
         endSequence.setPatternTasks(
             taskBuilder.createPatternTask(
                 'pattern_1',
@@ -42,14 +43,11 @@ class BlockFiller {
     mainTick() {
         taskBuilder.resetChunkCache();
 
-        let processedThisTick = 0;
-
         try {
-            processedThisTick += fillQueue.processFillQueue();
+            fillQueue.processFillQueue();
             fillQueue.processRetryQueue();
             patternEnqueue.processLayeredTasks();
             patternEnqueue.cleanupDeadTasks();
-            fillQueue.updateMetrics(processedThisTick);
         } catch (e) {
             console.error('[BlockFiller] mainTick error:', e);
             this.fillReset();
@@ -63,8 +61,8 @@ class BlockFiller {
         util.resetUtilState();
     }
 
-    getAdaptiveBatchSize() {
-        return fillQueue.getAdaptiveBatchSize();
+    setIsEndgameHandler(handler) {
+        fillQueue.setIsEndgameHandler(handler);
     }
     fillAddTask(task, blockCount) {
         return fillQueue.fillAddTask(task, blockCount);
@@ -74,12 +72,6 @@ class BlockFiller {
     }
     fillHasPendingWork() {
         return fillQueue.fillHasPendingWork();
-    }
-    fillEstimateRemainingSeconds() {
-        return fillQueue.fillEstimateRemainingSeconds();
-    }
-    getRuntimeMetrics() {
-        return fillQueue.runtimeMetrics;
     }
 
     shouldAdvanceEndSequence(uhcTick, state, startTick, hasPendingWork) {

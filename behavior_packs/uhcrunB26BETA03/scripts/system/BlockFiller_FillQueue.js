@@ -1,7 +1,5 @@
 import { system } from '@minecraft/server';
-import bf from './BlockFiller.js';
 import util from './BlockFiller_Util.js';
-import { CHECKPOINTS, ctx } from './BorderManager.js';
 
 class BlockFillerFillQueue {
     TASK_QUEUE = [];
@@ -10,17 +8,20 @@ class BlockFillerFillQueue {
     queueHead = 0;
     pendingBlocks = 0;
 
-    runtimeMetrics = {
-        lastProcessedBlocks: 0 | 0,
-        activeQueueSize: 0 | 0,
-        retryQueueSize: 0 | 0,
-        pendingBlocks: 0 | 0,
-    };
-
     MAX_ATTEMPTS = 20;
+    mainTickHandler = null;
+    isEndgameHandler = () => false;
+
+    setMainTickHandler(handler) {
+        this.mainTickHandler = typeof handler === 'function' ? handler : null;
+    }
+
+    setIsEndgameHandler(handler) {
+        this.isEndgameHandler = typeof handler === 'function' ? handler : () => false;
+    }
 
     processFillQueue() {
-        const isEndgame = ctx?.nextShrinkIndex >= CHECKPOINTS?.length;
+        const isEndgame = this.isEndgameHandler();
         if (!isEndgame && system.currentTick % 2 !== 0) return 0;
 
         const BATCH_SIZE = isEndgame ? util.BATCH_SIZE_ENDGAME : util.BATCH_SIZE_NORMAL;
@@ -173,12 +174,12 @@ class BlockFillerFillQueue {
 
         this.fillIntervalId = system.runInterval(() => {
             if (!this.fillIntervalId) return;
-            bf.mainTick();
+            this.mainTickHandler?.();
         }, util.FILL_INTERVAL_TICKS);
     }
 
     getAdaptiveBatchSize() {
-        return ctx?.nextShrinkIndex >= CHECKPOINTS?.length ? util.BATCH_SIZE_ENDGAME : util.BATCH_SIZE_NORMAL;
+        return this.isEndgameHandler() ? util.BATCH_SIZE_ENDGAME : util.BATCH_SIZE_NORMAL;
     }
 
     fillIsIdle() {
@@ -187,15 +188,6 @@ class BlockFillerFillQueue {
 
     fillHasPendingWork() {
         return !this.fillIsIdle() && this.pendingBlocks > 0;
-    }
-
-    fillEstimateRemainingSeconds() {
-        if (this.pendingBlocks <= 0 || this.fillIsIdle()) return 0;
-        const batchSize = this.getAdaptiveBatchSize();
-
-        const isEndgame = ctx?.nextShrinkIndex >= CHECKPOINTS?.length;
-        const fillsPerSecond = isEndgame ? util.TICKS_PER_SECOND : util.TICKS_PER_SECOND / 2;
-        return Math.max(1, Math.ceil(this.pendingBlocks / (batchSize * fillsPerSecond)));
     }
 
     resetQueue() {
@@ -208,15 +200,6 @@ class BlockFillerFillQueue {
         this.RETRY_QUEUE.length = 0;
         this.queueHead = 0;
         this.pendingBlocks = 0;
-    }
-
-    updateMetrics(processed) {
-        if ((system.currentTick & 3) === 0) {
-            this.runtimeMetrics.lastProcessedBlocks = processed | 0;
-            this.runtimeMetrics.activeQueueSize = (this.TASK_QUEUE.length - this.queueHead) | 0;
-            this.runtimeMetrics.retryQueueSize = this.RETRY_QUEUE.length | 0;
-            this.runtimeMetrics.pendingBlocks = this.pendingBlocks | 0;
-        }
     }
 }
 

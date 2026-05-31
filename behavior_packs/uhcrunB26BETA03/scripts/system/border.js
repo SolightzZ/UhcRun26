@@ -1,21 +1,13 @@
-import { system, world } from '@minecraft/server';
+import { isPlayerUhcId } from '../Manager/TeamManager.js';
 
-import { getUhcPlayers, isPlayerUhcId } from '../Manager/TeamManager.js';
-
-import { dynamicToast } from '../plugin/Util.js';
-
-import bm, { borderColors, borderEnd, CHECKPOINTS, ctx, MinecraftColor } from './BorderManager.js';
+import bm, { CHECKPOINTS, ctx } from './BorderManager.js';
 
 import umm from './UhcMatchManager.js';
 
 const GLOBAL_BORDER_LIMIT = CHECKPOINTS[0];
 const PLACE_BLOCK_LOCK_RADIUS = 16;
-const FORCE_FILL_COMMAND = '!fill';
 
 class BorderEvents {
-    forceFinalShrinkQueue = [];
-    forceFinalShrinkScheduled = false;
-
     isUhcPlayer(player) {
         if (!ctx.isRunning) return false;
         if (!player?.isValid) return false;
@@ -91,63 +83,6 @@ class BorderEvents {
 
     handlePlayerInteractWithBlock(ev) {
         this.handleBorderAction(ev, ev.block);
-    }
-
-    queueForceFinalShrink(player) {
-        this.forceFinalShrinkQueue.push(player);
-        if (this.forceFinalShrinkScheduled) return;
-
-        this.forceFinalShrinkScheduled = true;
-        system.run(() => this.drainForceFinalShrinkQueue());
-    }
-
-    drainForceFinalShrinkQueue() {
-        this.forceFinalShrinkScheduled = false;
-
-        while (this.forceFinalShrinkQueue.length > 0) {
-            const player = this.forceFinalShrinkQueue.shift();
-            if (!player?.isValid) continue;
-            this.forceFinalShrink(player);
-        }
-    }
-
-    handleChatSend(ev) {
-        const player = ev.sender;
-        if (!player?.isValid) return;
-        if (!player.hasTag('admin')) return;
-        if (ev.message !== FORCE_FILL_COMMAND) return;
-
-        ev.cancel = true;
-        this.queueForceFinalShrink(player);
-    }
-
-    forceFinalShrink(player) {
-        if (!player?.isValid) return;
-
-        if (!ctx.isRunning) {
-            player.sendMessage(MinecraftColor.red + '[Fill] Game not started yet');
-            return;
-        }
-
-        if (ctx.fillCommandLocked) {
-            player.sendMessage(MinecraftColor.red + '[Fill] This command has already been used');
-            return;
-        }
-
-        ctx.fillCommandLocked = true;
-        ctx.nextShrinkIndex = CHECKPOINTS.length;
-        ctx.targetRadius = borderEnd;
-        ctx.startRadius = ctx.borderRadius;
-        ctx.shrinkStartTick = ctx.uhcTick;
-        ctx.shrinkDuration = bm.borderManagerGetShrinkDuration(borderEnd);
-        ctx.currentBorderColor = borderColors.red;
-        bm.endSequenceReset();
-
-        player.sendMessage(`[Fill] Border shrinking to ${borderEnd}, pattern follows`);
-        bm.broadcast(getUhcPlayers(), {
-            message: dynamicToast(`Safe zone shrinking to ${borderEnd}`, 'textures/blocks/barrier'),
-            sound: 'world_noti',
-        });
     }
 
     handlePlayerBreakBlock(ev) {

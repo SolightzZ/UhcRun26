@@ -251,7 +251,6 @@ class UhcMatchManager {
 
     initializeGameState() {
         ctx.isRunning = true;
-        ctx.fillCommandLocked = false;
         ctx.prevShowCoordinates = world.gameRules.showCoordinates;
         ctx.uhcTick = 0;
         ctx.cachedDimension = world.getDimension('overworld');

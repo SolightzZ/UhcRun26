@@ -1,7 +1,7 @@
 import { getAllPlayers, getUhcPlayers } from '../Manager/TeamManager.js';
 import { dynamicToast } from '../plugin/Util.js';
 import bf from './BlockFiller.js';
-import { END_SEQUENCE_STATE } from './BlockFillerUtil.js';
+import { END_SEQUENCE_STATE } from './BlockFiller_Constants.js';
 import particleInstance from './BorderManager_Particle.js';
 import scoreboardInstance from './BorderManager_Scoreboard.js';
 import shrinkInstance from './BorderManager_Shrink.js';
@@ -67,7 +67,6 @@ export function GameContext() {
         uhcTick: 0,
         checkInterval: null,
         cachedDimension: null,
-        fillCommandLocked: false,
         prevShowCoordinates: false,
         borderReady: false,
         borderRadius: CHECKPOINTS[0],
@@ -92,6 +91,8 @@ export function GameContext() {
 }
 
 export const ctx = GameContext();
+
+bf.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
 
 const titleConfig = Object.freeze({ stayDuration: 200, fadeInDuration: 10, fadeOutDuration: 20 });
 const soundConfig = Object.freeze({ volume: 0.8, pitch: 1 });
@@ -263,21 +264,6 @@ class BorderManager {
     }
 
     // Warning/Damage delegates
-    borderManagerGetPlayerWarningLevel(player) {
-        return warningDamageInstance.borderManagerGetPlayerWarningLevel(player);
-    }
-    borderManagerUpdatePlayerWarningData(playerId, warningInfo) {
-        return warningDamageInstance.borderManagerUpdatePlayerWarningData(playerId, warningInfo);
-    }
-    borderManagerPlayWarningSound(player, level) {
-        return warningDamageInstance.borderManagerPlayWarningSound(player, level);
-    }
-    borderManagerProcessWarningSounds(players) {
-        return warningDamageInstance.borderManagerProcessWarningSounds(players);
-    }
-    borderManagerCleanupWarningData(activePlayers) {
-        return warningDamageInstance.borderManagerCleanupWarningData(activePlayers);
-    }
     borderManagerApplyDamage(player) {
         return warningDamageInstance.borderManagerApplyDamage(player);
     }

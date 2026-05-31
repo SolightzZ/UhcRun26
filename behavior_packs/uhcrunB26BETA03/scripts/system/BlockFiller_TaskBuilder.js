@@ -1,4 +1,4 @@
-import { MODE } from './BlockFillerUtil.js';
+import { MODE } from './BlockFiller_Constants.js';
 import util from './BlockFiller_Util.js';
 
 let sharedChunkCache = Object.create(null);

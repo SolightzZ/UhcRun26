@@ -1,15 +1,14 @@
 import { BlockPermutation } from '@minecraft/server';
 
-import { BLOCK_CATEGORIES, MODE } from './BlockFillerUtil.js';
+import { BLOCK_CATEGORIES, MODE } from './BlockFiller_Constants.js';
 
-class BlockFillerUtil {
+class BlockFillerUtility {
     // Constants — instance fields for external access via util.X
     WORLD_MIN_Y = -64;
     WORLD_MAX_Y = 319;
     BATCH_SIZE_NORMAL = 120;
     BATCH_SIZE_ENDGAME = 400;
     FILL_INTERVAL_TICKS = 1;
-    TICKS_PER_SECOND = 20;
     TASK_QUEUE_HARD_CAP = 8000;
     MAX_PENDING_BLOCKS = 80000;
     MAX_BLOCKS_PER_TASK = 250_000;
@@ -47,12 +46,7 @@ class BlockFillerUtil {
         if (this.AIR) return;
 
         this.AIR = this.resolveBlock('minecraft:air');
-        const categorySources = [
-            [MODE.ORE, BLOCK_CATEGORIES.ore],
-            [MODE.NETHER, BLOCK_CATEGORIES.nether],
-            [MODE.CONCRETE, BLOCK_CATEGORIES.concrete],
-            [MODE.RANDOM, BLOCK_CATEGORIES.random],
-        ];
+        const categorySources = [[MODE.NETHER, BLOCK_CATEGORIES.nether]];
 
         for (let i = 0; i < categorySources.length; i++) {
             const [mode, blockIds] = categorySources[i];
@@ -163,4 +157,4 @@ class BlockFillerUtil {
     }
 }
 
-export default new BlockFillerUtil();
+export default new BlockFillerUtility();

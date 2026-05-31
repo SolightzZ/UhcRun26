@@ -168,8 +168,6 @@ class BorderManagerParticle {
     particleRendererTick(players) {
         if (!ctx.isRunning || !ctx.borderReady || !ctx.wbBounds) return;
 
-        bm.borderManagerProcessWarningSounds(players);
-
         for (let i = 0; i < players.length; i++) {
             bm.borderManagerApplyDamage(players[i]);
         }
