@@ -24,7 +24,7 @@ function saveTeamStats() {
         const json = JSON.stringify(data);
         world.setDynamicProperty('uhc_teamStats', json);
     } catch (e) {
-        console.warn('[UHC] saveStats teamStats failed:', e);
+        console.error('[UHC] saveStats teamStats failed:', e);
     }
 }
 
@@ -34,7 +34,7 @@ function savePlayerStats() {
         const json = JSON.stringify(data);
         world.setDynamicProperty('uhc_playerStats', json);
     } catch (e) {
-        console.warn('[UHC] saveStats playerStats failed:', e);
+        console.error('[UHC] saveStats playerStats failed:', e);
     }
 }
 

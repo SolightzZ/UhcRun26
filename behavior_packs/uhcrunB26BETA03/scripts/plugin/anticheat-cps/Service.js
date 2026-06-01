@@ -41,7 +41,9 @@ class Service {
         console.warn(`[CPS] ${name} kicked: ${cps} hits/${model.WINDOW_TICKS} ticks`);
         system.run(() => {
             if (!player?.isValid) return;
-            player.dimension.runCommand(`kick "${safeName}" ${kickMessage}`).catch(() => {});
+            player.dimension.runCommand(`kick "${safeName}" ${kickMessage}`).catch((e) => {
+                console.warn('[CPS] Kick command failed:', e);
+            });
         });
     };
 }

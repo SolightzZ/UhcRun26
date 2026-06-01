@@ -308,7 +308,7 @@ function safeParseDynamicMap(rawValue, label) {
         }
         return parsed;
     } catch (error) {
-        console.warn(`[UHC] Failed to parse ${label} dynamic property: ` + error);
+        console.error(`[UHC] Failed to parse ${label} dynamic property: ` + error);
         return null;
     }
 }

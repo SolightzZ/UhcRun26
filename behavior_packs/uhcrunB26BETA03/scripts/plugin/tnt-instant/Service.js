@@ -32,9 +32,13 @@ class Service {
                         y: y + 0.5,
                         z: z + 0.5,
                     });
-                } catch {}
+                } catch (e) {
+                    console.warn('[TNT] Failed to spawn smoke particle:', e);
+                }
             }
-        } catch {}
+        } catch (e) {
+            console.warn('[TNT] Failed to spawn TNT entity:', e);
+        }
     };
 }
 

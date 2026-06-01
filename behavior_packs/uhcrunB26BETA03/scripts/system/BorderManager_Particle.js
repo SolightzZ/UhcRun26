@@ -77,7 +77,9 @@ class BorderManagerParticle {
     particleRendererSafeSpawn(dim, particleId, location, molang) {
         try {
             dim.spawnParticle(particleId, location, molang);
-        } catch {}
+        } catch (e) {
+            console.warn('[BorderParticle] Safe spawn failed:', e);
+        }
     }
 
     particleRendererRenderEdge(dim, fixed, rangeMin, rangeMax, playerCoord, view, step, axis, particleId, molang) {
@@ -162,7 +164,9 @@ class BorderManagerParticle {
 
             pos.z = -n;
             dim.spawnParticle(worldborder_ew, pos, molang);
-        } catch {}
+        } catch (e) {
+            console.warn('[BorderParticle] Small render failed:', e);
+        }
     }
 
     particleRendererTick(players) {

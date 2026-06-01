@@ -9,7 +9,8 @@ class Service {
 
         try {
             enchantable.addEnchantment({ type: model.getEfficiency(), level: model.ENCHANT_LEVEL });
-        } catch {
+        } catch (e) {
+            console.warn('[Enchant] Failed to add enchantment:', e);
             return null;
         }
 

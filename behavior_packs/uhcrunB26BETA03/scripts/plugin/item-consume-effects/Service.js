@@ -7,10 +7,15 @@ class Service {
     };
 
     applyCookedEffect = (player) => {
-        const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
-        player.addEffect(id, duration, { amplifier, showParticles });
-        player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
-        player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
+        if (!player?.isValid) return;
+        try {
+            const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
+            player.addEffect(id, duration, { amplifier, showParticles });
+            player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
+            player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
+        } catch (e) {
+            console.warn('[ItemConsume] Failed to apply cooked effect:', e);
+        }
     };
 
     handleConsume = (player, item) => {

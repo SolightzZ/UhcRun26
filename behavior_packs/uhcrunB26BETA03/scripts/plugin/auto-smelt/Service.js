@@ -115,7 +115,9 @@ class Service {
             for (const ench of enchantable.getEnchantments()) {
                 if (ench.type.id === enchantId) return ench.level;
             }
-        } catch {}
+        } catch (e) {
+            console.warn('[AutoSmelt] Failed to get enchantment level:', e);
+        }
         return 0;
     };
 
@@ -180,7 +182,8 @@ class Service {
             let entities;
             try {
                 entities = dimension.getEntities({ type: 'minecraft:item', location: center, maxDistance: Model.CONFIG.scan.itemRadius });
-            } catch {
+            } catch (e) {
+                console.warn('[AutoSmelt] Failed to get nearby entities:', e);
                 return;
             }
             if (!entities.length) return;
@@ -230,7 +233,8 @@ class Service {
         let allEntities;
         try {
             allEntities = dimension.getEntities({ type: 'minecraft:item', location: center, maxDistance: halfDiag });
-        } catch {
+        } catch (e) {
+            console.warn('[AutoSmelt] Failed to get all entities:', e);
             return;
         }
 

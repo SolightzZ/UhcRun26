@@ -51,7 +51,11 @@ class UhcMatchManagerVictory {
             const loc = p.location,
                 dim = p.dimension;
             if (loc && dim) {
-                dim.spawnParticle('minecraft:huge_explosion_emitter', { x: loc.x, y: loc.y + 2.5, z: loc.z });
+                try {
+                    dim.spawnParticle('minecraft:huge_explosion_emitter', { x: loc.x, y: loc.y + 2.5, z: loc.z });
+                } catch (e) {
+                    console.warn('[Victory] Failed to spawn victory particle:', e);
+                }
             }
         }
 

@@ -32,7 +32,8 @@ export function randomInt(min, max) {
 export function isValidEntity(entity) {
     try {
         return !!entity && entity.isValid;
-    } catch {
+    } catch (e) {
+        console.warn('[Util] isValidEntity check failed:', e);
         return false;
     }
 }

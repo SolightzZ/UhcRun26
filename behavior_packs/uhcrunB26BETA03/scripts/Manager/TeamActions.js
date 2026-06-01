@@ -326,7 +326,7 @@ export function openTeamMenu(player) {
                 particleLocPool.z = player.location.z;
                 player.dimension.spawnParticle(selectedTeam.id, particleLocPool);
             } catch (e) {
-                console.info('[spawnParticle] Ignore Error ');
+                console.warn('[TeamActions] Failed to spawn team particle:', e);
             }
             player.playSound('random.orb', { pitch: 0.6, volume: 0.4 });
             player.sendMessage(dynamicToast(`Joined ${selectedTeam.color}${selectedTeam.name}`, selectedTeam.icon));

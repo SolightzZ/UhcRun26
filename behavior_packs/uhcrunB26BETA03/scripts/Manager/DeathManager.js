@@ -75,10 +75,18 @@ function processVictimDeath(player, victimTeamId, loc) {
     particleLocPool.x = loc.x;
     particleLocPool.y = loc.y + 4.5;
     particleLocPool.z = loc.z;
-    dim.spawnParticle('so:light2', particleLocPool);
+    try {
+        dim.spawnParticle('so:light2', particleLocPool);
+    } catch (e) {
+        console.warn('[DeathManager] Failed to spawn light2 particle:', e);
+    }
 
     particleLocPool.y = loc.y + 6.5;
-    dim.spawnParticle('so:light5', particleLocPool);
+    try {
+        dim.spawnParticle('so:light5', particleLocPool);
+    } catch (e) {
+        console.warn('[DeathManager] Failed to spawn light5 particle:', e);
+    }
 
     const snapX = loc.x;
     const snapY = loc.y;
@@ -97,7 +105,7 @@ function processVictimDeath(player, victimTeamId, loc) {
             try {
                 player.setGameMode(GameMode.Spectator);
             } catch (err) {
-                console.warn('[DeathManager] Failed to set game mode to Spectator:', err);
+                console.error('[DeathManager] Failed to set game mode to Spectator:', err);
             }
 
             enqueueItemVacuum(() => {
@@ -113,14 +121,14 @@ function processVictimDeath(player, victimTeamId, loc) {
                     try {
                         activeDim.spawnItem(new ItemStack('minecraft:player_head', 1), spawnEntityLocPool);
                     } catch (e) {
-                        console.warn('[DeathManager] Failed to spawn player head:', e);
+                        console.error('[DeathManager] Failed to spawn player head:', e);
                     }
 
                     let cart = null;
                     try {
                         cart = activeDim.spawnEntity('minecraft:hopper_minecart', spawnEntityLocPool);
                     } catch (e) {
-                        console.warn('[DeathManager] Failed to spawn hopper minecart:', e);
+                        console.error('[DeathManager] Failed to spawn hopper minecart:', e);
                     }
 
                     if (!cart || !cart.isValid) return;
@@ -136,7 +144,7 @@ function processVictimDeath(player, victimTeamId, loc) {
                         try {
                             item.teleport(cartLoc, { dimension: activeDim });
                         } catch (e) {
-                            console.warn('[DeathManager] Failed to teleport item to vacuum cart:', e);
+                            console.error('[DeathManager] Failed to teleport item to vacuum cart:', e);
                         }
                     }
 
@@ -146,15 +154,15 @@ function processVictimDeath(player, victimTeamId, loc) {
                                 cart.remove();
                             }
                         } catch (err) {
-                            console.warn('[DeathManager] Failed to remove vacuum cart:', err);
+                            console.error('[DeathManager] Failed to remove vacuum cart:', err);
                         }
                     }, 30);
                 } catch (err) {
-                    console.warn('[DeathManager] Item vacuum execution failed:', err);
+                    console.error('[DeathManager] Item vacuum execution failed:', err);
                 }
             });
         } catch (err) {
-            console.warn('[DeathManager] Deferred spectator transition failed:', err);
+            console.error('[DeathManager] Deferred spectator transition failed:', err);
         }
     }, 1);
 

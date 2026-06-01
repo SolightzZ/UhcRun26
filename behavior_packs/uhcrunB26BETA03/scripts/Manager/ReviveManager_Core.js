@@ -72,12 +72,17 @@ export function finishRevive(targetId) {
     teleportLocPool.x = reviver.location.x;
     teleportLocPool.y = reviver.location.y;
     teleportLocPool.z = reviver.location.z;
-    target.teleport(teleportLocPool, { dimension: reviver.dimension });
-    target.setGameMode(GameMode.Survival);
-    target.addTag('uhc');
-    target.removeEffect('conduit_power');
-    target.addEffect('regeneration', 200, { amplifier: 2, showParticles: false });
-    target.addEffect('resistance', 100, { amplifier: 4, showParticles: false });
+    try {
+        target.teleport(teleportLocPool, { dimension: reviver.dimension });
+        target.setGameMode(GameMode.Survival);
+        target.addTag('uhc');
+        target.removeEffect('conduit_power');
+        target.addEffect('regeneration', 200, { amplifier: 2, showParticles: false });
+        target.addEffect('resistance', 100, { amplifier: 4, showParticles: false });
+    } catch (e) {
+        console.error('[Revive] Failed to apply revive state for', target.name, ':', e);
+        return;
+    }
 
     if (!uhcPlayerIds.has(targetId)) {
         uhcPlayerIds.add(targetId);

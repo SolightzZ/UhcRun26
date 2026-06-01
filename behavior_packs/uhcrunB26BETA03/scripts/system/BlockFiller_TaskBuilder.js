@@ -45,7 +45,8 @@ class BlockFillerTaskBuilder {
                         try {
                             const testBlock = dim.getBlock({ x, y: 0, z });
                             chunkOk = !!testBlock;
-                        } catch {
+                        } catch (e) {
+                            console.warn('[TaskBuilder] Chunk check failed:', e);
                             chunkOk = false;
                         }
                         sharedChunkCache[chunkKey] = chunkOk;
@@ -66,7 +67,8 @@ class BlockFillerTaskBuilder {
                     if (block.typeId !== permTypeId) {
                         try {
                             block.setPermutation(perm);
-                        } catch {
+                        } catch (e) {
+                            console.warn('[TaskBuilder] Block setPermutation failed:', e);
                             return { consumed, done: false, blocked: true, remaining };
                         }
                     }

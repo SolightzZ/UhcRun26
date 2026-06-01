@@ -41,7 +41,8 @@ class Service {
     isDimensionValid = (dim) => {
         try {
             return dim?.id !== undefined;
-        } catch {
+        } catch (e) {
+            console.warn('[Axe] Dimension validation failed:', e);
             return false;
         }
     };
@@ -133,7 +134,8 @@ class Service {
             let block;
             try {
                 block = dim.getBlock(loc);
-            } catch {
+            } catch (e) {
+                console.warn('[Axe] getBlock failed during leaf scan:', e);
                 continue;
             }
             calls++;
@@ -187,7 +189,9 @@ class Service {
                     }
                     broken++;
                 }
-            } catch {}
+            } catch (e) {
+                console.warn('[Axe] Failed to break log block:', e);
+            }
             if (++batch >= model.CONFIG.BREAK_PER_TICK) {
                 batch = 0;
                 yield;
@@ -224,7 +228,9 @@ class Service {
                         appleBatch++;
                     }
                 }
-            } catch {}
+            } catch (e) {
+                console.warn('[Axe] Failed to break leaf block:', e);
+            }
             if (++batch >= model.CONFIG.LEAF_BREAK_PER_TICK) {
                 batch = 0;
                 yield;
@@ -249,7 +255,8 @@ class Service {
         try {
             this.scanTrunk(dim, x, brokenY - 1, z, logType, -1, logsBelow);
             this.scanTrunk(dim, x, brokenY + 1, z, logType, 1, logsAbove);
-        } catch {
+        } catch (e) {
+            console.warn('[Axe] Trunk scan failed:', e);
             return;
         }
 
@@ -270,7 +277,8 @@ class Service {
                 result = leafGen.next();
             }
             leaves = result.value || [];
-        } catch {
+        } catch (e) {
+            console.warn('[Axe] Leaf scan failed:', e);
             return;
         }
 

@@ -62,7 +62,7 @@ function cmd(commandString) {
     try {
         world.getDimension(SPAWN_CONFIG.dimension).runCommand(commandString);
     } catch (e) {
-        console.warn(`[cmd] Failed: ${commandString}`, e);
+        console.error(`[cmd] Failed: ${commandString}`, e);
     }
 }
 
@@ -76,15 +76,24 @@ function setItemPlayer(player) {
 
 function applyEffects(player, effects = []) {
     for (const { type, duration, amp = 0 } of effects) {
-        player.addEffect(type, duration, { amplifier: amp, showParticles: false });
+        try {
+            player.addEffect(type, duration, { amplifier: amp, showParticles: false });
+        } catch (e) {
+            console.warn('[Command] Failed to apply effect', type, ':', e);
+        }
     }
 }
 
 function setPlayerSpawn(player) {
-    player.playSound('spawn');
-    player.setGameMode(GameMode.Adventure);
-    player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true);
-    player.teleport({ x: SPAWN_CONFIG.x, y: SPAWN_CONFIG.y, z: SPAWN_CONFIG.z }, { dimension: world.getDimension(SPAWN_CONFIG.dimension) });
+    if (!player?.isValid) return;
+    try {
+        player.playSound('spawn');
+        player.setGameMode(GameMode.Adventure);
+        player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true);
+        player.teleport({ x: SPAWN_CONFIG.x, y: SPAWN_CONFIG.y, z: SPAWN_CONFIG.z }, { dimension: world.getDimension(SPAWN_CONFIG.dimension) });
+    } catch (e) {
+        console.error('[Command] Failed to set player spawn for', player.name, ':', e);
+    }
 }
 
 // PLAYER PIPELINES

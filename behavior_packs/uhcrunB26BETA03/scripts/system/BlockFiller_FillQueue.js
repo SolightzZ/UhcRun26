@@ -35,7 +35,8 @@ class BlockFillerFillQueue {
             let result;
             try {
                 result = task(BATCH_SIZE - processed);
-            } catch {
+            } catch (e) {
+                console.warn('[FillQueue] Task execution failed:', e);
                 head++;
                 continue;
             }

@@ -37,7 +37,8 @@ class UhcMatchManagerTeleport {
             if (this.safeYCache.size >= 256) this.safeYCache.delete(this.safeYCache.keys().next().value);
             this.safeYCache.set(key, y);
             return y;
-        } catch {
+        } catch (e) {
+            console.warn('[UHC] Failed to get safe Y at', x, z, ':', e);
             return TELEPORT_CONFIG.DEFAULT_Y;
         }
     }
@@ -98,8 +99,8 @@ class UhcMatchManagerTeleport {
         try {
             leader.teleport({ x, y: TELEPORT_CONFIG.PRELOAD_Y, z }, { dimension });
             return true;
-        } catch {
-            console.warn(`[UHC] Leader ${leader.name} (${teamTag}) failed to teleport to preload position`);
+        } catch (e) {
+            console.warn(`[UHC] Leader ${leader.name} (${teamTag}) failed to teleport to preload position:`, e);
             return false;
         }
     }
@@ -123,7 +124,8 @@ class UhcMatchManagerTeleport {
         try {
             player.teleport(loc, { dimension });
             return { success: true, shouldRetry: false };
-        } catch {
+        } catch (e) {
+            console.warn('[UHC] Teleport failed for', player.name, ':', e);
             const shouldRetry = retryCount < entry.maxRetries;
             if (!shouldRetry) {
                 world.sendMessage(`${MinecraftColor.red}[x] Failed to scatter ${player.name}`);

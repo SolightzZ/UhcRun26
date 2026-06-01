@@ -28,37 +28,49 @@ class UtilUhcMatchManager {
     playerSetupClearEffects(player) {
         if (!player?.isValid) return;
         for (let i = 0; i < UHC_EFFECTS.length; i++) {
-            player.removeEffect(UHC_EFFECTS[i]);
+            try {
+                player.removeEffect(UHC_EFFECTS[i]);
+            } catch (e) {
+                console.warn('[UtilUHC] Failed to remove effect', UHC_EFFECTS[i], ':', e);
+            }
         }
     }
 
     playerSetupApplyEndState(player) {
         if (!player?.isValid) return;
-        if (getPlayerTeam(player)) {
-            player.removeTag('uhc');
-            player.addEffect('regeneration', 520, effectOptionsHidden);
-            return;
+        try {
+            if (getPlayerTeam(player)) {
+                player.removeTag('uhc');
+                player.addEffect('regeneration', 520, effectOptionsHidden);
+                return;
+            }
+            player.setGameMode(GameMode.Adventure);
+            player.removeEffect('conduit_power');
+        } catch (e) {
+            console.warn('[UtilUHC] Failed to apply end state for', player.name, ':', e);
         }
-        player.setGameMode(GameMode.Adventure);
-        player.removeEffect('conduit_power');
     }
 
     playerSetupApplyStartState(player) {
         if (!player?.isValid) return;
 
-        if (getPlayerTeam(player)) {
-            if (!player.hasTag('uhc')) {
-                player.addTag('uhc');
+        try {
+            if (getPlayerTeam(player)) {
+                if (!player.hasTag('uhc')) {
+                    player.addTag('uhc');
+                }
+                for (let i = 0; i < UHC_PLAYER_EFFECTS.length; i++) {
+                    const [effect, duration] = UHC_PLAYER_EFFECTS[i];
+                    player.addEffect(effect, duration, effectOptionsHidden);
+                }
+                player.addEffect('conduit_power', 5000, { amplifier: 0, showParticles: false });
+                return;
             }
-            for (let i = 0; i < UHC_PLAYER_EFFECTS.length; i++) {
-                const [effect, duration] = UHC_PLAYER_EFFECTS[i];
-                player.addEffect(effect, duration, effectOptionsHidden);
-            }
-            player.addEffect('conduit_power', 5000, { amplifier: 0, showParticles: false });
-            return;
+            player.setGameMode(GameMode.Spectator);
+            player.addEffect('conduit_power', 9999, { amplifier: 0, showParticles: false });
+        } catch (e) {
+            console.warn('[UtilUHC] Failed to apply start state for', player.name, ':', e);
         }
-        player.setGameMode(GameMode.Spectator);
-        player.addEffect('conduit_power', 9999, { amplifier: 0, showParticles: false });
     }
 
     playerSetupClearItemsKeepCompass(targetPlayer) {

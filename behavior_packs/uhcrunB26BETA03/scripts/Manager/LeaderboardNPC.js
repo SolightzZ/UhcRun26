@@ -90,7 +90,7 @@ function spawnLeaderboardNPCNow() {
                 newNpcEntity.addTag('lb:deaths');
             }
         } catch (error) {
-            console.warn('[Leaderboard] Failed to spawn NPC at:', npcConfig.x, npcConfig.y, npcConfig.z, error);
+            console.error('[Leaderboard] Failed to spawn NPC at:', npcConfig.x, npcConfig.y, npcConfig.z, error);
         }
     }
 

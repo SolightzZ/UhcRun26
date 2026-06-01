@@ -19,7 +19,7 @@ function drainItemVacuumQueue() {
         try {
             job();
         } catch (error) {
-            console.warn('[DrainItemVacuumQueue] job error:', error);
+            console.error('[DrainItemVacuumQueue] job error:', error);
         }
         drainItemVacuumQueue();
     }, 3);

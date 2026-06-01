@@ -10,8 +10,12 @@ export function AdminTeleport(source, target) {
     teleportLocPool.x = loc.x;
     teleportLocPool.y = loc.y;
     teleportLocPool.z = loc.z;
-    const dim = target.dimension ?? world.getDimension('overworld');
-    source.teleport(teleportLocPool, { dimension: dim });
+    try {
+        const dim = target.dimension ?? world.getDimension('overworld');
+        source.teleport(teleportLocPool, { dimension: dim });
+    } catch (e) {
+        console.warn('[Teleport] AdminTeleport failed:', e);
+    }
 }
 
 export function playerTeleport(source, target) {
@@ -24,17 +28,26 @@ export function playerTeleport(source, target) {
     teleportLocPool.x = loc.x;
     teleportLocPool.y = loc.y;
     teleportLocPool.z = loc.z;
-    source.teleport(teleportLocPool, { dimension: target.dimension });
-    source.playSound('teleport.ender_pearl');
+    try {
+        source.teleport(teleportLocPool, { dimension: target.dimension });
+        source.playSound('teleport.ender_pearl');
+    } catch (e) {
+        console.warn('[Teleport] playerTeleport failed:', e);
+    }
 }
 
 export function teleportToSpawn(player) {
     if (!player?.isValid) return;
-    const dim = world.getDimension(SPAWN_CONFIG.dimension);
-    teleportLocPool.x = SPAWN_CONFIG.x + Math.floor(Math.random() * 5) - 2;
-    teleportLocPool.y = SPAWN_CONFIG.y - 7;
-    teleportLocPool.z = SPAWN_CONFIG.z + Math.floor(Math.random() * 5) - 2;
-    player.teleport(teleportLocPool, { dimension: dim });
+    try {
+        const dim = world.getDimension(SPAWN_CONFIG.dimension);
+        teleportLocPool.x = SPAWN_CONFIG.x + Math.floor(Math.random() * 5) - 2;
+        teleportLocPool.y = SPAWN_CONFIG.y - 7;
+        teleportLocPool.z = SPAWN_CONFIG.z + Math.floor(Math.random() * 5) - 2;
+        player.teleport(teleportLocPool, { dimension: dim });
+    } catch (e) {
+        console.warn('[Teleport] teleportToSpawn failed:', e);
+        return;
+    }
 
     const tx = teleportLocPool.x;
     const ty = teleportLocPool.y;
@@ -44,7 +57,9 @@ export function teleportToSpawn(player) {
         player.playSound('random.enderchestopen', { volume: 0.9, pitch: 0.95 });
         try {
             dim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
-        } catch {}
+        } catch (e) {
+            console.warn('[Teleport] Failed to spawn particle at spawn:', e);
+        }
     }, 5);
 }
 

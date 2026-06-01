@@ -89,7 +89,9 @@ class UhcMatchManager {
             explosionLocPool.y = particleY;
             explosionLocPool.z = z;
             player.dimension.spawnParticle('minecraft:huge_explosion_emitter', explosionLocPool);
-        } catch {}
+        } catch (e) {
+            console.warn('[UHC] Failed to spawn explosion particle:', e);
+        }
     }
 
     playerSetupHandleGameStart(player, tick) {

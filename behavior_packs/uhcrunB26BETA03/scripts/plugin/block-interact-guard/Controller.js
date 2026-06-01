@@ -20,11 +20,15 @@ class Controller {
     onEntitySpawn = ({ entity }) => {
         if (!entity?.isValid || entity.typeId !== 'minecraft:item') return;
 
-        const stack = entity.getComponent('minecraft:item')?.itemStack;
-        if (stack?.typeId !== 'minecraft:hopper_minecart') return;
+        try {
+            const stack = entity.getComponent('minecraft:item')?.itemStack;
+            if (stack?.typeId !== 'minecraft:hopper_minecart') return;
 
-        entity.dimension.spawnParticle('minecraft:explode_particle', entity.location);
-        entity.remove();
+            entity.dimension.spawnParticle('minecraft:explode_particle', entity.location);
+            entity.remove();
+        } catch (e) {
+            console.warn('[BlockGuard] Failed to handle entity spawn:', e);
+        }
     };
 }
 
