@@ -23,9 +23,19 @@ class UhcMatchManagerTeleport {
         const key = `${x | 0},${z | 0}`;
         if (this.safeYCache.has(key)) return this.safeYCache.get(key);
         try {
-            const block = dimension.getTopmostBlock({ x, z });
+            // getTopmostBlock throws LocationInUnloadedChunkError if chunk isn't loaded
+            let block;
+            try {
+                block = dimension.getTopmostBlock({ x, z });
+            } catch (chunkErr) {
+                // Chunk not loaded — cache default Y to avoid retry spam
+                if (this.safeYCache.size >= 256) this.safeYCache.delete(this.safeYCache.keys().next().value);
+                this.safeYCache.set(key, TELEPORT_CONFIG.DEFAULT_Y);
+                return TELEPORT_CONFIG.DEFAULT_Y;
+            }
             if (!block) return TELEPORT_CONFIG.DEFAULT_Y;
-            const isLiquid = block.typeId.includes('lava') || block.typeId.includes('water');
+            const typeId = block.typeId ?? '';
+            const isLiquid = typeId.includes('lava') || typeId.includes('water');
             if (isLiquid) {
                 try {
                     dimension.runCommand(`setblock ${x | 0} ${block.y} ${z | 0} glass`);

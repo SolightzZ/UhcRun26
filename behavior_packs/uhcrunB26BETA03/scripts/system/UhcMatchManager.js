@@ -56,6 +56,7 @@ class UhcMatchManager {
 
     handlePlayerLeave() {
         system.run(() => {
+            // Stop game loop only when server is completely empty
             if (ctx.isRunning && world.getPlayers().length === 0) {
                 this.stopGameLoop();
             }
@@ -72,8 +73,7 @@ class UhcMatchManager {
         const players = getUhcPlayers();
         if (players.length > 0) return players;
 
-        if (world.getPlayers().length === 0) return players;
-
+        // Use cached allPlayersCache from TeamManager instead of world.getPlayers()
         refreshPlayerCaches();
         return getUhcPlayers();
     }
@@ -206,8 +206,11 @@ class UhcMatchManager {
         bm.borderManagerTickShrink();
         if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
         if (ctx.objective && ctx.uhcTick % 2 === 0) bm.scoreboardUpdate(ctx.objective, uhcPlayers);
-        for (let i = 0; i < uhcPlayers.length; i++) {
-            bm.borderManagerApplyDamage(uhcPlayers[i]);
+        // Border damage every 5 ticks instead of every tick — reduces 30 calls/tick to 6 calls/tick
+        if (ctx.uhcTick % 5 === 0) {
+            for (let i = 0; i < uhcPlayers.length; i++) {
+                bm.borderManagerApplyDamage(uhcPlayers[i]);
+            }
         }
         bm.particleRendererTick(uhcPlayers);
     }
@@ -259,6 +262,8 @@ class UhcMatchManager {
     }
 
     setupPlayers() {
+        // Must use world.getPlayers() — uhc tags haven't been applied yet
+        // (applyStartState adds the tag; refreshPlayerCaches rebuilds cache after)
         const players = world.getPlayers();
 
         utilUmm.playerSetupClearItemsKeepCompass();
@@ -294,7 +299,10 @@ class UhcMatchManager {
     }
 
     resetPlayerStates() {
-        const players = world.getPlayers();
+        // Called during endGameUhc — cleanupGameState runs first but doesn't
+        // remove 'uhc' tags (that happens in applyEndState within this loop)
+        // So getUhcPlayers() is safe here
+        const players = getUhcPlayers();
         for (let i = 0; i < players.length; i++) {
             utilUmm.playerSetupApplyEndState(players[i]);
         }
@@ -332,6 +340,8 @@ class UhcMatchManager {
     }
 
     resetAllPlayers() {
+        // Must use world.getPlayers() — cleanupResetState (called before this)
+        // already removed all 'uhc' tags via clearAllTaguhcAndDynamicProperty
         const players = world.getPlayers();
 
         for (let i = 0; i < players.length; i++) {

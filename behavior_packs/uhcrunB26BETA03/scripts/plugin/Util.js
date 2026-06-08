@@ -17,7 +17,11 @@ export function normalizeXZ(x, z) {
 
 export function applyKnockbackXZ(entity, nx, nz, horizontal, vertical, maxHorizontal = KB.maxHorizontal) {
     if (!entity?.isValid) return;
-    entity.applyKnockback({ x: clamp(nx * horizontal, maxHorizontal), z: clamp(nz * horizontal, maxHorizontal) }, vertical);
+    try {
+        entity.applyKnockback({ x: clamp(nx * horizontal, maxHorizontal), z: clamp(nz * horizontal, maxHorizontal) }, vertical);
+    } catch (e) {
+        console.warn('[Util] Failed to apply knockback:', e);
+    }
 }
 
 export function applyKnockbackFromDelta(entity, fromX, fromZ, toX, toZ, horizontal, vertical, maxHorizontal = KB.maxHorizontal) {

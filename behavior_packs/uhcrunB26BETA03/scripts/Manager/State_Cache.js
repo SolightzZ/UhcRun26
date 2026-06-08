@@ -32,7 +32,9 @@ export function createCacheProxy(key) {
             return GlobalPlayerCaches.get(id)?.[key] !== undefined;
         },
         *entries() {
-            for (const [id, cache] of GlobalPlayerCaches.entries()) {
+            const gEntries = [...GlobalPlayerCaches.entries()];
+            for (let e = 0, eLen = gEntries.length; e < eLen; e++) {
+                const [id, cache] = gEntries[e];
                 if (!cache) continue;
                 const value = cache[key];
                 if (value === undefined) continue;
@@ -40,7 +42,9 @@ export function createCacheProxy(key) {
             }
         },
         clear() {
-            for (const cache of GlobalPlayerCaches.values()) {
+            const gValues = [...GlobalPlayerCaches.values()];
+            for (let v = 0, vLen = gValues.length; v < vLen; v++) {
+                const cache = gValues[v];
                 if (cache && cache[key] !== undefined) {
                     delete cache[key];
                 }
@@ -85,7 +89,9 @@ export const uhcPlayerIds = {
         return true;
     },
     clear() {
-        for (const c of GlobalPlayerCaches.values()) {
+        const gValues = [...GlobalPlayerCaches.values()];
+        for (let v = 0, vLen = gValues.length; v < vLen; v++) {
+            const c = gValues[v];
             if (c.isUhc === true) {
                 delete c.isUhc;
             }
@@ -97,7 +103,7 @@ export const uhcPlayerIds = {
     },
 };
 
-export const isUHC = (e) => e && uhcPlayerIds.has(e.id);
+export const isUHC = (entity) => entity && uhcPlayerIds.has(entity.id);
 
 export let allPlayersCache = [];
 export let uhcPlayersCache = [];

@@ -60,7 +60,9 @@ export function sendReviveTeamActionBar(teamId, message) {
     const seen = new Set();
     const memberIds = teamPlayerIndex.get(teamId);
     if (memberIds) {
-        for (const id of memberIds) {
+        const memberArr = Array.from(memberIds);
+        for (let mi = 0, mLen = memberArr.length; mi < mLen; mi++) {
+            const id = memberArr[mi];
             if (seen.has(id)) continue;
             seen.add(id);
             const player = resolvePlayer(id);
@@ -69,7 +71,9 @@ export function sendReviveTeamActionBar(teamId, message) {
         }
     }
 
-    for (const [id] of deathLocation.entries()) {
+    const dlArr = Array.from(deathLocation.entries());
+    for (let di = 0, dLen = dlArr.length; di < dLen; di++) {
+        const [id] = dlArr[di];
         if (seen.has(id)) continue;
         if (playerTeamCache.get(id) !== teamId) continue;
         const player = resolvePlayer(id);
@@ -86,7 +90,9 @@ export function getDeadPlayersInTeam(player) {
     const teamId = getPlayerTeam(player);
     if (!teamId) return deadPlayers;
 
-    for (const [id] of deathLocation.entries()) {
+    const dlArr = Array.from(deathLocation.entries());
+    for (let di = 0, dLen = dlArr.length; di < dLen; di++) {
+        const [id] = dlArr[di];
         if (id === player.id) continue;
         if (playerTeamCache.get(id) !== teamId) continue;
         const target = resolvePlayer(id);

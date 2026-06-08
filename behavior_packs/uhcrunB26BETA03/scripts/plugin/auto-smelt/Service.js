@@ -2,7 +2,7 @@ import { ItemStack, system } from '@minecraft/server';
 import { dynamicToast, isValidEntity, randomInt } from '../Util.js';
 import Model from './Model.js';
 
-const formatHealth = (v) => v.toFixed(1);
+const formatHealth = (val) => val.toFixed(1);
 
 export const isValidTool = (tool, action) => {
     if (action === Model.ACTION.GRAVEL) return Model.SHOVELS.has(tool);
@@ -191,7 +191,8 @@ class Service {
             let totalXp = 0,
                 lapisTotal = 0,
                 lapisPosition = job.location;
-            for (const entity of entities) {
+            for (let ei = 0, eLen = entities.length; ei < eLen; ei++) {
+                const entity = entities[ei];
                 if (!isValidEntity(entity)) continue;
                 claimed.add(entity.id);
                 const result = this.processItem(entity, job.action, job.player, dimension);
@@ -212,8 +213,8 @@ class Service {
         let maxX = -Infinity,
             maxY = -Infinity,
             maxZ = -Infinity;
-        for (const job of jobs) {
-            const { x, y, z } = job.location;
+        for (let ji = 0, jLen = jobs.length; ji < jLen; ji++) {
+            const { x, y, z } = jobs[ji].location;
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
             if (y < minY) minY = y;
@@ -242,14 +243,16 @@ class Service {
 
         claimed.clear();
 
-        for (const job of jobs) {
+        for (let ji = 0, jLen = jobs.length; ji < jLen; ji++) {
+            const job = jobs[ji];
             if (!isValidEntity(job.player)) continue;
 
             let totalXp = 0;
             let lapisTotal = 0;
             let lapisPosition = job.location;
 
-            for (const entity of allEntities) {
+            for (let ei = 0, eLen = allEntities.length; ei < eLen; ei++) {
+                const entity = allEntities[ei];
                 if (claimed.has(entity.id)) continue;
                 if (!isValidEntity(entity)) continue;
 

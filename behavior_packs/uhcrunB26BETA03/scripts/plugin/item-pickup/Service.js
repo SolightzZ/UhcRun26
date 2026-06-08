@@ -55,7 +55,7 @@ class Service {
         system.run(() => {
             model.flushScheduled = false;
             const entries = model.pendingList.splice(0);
-            for (const entry of entries) this.smeltPlayer(entry);
+            for (let ei = 0, eLen = entries.length; ei < eLen; ei++) this.smeltPlayer(entries[ei]);
         });
     };
 
@@ -68,8 +68,10 @@ class Service {
         if (!items.length) return;
 
         let hasSmeltable = false;
-        for (const itemStack of items) {
-            if (model.SMELT_TYPES.has(itemStack.typeId)) {
+        for (let si = 0, sLen = items.length; si < sLen; si++) {
+            const item = items[si];
+            if (!item || !item.typeId) continue;
+            if (model.SMELT_TYPES.has(item.typeId)) {
                 hasSmeltable = true;
                 break;
             }
@@ -82,14 +84,15 @@ class Service {
                 console.warn('[ItemPickup] queue full, dropping oldest entry');
                 model.pendingList.shift();
             }
-            // Store typeIds picked this tick — NOT slots (inventory not updated yet at pickup time)
             entry = { id: player.id, player, types: new Set() };
             model.pendingList.push(entry);
         }
 
-        for (const itemStack of items) {
-            if (model.SMELT_TYPES.has(itemStack.typeId)) {
-                entry.types.add(itemStack.typeId);
+        for (let si = 0, sLen = items.length; si < sLen; si++) {
+            const item = items[si];
+            if (!item || !item.typeId) continue;
+            if (model.SMELT_TYPES.has(item.typeId)) {
+                entry.types.add(item.typeId);
             }
         }
         this.scheduleFlushed();

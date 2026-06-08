@@ -25,7 +25,8 @@ class Service {
 
         system.run(() => {
             const players = world.getAllPlayers();
-            for (const p of players) {
+            for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+                const p = players[pi];
                 if (p?.isValid && p.hasTag('admin')) {
                     p.sendMessage(`§c[CPS Anticheat] §e${name} §7approaching click limit: §f${cps} CPS`);
                     p.playSound('random.screenshot', { volume: 0.5, pitch: 1.0 });

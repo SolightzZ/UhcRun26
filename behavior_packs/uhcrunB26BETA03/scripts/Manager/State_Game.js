@@ -14,11 +14,11 @@ export const MULTI_TIMEOUT_TICKS = 20 * 16;
 export let kdHistoryObj = null;
 export let teamKillObj = null;
 
-export function setKdHistoryObj(o) {
-    kdHistoryObj = o;
+export function setKdHistoryObj(obj) {
+    kdHistoryObj = obj;
 }
-export function setTeamKillObj(o) {
-    teamKillObj = o;
+export function setTeamKillObj(obj) {
+    teamKillObj = obj;
 }
 export function getKdHistoryObjective() {
     return kdHistoryObj;
@@ -30,14 +30,14 @@ export function getTeamKillObjective() {
 export let statsDirty = false;
 export let statsSaveTask = null;
 
-export function setStatsDirty(v) {
-    statsDirty = v;
+export function setStatsDirty(val) {
+    statsDirty = val;
 }
-export function setStatsSaveTask(t) {
-    statsSaveTask = t;
+export function setStatsSaveTask(task) {
+    statsSaveTask = task;
 }
 
 export let firstBloodDone = false;
-export function setFirstBloodDone(v) {
-    firstBloodDone = v;
+export function setFirstBloodDone(val) {
+    firstBloodDone = val;
 }

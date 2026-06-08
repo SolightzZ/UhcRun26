@@ -15,7 +15,8 @@ function buildEmptyDeathsText() {
 export function buildTeamText(teamList) {
     if (!teamList.length) return buildEmptyTeamText();
     let text = `§bTop ${MAX_TEAMS} Teams (Kills)\n\n`;
-    for (const [i, team] of teamList.entries()) {
+    for (let i = 0, len = teamList.length; i < len; i++) {
+        const team = teamList[i];
         const rankColor = getRankColor(i);
         const memberCount = team.members !== undefined ? team.members : 0;
         text += `${rankColor}#${i + 1} ${team.name} §f: §c${team.kills} Kills §7(${memberCount} Players)\n`;
@@ -30,7 +31,9 @@ export function getPlayerText(playerStatsMap) {
     }
 
     const playerList = [];
-    for (const [playerName, playerStats] of playerStatsMap) {
+    const pEntries = [...playerStatsMap.entries()];
+    for (let p = 0, pLen = pEntries.length; p < pLen; p++) {
+        const [playerName, playerStats] = pEntries[p];
         if (!playerStats.kills && !playerStats.deaths) continue;
         playerList.push({ name: playerName, st: playerStats });
     }
@@ -49,7 +52,8 @@ export function getPlayerText(playerStatsMap) {
     }
 
     let text = `§eTop ${MAX_PLAYERS} Players (Kills)\n\n`;
-    for (const [i, playerItem] of playerList.entries()) {
+    for (let i = 0, len = playerList.length; i < len; i++) {
+        const playerItem = playerList[i];
         const rankColor = getRankColor(i);
         const teamSuffix = playerItem.st.teamLabel ? ` §8[${playerItem.st.teamLabel}§8]` : '';
         text += `${rankColor}#${i + 1} §a${playerItem.name}${teamSuffix} §f- §c${playerItem.st.kills} Kills §8(§4${playerItem.st.deaths} Deaths§8)\n`;
@@ -67,7 +71,9 @@ export function getDeathsText(playerStatsMap) {
     }
 
     const deathsList = [];
-    for (const [playerName, playerStats] of playerStatsMap) {
+    const dEntries = [...playerStatsMap.entries()];
+    for (let d = 0, dLen = dEntries.length; d < dLen; d++) {
+        const [playerName, playerStats] = dEntries[d];
         if (!playerStats.deaths) continue;
         deathsList.push({ name: playerName, st: playerStats });
     }
@@ -86,7 +92,8 @@ export function getDeathsText(playerStatsMap) {
     }
 
     let text = `§cTop ${MAX_PLAYERS} Deaths\n\n`;
-    for (const [i, playerItem] of deathsList.entries()) {
+    for (let i = 0, len = deathsList.length; i < len; i++) {
+        const playerItem = deathsList[i];
         const rankColor = getRankColor(i);
         const teamSuffix = playerItem.st.teamLabel ? ` §8[${playerItem.st.teamLabel}§8]` : '';
         text += `${rankColor}#${i + 1} §a${playerItem.name}${teamSuffix} §f- §4${playerItem.st.deaths} Deaths §8(§c${playerItem.st.kills} Kills§8)\n`;

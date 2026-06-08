@@ -30,14 +30,16 @@ export function showTeleportForm(player, isAdmin) {
 
     const teamCountLocal = new Map();
 
-    for (const target of others) {
+    for (let oi = 0, oLen = others.length; oi < oLen; oi++) {
+        const target = others[oi];
         const tid = playerTeamCache.get(target.id);
         if (tid) {
             teamCountLocal.set(tid, (teamCountLocal.get(tid) ?? 0) + 1);
         }
     }
 
-    for (const team of TEAMS) {
+    for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
+        const team = TEAMS[ti];
         const count = teamCountLocal.get(team.id) ?? 0;
         if (count > 0) {
             form.button(team.color + team.name + ' §8(' + count + ')', team.icon);
@@ -104,7 +106,8 @@ function teleportShowAllPlayers(player, mode) {
         return;
     }
 
-    for (const p of others) {
+    for (let oi = 0, oLen = others.length; oi < oLen; oi++) {
+        const p = others[oi];
         let label = p.name + ' §8| No Team';
         const teamId = playerTeamCache.get(p.id);
         if (teamId) {
@@ -146,7 +149,8 @@ function teleportShowTeamPlayers(player, teamId, mode) {
         return form.show(player).then(() => showTeleportForm(player, mode.isAdmin));
     }
 
-    for (const target of teamPlayers) {
+    for (let ti = 0, tLen = teamPlayers.length; ti < tLen; ti++) {
+        const target = teamPlayers[ti];
         form.button(`${team.color}${target.name}`, team.icon);
         targetIds.push(target.id);
     }

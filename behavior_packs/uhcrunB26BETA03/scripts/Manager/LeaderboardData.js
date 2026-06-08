@@ -9,7 +9,9 @@ export function getStats() {
     const playerStatsMap = new Map();
     if (!playerStats?.size) return playerStatsMap;
 
-    for (const [playerId, stats] of playerStats) {
+    const entries = [...playerStats.entries()];
+    for (let i = 0, len = entries.length; i < len; i++) {
+        const [playerId, stats] = entries[i];
         const killCount = stats?.kills ?? 0;
         const deathCount = stats?.deaths ?? 0;
         if (!killCount && !deathCount) continue;
@@ -33,7 +35,8 @@ function getRuntimeTeamList() {
     const teamList = [];
     if (!TEAMS?.length) return teamList;
 
-    for (const [i, teamInfo] of TEAMS.entries()) {
+    for (let i = 0, len = TEAMS.length; i < len; i++) {
+        const teamInfo = TEAMS[i];
         const stats = teamStats?.size ? teamStats.get(teamInfo.id) : null;
         const killCount = stats?.kills ?? 0;
         const memberCount = getPlayersByTeam(teamInfo.id).length;
@@ -59,7 +62,8 @@ export function getTeamText() {
     const teamList = getRuntimeTeamList();
 
     let teamHash = '';
-    for (const team of teamList) {
+    for (let i = 0, len = teamList.length; i < len; i++) {
+        const team = teamList[i];
         teamHash += `${team.name}${team.kills}${team.members}${team.order}`;
     }
 

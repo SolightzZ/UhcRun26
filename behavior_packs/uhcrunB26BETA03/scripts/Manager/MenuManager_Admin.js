@@ -27,7 +27,8 @@ function viewDynamicProperty(admin) {
     if (!admin?.isValid) return;
     const players = getCachedPlayers();
     let body = '';
-    for (const p of players) {
+    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+        const p = players[pi];
         if (!p?.isValid) continue;
         body += `§7${p.name} §8= §c${p.getDynamicProperty(CONFIG.key) ?? 'null'}\n`;
     }
@@ -46,19 +47,26 @@ function viewAllMaps(admin) {
             return;
         }
 
-        const iterable = typeof map.entries === 'function' ? map.entries() : typeof map[Symbol.iterator] === 'function' ? map : null;
-
-        if (!iterable) {
+        if (typeof map.entries !== 'function' && typeof map[Symbol.iterator] !== 'function') {
             body += ' §7<not iterable>\n\n';
             return;
         }
 
-        for (const [k, v] of iterable) {
+        // Iterate directly without Array.from() to avoid copying large maps
+        const iter = typeof map.entries === 'function' ? map.entries() : map;
+        let count = 0;
+        for (const entry of iter) {
+            const [k, v] = entry;
             try {
                 body += formatter(k, v);
             } catch (error) {
                 console.warn('View All Maps: ' + error);
                 body += ' §c<format error>\n';
+            }
+            count++;
+            if (count > 200) {
+                body += ` §7... and ${map.size - count} more entries\n`;
+                break;
             }
         }
 
@@ -84,7 +92,8 @@ function viewPlayerStatus(admin) {
     const players = getCachedPlayers();
     let body = '';
 
-    for (const p of players) {
+    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+        const p = players[pi];
         if (!p?.isValid) continue;
         let gm = 'Unknown';
         if (typeof p.getGameMode === 'function') {
@@ -100,7 +109,8 @@ function viewPlayerStatus(admin) {
 function viewUhcPlayerList(admin) {
     if (!admin?.isValid) return;
     let body = `Total Online UHC Players: §c${uhcPlayersCache.length}\n\n`;
-    for (const p of uhcPlayersCache) {
+    for (let pi = 0, pLen = uhcPlayersCache.length; pi < pLen; pi++) {
+        const p = uhcPlayersCache[pi];
         const team = TEAM_LOOKUP.get(playerTeamCache.get(p.id));
         body += team ? `§7${p.name} §8- ${team.color}${team.name}\n` : `§7${p.name} §8- §cNo Team\n`;
     }
@@ -110,14 +120,15 @@ function viewUhcPlayerList(admin) {
 function viewTeamStats(admin) {
     if (!admin?.isValid) return;
     let body = '';
-    for (const team of TEAMS) {
+    for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
+        const team = TEAMS[ti];
         const stats = teamStats.get(team.id) ?? { kills: 0, deaths: 0 };
         const alive = teamCounts.get(team.id) ?? 0;
         const players = getPlayersByTeam(team.id);
 
         body += `${team.color}${team.name} §8| Alive: §a${alive} §8| Kills: §c${stats.kills} §8| Deaths: §4${stats.deaths}\n`;
-        for (const player of players) {
-            body += `${team.color} - ${player.name}\n`;
+        for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+            body += `${team.color} - ${players[pi].name}\n`;
         }
         if (players.length) body += '\n';
     }
@@ -127,7 +138,9 @@ function viewTeamStats(admin) {
 function viewDeathLocations(admin) {
     if (!admin?.isValid) return;
     let body = '';
-    for (const [id, loc] of deathLocation) {
+    const dlEntries = Array.from(deathLocation.entries());
+    for (let di = 0, dLen = dlEntries.length; di < dLen; di++) {
+        const [id, loc] = dlEntries[di];
         const name = playerCache.get(id)?.name ?? id;
         body += `§c${name} §8died at §e${loc.x.toFixed(0)}, ${loc.y.toFixed(0)}, ${loc.z.toFixed(0)}\n`;
     }
@@ -148,7 +161,8 @@ function Managements(admin) {
         return form.show(admin).then(() => AdminMenu(admin));
     }
 
-    for (const p of players) {
+    for (let pi = 0; pi < pLen; pi++) {
+        const p = players[pi];
         const teamId = playerTeamCache.get(p.id) || p.getDynamicProperty(CONFIG.key);
         const team = TEAM_LOOKUP.get(teamId);
         const label = team ? `${p.name}\n§8[ ${team.color}${team.name} §8]` : `§f${p.name}\n§8[ §cNo Team §8]`;
@@ -179,7 +193,8 @@ function editPlayerMenu(admin, target) {
     form.body(`Select a team for ${target.name}.\n§7Current: ${currentTeam ? currentTeam.color + currentTeam.name : '§cUnassigned'}`);
     form.button('Remove from Team', 'textures/ui/permissions_visitor_hand');
 
-    for (const team of TEAMS) {
+    for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
+        const team = TEAMS[ti];
         const isCurrent = team.id === currentTeamId ? ' §a(Selected)' : '';
         form.button(`${team.color}${team.name}${isCurrent}`, team.icon);
     }
@@ -238,7 +253,8 @@ function playerLists(player) {
     const pLen = players.length;
     let count = 0;
     let consoleBody = '';
-    for (const p of players) {
+    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+        const p = players[pi];
         if (!p) continue;
         const teamId = getPlayerTeam(p);
         let label = p.name + ' | No Team';
@@ -290,7 +306,8 @@ function killList(player) {
     if (!participants) return;
     const pLen = participants.length;
 
-    for (const p of participants) {
+    for (let pi = 0, pLen = participants.length; pi < pLen; pi++) {
+        const p = participants[pi];
         if (!p) continue;
         const score = kdHistoryObj.getScore(p);
         if (!score) continue;
@@ -329,8 +346,8 @@ function killList(player) {
 
     let body = '§f=== TOTAL KILLS ===\n';
     const sortedTotals = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
-    for (const entry of sortedTotals) {
-        body += '§7' + entry[0] + ' §8= §c' + entry[1] + '\n';
+    for (let si = 0, sLen = sortedTotals.length; si < sLen; si++) {
+        body += '§7' + sortedTotals[si][0] + ' §8= §c' + sortedTotals[si][1] + '\n';
     }
     body += '\n§f=== HISTORY ===\n';
     body += history.trimEnd();

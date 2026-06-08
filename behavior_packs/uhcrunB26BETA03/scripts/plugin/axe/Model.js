@@ -1,5 +1,36 @@
 import { BlockPermutation } from '@minecraft/server';
 
+class LRUMap {
+    constructor(maxSize = Infinity) {
+        this._m = new Map();
+        this._max = maxSize;
+    }
+
+    get(key) {
+        if (!this._m.has(key)) return undefined;
+        const val = this._m.get(key);
+        this._m.delete(key);
+        this._m.set(key, val);
+        return val;
+    }
+
+    set(key, val) {
+        if (this._m.has(key)) {
+            this._m.delete(key);
+        }
+        this._m.set(key, val);
+        if (this._m.size > this._max) {
+            const oldest = this._m.keys().next().value;
+            this._m.delete(oldest);
+        }
+    }
+
+    delete(key) { this._m.delete(key); }
+    has(key) { return this._m.has(key); }
+    get size() { return this._m.size; }
+    clear() { this._m.clear(); }
+}
+
 class Model {
     CONFIG = Object.freeze({
         MAX_LOGS: 16,
@@ -36,9 +67,9 @@ class Model {
     LEAF_SCAN_BATCH_SIZE = 50;
     ITEM_BATCH_THRESHOLD = 8;
 
-    lastFellTick = new Map();
-    playerJobCount = new Map();
-    lastEnqueueTick = new Map();
+    lastFellTick = new LRUMap(50);
+    playerJobCount = new LRUMap(50);
+    lastEnqueueTick = new LRUMap(50);
     jobQueue = [];
     activeJobs = 0;
     schedulerPending = false;

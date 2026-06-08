@@ -3,21 +3,11 @@ import model from './Model.js';
 
 class Service {
     isDoorLike = (typeId) => {
-        const cached = model.doorLikeCache[typeId];
+        const cached = model.doorLikeCache.get(typeId);
         if (cached !== undefined) return cached;
 
         const result = model.DOOR_REGEX.test(typeId);
-
-        if (model.doorCacheSize >= model.DOOR_CACHE_MAX) {
-            for (const key in model.doorLikeCache) {
-                delete model.doorLikeCache[key];
-                model.doorCacheSize--;
-                break;
-            }
-        }
-
-        model.doorLikeCache[typeId] = result;
-        model.doorCacheSize++;
+        model.doorLikeCache.set(typeId, result);
         return result;
     };
 

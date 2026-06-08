@@ -125,9 +125,9 @@ class BlockFillerTaskBuilder {
     }
 
     buildPatternRotationCache(segments) {
-        const rotation1 = segments.map((s) => this.rotatePatternSegment(s));
-        const rotation2 = rotation1.map((s) => this.rotatePatternSegment(s));
-        const rotation3 = rotation2.map((s) => this.rotatePatternSegment(s));
+        const rotation1 = segments.map((seg) => this.rotatePatternSegment(seg));
+        const rotation2 = rotation1.map((seg) => this.rotatePatternSegment(seg));
+        const rotation3 = rotation2.map((seg) => this.rotatePatternSegment(seg));
         return [segments, rotation1, rotation2, rotation3];
     }
 

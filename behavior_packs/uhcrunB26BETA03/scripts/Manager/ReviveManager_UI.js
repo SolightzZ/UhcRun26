@@ -17,8 +17,8 @@ export function openReviveUI(player, deadList) {
     form.title(REVIVE_MSG.uiTitle);
     form.body(REVIVE_MSG.uiBody);
 
-    for (const target of deadList) {
-        form.button(target.name, 'textures/ui/heart_new');
+    for (let di = 0, dLen = deadList.length; di < dLen; di++) {
+        form.button(deadList[di].name, 'textures/ui/heart_new');
     }
 
     form.button(REVIVE_MSG.uiBack, 'textures/ui/cancel');

@@ -18,7 +18,7 @@ import {
     stopReviveTickIfIdle,
 } from './State_Revive.js';
 import { aliveTeamDirtyHandler, deathLocation, playerStats, teamCounts, teamPlayerIndex } from './State_Team.js';
-import { teleportLocPool } from './State_Util.js';
+import { createLoc } from './State_Util.js';
 import { scheduleSaveStats } from './StatsManager.js';
 import { getPlayerTeam } from './TeamActions.js';
 import { REVIVE_MSG } from './UtilTeamManager.js';
@@ -69,11 +69,8 @@ export function finishRevive(targetId) {
 
     deathLocation.delete(targetId);
 
-    teleportLocPool.x = reviver.location.x;
-    teleportLocPool.y = reviver.location.y;
-    teleportLocPool.z = reviver.location.z;
     try {
-        target.teleport(teleportLocPool, { dimension: reviver.dimension });
+        target.teleport(createLoc(reviver.location.x, reviver.location.y, reviver.location.z), { dimension: reviver.dimension });
         target.setGameMode(GameMode.Survival);
         target.addTag('uhc');
         target.removeEffect('conduit_power');
@@ -119,7 +116,9 @@ export function updateRevives() {
         return;
     }
 
-    for (const [targetId, session] of reviveSessions) {
+    const rsEntries = Array.from(reviveSessions.entries());
+    for (let ri = 0, rLen = rsEntries.length; ri < rLen; ri++) {
+        const [targetId, session] = rsEntries[ri];
         const reviver = resolvePlayer(session.reviverId);
         const target = resolvePlayer(targetId);
 

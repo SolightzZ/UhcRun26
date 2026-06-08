@@ -1,18 +1,15 @@
 import { system, world } from '@minecraft/server';
 import { uhcPlayersCache } from './State_Cache.js';
-import { teleportLocPool } from './State_Util.js';
+import { createLoc } from './State_Util.js';
 import { MENU_MSG, SPAWN_CONFIG } from './UtilTeamManager.js';
 
 export function AdminTeleport(source, target) {
     if (!source?.isValid || !target?.isValid) return;
     const loc = target.location;
     if (!loc) return;
-    teleportLocPool.x = loc.x;
-    teleportLocPool.y = loc.y;
-    teleportLocPool.z = loc.z;
     try {
         const dim = target.dimension ?? world.getDimension('overworld');
-        source.teleport(teleportLocPool, { dimension: dim });
+        source.teleport(createLoc(loc.x, loc.y, loc.z), { dimension: dim });
     } catch (e) {
         console.warn('[Teleport] AdminTeleport failed:', e);
     }
@@ -25,11 +22,8 @@ export function playerTeleport(source, target) {
         return;
     }
     const loc = target.location;
-    teleportLocPool.x = loc.x;
-    teleportLocPool.y = loc.y;
-    teleportLocPool.z = loc.z;
     try {
-        source.teleport(teleportLocPool, { dimension: target.dimension });
+        source.teleport(createLoc(loc.x, loc.y, loc.z), { dimension: target.dimension });
         source.playSound('teleport.ender_pearl');
     } catch (e) {
         console.warn('[Teleport] playerTeleport failed:', e);
@@ -38,20 +32,16 @@ export function playerTeleport(source, target) {
 
 export function teleportToSpawn(player) {
     if (!player?.isValid) return;
+    const tx = SPAWN_CONFIG.x + Math.floor(Math.random() * 5) - 2;
+    const ty = SPAWN_CONFIG.y - 7;
+    const tz = SPAWN_CONFIG.z + Math.floor(Math.random() * 5) - 2;
     try {
         const dim = world.getDimension(SPAWN_CONFIG.dimension);
-        teleportLocPool.x = SPAWN_CONFIG.x + Math.floor(Math.random() * 5) - 2;
-        teleportLocPool.y = SPAWN_CONFIG.y - 7;
-        teleportLocPool.z = SPAWN_CONFIG.z + Math.floor(Math.random() * 5) - 2;
-        player.teleport(teleportLocPool, { dimension: dim });
+        player.teleport(createLoc(tx, ty, tz), { dimension: dim });
     } catch (e) {
         console.warn('[Teleport] teleportToSpawn failed:', e);
         return;
     }
-
-    const tx = teleportLocPool.x;
-    const ty = teleportLocPool.y;
-    const tz = teleportLocPool.z;
     system.runTimeout(() => {
         if (!player?.isValid) return;
         player.playSound('random.enderchestopen', { volume: 0.9, pitch: 0.95 });
@@ -68,7 +58,8 @@ export const getOtherUhcPlayers = (excludeId) => uhcPlayersCache.filter((p) => p
 export function teleportGetAllPlayers(player) {
     const players = world.getPlayers();
     const result = [];
-    for (const p of players) {
+    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+        const p = players[pi];
         if (!p?.isValid) continue;
         if (player && p.id === player.id) continue;
         result.push(p);

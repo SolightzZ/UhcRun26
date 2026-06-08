@@ -47,7 +47,9 @@ export function getRankColor(index) {
 
 export function generateStatsHash(statsMap) {
     let hashString = '';
-    for (const [name, stats] of statsMap) {
+    const entries = [...statsMap.entries()];
+    for (let i = 0, len = entries.length; i < len; i++) {
+        const [name, stats] = entries[i];
         hashString += `${name}${stats.kills}${stats.deaths}${stats.teamLabel || ''}`;
     }
     return hashString;

@@ -7,7 +7,7 @@ import { isGameRunning, setKdHistoryObj, setTeamKillObj } from './State_Game.js'
 import { itemVacuumQueue } from './State_Queue.js';
 import { REVIVE_ITEM_ID } from './State_Revive.js';
 import { aliveTeamDirtyHandler, deathLocation, playerStats, setAliveTeamDirtyHandler, TEAM_INDEX_MAP, TEAM_LOOKUP, teamCounts, teamPlayerIndex, teamStats } from './State_Team.js';
-import { teleportLocPool } from './State_Util.js';
+import { createLoc } from './State_Util.js';
 
 import {
     checkAllCaches,
@@ -74,7 +74,8 @@ export function isPlayerUhcId(id) {
 export function clearAllPlayerNametags() {
     let index = 0;
     const task = system.runInterval(() => {
-        const players = world.getPlayers();
+        // Use cached players instead of world.getPlayers()
+        const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
         const total = players.length;
         if (index >= total) {
             system.clearRun(task);
@@ -83,7 +84,8 @@ export function clearAllPlayerNametags() {
         }
         const batch = players.slice(index, index + 3);
         index += batch.length;
-        for (const p of batch) {
+        for (let bi = 0, bLen = batch.length; bi < bLen; bi++) {
+            const p = batch[bi];
             if (!p?.isValid) continue;
             if (p.nameTag === p.name) continue;
             p.nameTag = p.name;
@@ -97,7 +99,9 @@ export function showVictoryMessage(winnerTeamId, uhcTick = 0) {
 
     const teamStat = teamStats.get(winnerTeamId) ?? { kills: 0, deaths: 0 };
     let playerLine = '';
-    for (const [playerId, ps] of playerStats.entries()) {
+    const psEntries = Array.from(playerStats.entries());
+    for (let pi = 0, pLen = psEntries.length; pi < pLen; pi++) {
+        const [playerId, ps] = psEntries[pi];
         const teamId = ps.teamId ?? playerTeamCache.get(playerId);
         if (teamId !== winnerTeamId) continue;
         const onlinePlayer = playerCache.get(playerId);
@@ -155,10 +159,7 @@ export function HandlerOnSpawn(ev) {
         const loc = deathLocation.get(id);
         if (loc) {
             const dimension = player.dimension ?? world.getDimension('overworld');
-            teleportLocPool.x = loc.x + 0.5;
-            teleportLocPool.y = loc.y;
-            teleportLocPool.z = loc.z + 0.5;
-            player.teleport(teleportLocPool, { dimension });
+            player.teleport(createLoc(loc.x + 0.5, loc.y, loc.z + 0.5), { dimension });
         }
     }
 
@@ -242,7 +243,8 @@ export function HandlerRevive(ev) {
 
 system.run(() => {
     const players = world.getPlayers();
-    for (const p of players) {
+    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
+        const p = players[pi];
         if (!p?.isValid) continue;
         playerCache.set(p.id, p);
     }
@@ -270,7 +272,8 @@ system.run(() => {
     const parsedTeamStats = safeParseDynamicMap(dTeam, 'uhc_teamStats');
     if (parsedTeamStats) {
         const entries = Object.entries(parsedTeamStats);
-        for (const [k, v] of entries) {
+        for (let ei = 0, eLen = entries.length; ei < eLen; ei++) {
+            const [k, v] = entries[ei];
             if (!v) continue;
             if (!teamStats.has(k)) continue;
             const kills = Number.isFinite(Number(v.kills)) ? Number(v.kills) : 0;
@@ -283,7 +286,8 @@ system.run(() => {
     const parsedPlayerStats = safeParseDynamicMap(dPlayer, 'uhc_playerStats');
     if (parsedPlayerStats) {
         const entries = Object.entries(parsedPlayerStats);
-        for (const [k, v] of entries) {
+        for (let ei = 0, eLen = entries.length; ei < eLen; ei++) {
+            const [k, v] = entries[ei];
             if (!v) continue;
             if (typeof k !== 'string' || k.length === 0) continue;
             const kills = Number.isFinite(Number(v.kills)) ? Number(v.kills) : 0;
