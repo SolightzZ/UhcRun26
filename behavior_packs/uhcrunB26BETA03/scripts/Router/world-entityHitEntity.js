@@ -5,5 +5,5 @@ import anticheatCps from '../plugin/anticheat-cps/Controller.js';
 const afterEvents = [(ev) => anticheatCps.onEntityHitEntity(ev)];
 
 world.afterEvents.entityHitEntity.subscribe((event) => {
-    runEventHandlers('EntityHitEntity', afterEvents, event);
+   runEventHandlers('EntityHitEntity', afterEvents, event);
 });

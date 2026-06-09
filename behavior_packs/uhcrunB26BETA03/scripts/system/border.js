@@ -8,89 +8,99 @@ import umm from './UhcMatchManager.js';
 const GLOBAL_BORDER_LIMIT = CHECKPOINTS[0];
 const PLACE_BLOCK_LOCK_RADIUS = 16;
 
+//จัดการ events เกี่ยวกับ border: ยกเลิก interact/break/place block นอกเขต
 class BorderEvents {
-    isUhcPlayer(player) {
-        if (!ctx.isRunning) return false;
-        if (!player?.isValid) return false;
-        return isPlayerUhcId(player.id);
-    }
+   //เช็คว่าผู้เล่นเป็น UHC หรือไม่
+   isUhcPlayer(player) {
+      if (!ctx.isRunning) return false;
+      if (!player?.isValid) return false;
+      return isPlayerUhcId(player.id);
+   }
 
-    getTargetAxis(target, axis) {
-        if (!target) return undefined;
-        if (target[axis] !== undefined) return target[axis];
-        if (!target.location) return undefined;
-        return target.location[axis];
-    }
+   // ดึงพิกัด target จาก block หรือ entity
+   getTargetAxis(target, axis) {
+      if (!target) return undefined;
+      if (target[axis] !== undefined) return target[axis];
+      if (!target.location) return undefined;
+      return target.location[axis];
+   }
 
-    isOutsideGlobalLimit(target, player) {
-        const bx = this.getTargetAxis(target, 'x');
-        const bz = this.getTargetAxis(target, 'z');
-        if (bx === undefined) return false;
-        if (bz === undefined) return false;
+   // เช็คว่าอยู่นอก global limit หรือไม่
+   isOutsideGlobalLimit(target, player) {
+      const bx = this.getTargetAxis(target, 'x');
+      const bz = this.getTargetAxis(target, 'z');
+      if (bx === undefined) return false;
+      if (bz === undefined) return false;
 
-        if (Math.abs(bx) > GLOBAL_BORDER_LIMIT) return true;
-        if (Math.abs(bz) > GLOBAL_BORDER_LIMIT) return true;
-        return false;
-    }
+      if (Math.abs(bx) > GLOBAL_BORDER_LIMIT) return true;
+      if (Math.abs(bz) > GLOBAL_BORDER_LIMIT) return true;
+      return false;
+   }
 
-    shouldCancelBorderAction(player, target) {
-        if (!ctx.isRunning) return false;
-        if (!ctx.wbBounds) return false;
-        if (!target) return false;
+   //เช็คว่าควรยกเลิก action เพราะอยู่นอก border หรือไม่
+   shouldCancelBorderAction(player, target) {
+      if (!ctx.isRunning) return false;
+      if (!ctx.wbBounds) return false;
+      if (!target) return false;
 
-        const bx = this.getTargetAxis(target, 'x');
-        const bz = this.getTargetAxis(target, 'z');
-        if (bx === undefined) return false;
-        if (bz === undefined) return false;
-        if (!bm.borderManagerIsOutside(bx, bz)) return false;
+      const bx = this.getTargetAxis(target, 'x');
+      const bz = this.getTargetAxis(target, 'z');
+      if (bx === undefined) return false;
+      if (bz === undefined) return false;
+      if (!bm.borderManagerIsOutside(bx, bz)) return false;
 
-        return this.isUhcPlayer(player);
-    }
+      return this.isUhcPlayer(player);
+   }
 
-    handleBorderAction(ev, target) {
-        if (this.isOutsideGlobalLimit(target, ev.player)) {
-            ev.cancel = true;
-            return true;
-        }
+   //จัดการ action ของ border (interact / break)
+   handleBorderAction(ev, target) {
+      if (this.isOutsideGlobalLimit(target, ev.player)) {
+         ev.cancel = true;
+         return true;
+      }
 
-        if (this.shouldCancelBorderAction(ev.player, target)) {
-            ev.cancel = true;
-            return true;
-        }
+      if (this.shouldCancelBorderAction(ev.player, target)) {
+         ev.cancel = true;
+         return true;
+      }
 
-        return false;
-    }
+      return false;
+   }
 
-    shouldLockPlaceBlock(player) {
-        if (!ctx.isRunning) return false;
-        if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
-        // Don't lock during INITIAL_WAIT or PATTERN3 — allow building until Pattern 1 clears outer ring
-        if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1) return false;
-        return this.isUhcPlayer(player);
-    }
+   //เช็คว่าควรล็อคการวางบล็อกหรือไม่ (border เล็ก + ผ่าน initial wait)
+   shouldLockPlaceBlock(player) {
+      if (!ctx.isRunning) return false;
+      if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
+      // ไม่ล็อคระหว่าง INITIAL_WAIT หรือ PATTERN3 ให้วางได้จนกว่า Pattern 1 เคลียร์วงนอก
+      if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1)
+         return false;
+      return this.isUhcPlayer(player);
+   }
 
-    handlePlayerPlaceBlock(ev) {
-        if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
-            ev.cancel = true;
-            return;
-        }
-        if (!this.shouldLockPlaceBlock(ev.player)) return;
-        ev.cancel = true;
-    }
+   //ยกเลิกการวางบล็อกถ้าอยู่นอก border
+   handlePlayerPlaceBlock(ev) {
+      if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
+         ev.cancel = true;
+         return;
+      }
+      if (!this.shouldLockPlaceBlock(ev.player)) return;
+      ev.cancel = true;
+   }
 
-    handlePlayerInteractWithEntity(ev) {
-        this.handleBorderAction(ev, ev.target);
-    }
+   handlePlayerInteractWithEntity(ev) {
+      this.handleBorderAction(ev, ev.target);
+   }
 
-    handlePlayerInteractWithBlock(ev) {
-        this.handleBorderAction(ev, ev.block);
-    }
+   handlePlayerInteractWithBlock(ev) {
+      this.handleBorderAction(ev, ev.block);
+   }
 
-    handlePlayerBreakBlock(ev) {
-        if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
-            ev.cancel = true;
-        }
-    }
+   //ยกเลิกการแตกบล็อกถ้าอยู่นอก global limit
+   handlePlayerBreakBlock(ev) {
+      if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
+         ev.cancel = true;
+      }
+   }
 }
 
 export default new BorderEvents();

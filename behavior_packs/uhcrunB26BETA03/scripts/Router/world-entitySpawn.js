@@ -5,5 +5,5 @@ import blockInteractGuard from '../plugin/block-interact-guard/Controller.js';
 const afterEvents = [(ev) => blockInteractGuard.onEntitySpawn(ev)];
 
 world.afterEvents.entitySpawn.subscribe((event) => {
-    runEventHandlers('EntitySpawn', afterEvents, event);
+   runEventHandlers('EntitySpawn', afterEvents, event);
 });

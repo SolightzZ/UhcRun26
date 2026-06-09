@@ -2,34 +2,37 @@ import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-    onPlayerInteractWithBlock = (event) => {
-        const { block, player } = event;
-        if (!block?.isValid || !player) return;
+   onPlayerInteractWithBlock = (event) => {
+      const { block, player } = event;
+      if (!block?.isValid || !player) return;
 
-        const { typeId } = block;
+      const { typeId } = block;
 
-        if (typeId === 'minecraft:ender_chest') return service.handleEnderChest(event, player);
-        if (model.BLOCK_DENYLIST.has(typeId)) return (event.cancel = true);
+      if (typeId === 'minecraft:ender_chest') return service.handleEnderChest(event, player);
+      if (model.BLOCK_DENYLIST.has(typeId)) return (event.cancel = true);
 
-        if (!player.hasTag('uhc') && (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))) {
-            event.cancel = true;
-            player.onScreenDisplay.setActionBar('§cSpectators cannot interact with this block!');
-        }
-    };
+      if (
+         !player.hasTag('uhc') &&
+         (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))
+      ) {
+         event.cancel = true;
+         player.onScreenDisplay.setActionBar('§cSpectators cannot interact with this block!');
+      }
+   };
 
-    onEntitySpawn = ({ entity }) => {
-        if (!entity?.isValid || entity.typeId !== 'minecraft:item') return;
+   onEntitySpawn = ({ entity }) => {
+      if (!entity?.isValid || entity.typeId !== 'minecraft:item') return;
 
-        try {
-            const stack = entity.getComponent('minecraft:item')?.itemStack;
-            if (stack?.typeId !== 'minecraft:hopper_minecart') return;
+      try {
+         const stack = entity.getComponent('minecraft:item')?.itemStack;
+         if (stack?.typeId !== 'minecraft:hopper_minecart') return;
 
-            entity.dimension.spawnParticle('minecraft:explode_particle', entity.location);
-            entity.remove();
-        } catch (e) {
-            console.warn('[BlockGuard] Failed to handle entity spawn:', e);
-        }
-    };
+         entity.dimension.spawnParticle('minecraft:explode_particle', entity.location);
+         entity.remove();
+   } catch (error) {
+      console.error('[BlockGuard] Failed to handle entity spawn:', error);
+   }
+   };
 }
 
 export default new Controller();

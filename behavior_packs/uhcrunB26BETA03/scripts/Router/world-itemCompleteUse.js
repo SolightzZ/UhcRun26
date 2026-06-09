@@ -5,5 +5,5 @@ import itemConsumeEffects from '../plugin/item-consume-effects/Controller.js';
 const afterEvents = [(ev) => itemConsumeEffects.onItemCompleteUse(ev)];
 
 world.afterEvents.itemCompleteUse.subscribe((event) => {
-    runEventHandlers('ItemCompleteUse', afterEvents, event);
+   runEventHandlers('ItemCompleteUse', afterEvents, event);
 });

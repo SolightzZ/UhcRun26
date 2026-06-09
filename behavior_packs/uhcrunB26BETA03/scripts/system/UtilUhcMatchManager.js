@@ -1,126 +1,146 @@
-import { EquipmentSlot, GameMode, ItemStack, world } from '@minecraft/server';
+import { EquipmentSlot, ItemStack, world } from '@minecraft/server';
+import {
+   COMPASS_ITEM,
+   getPlayerInventoryContainer,
+   setAdventure,
+   setSpectator,
+} from '../plugin/Util.js';
 
 import { getPlayerTeam } from '../Manager/TeamActions.js';
 
-const UHC_EFFECTS = ['regeneration', 'blindness', 'invisibility', 'resistance', 'conduit_power', 'slow_falling'];
-
-const effectOptionsHidden = { amplifier: 255, showParticles: false };
-
-const UHC_PLAYER_EFFECTS = [
-    ['regeneration', 520],
-    ['blindness', 520],
-    ['invisibility', 1200],
-    ['resistance', 1200],
-    ['night_vision', 99999],
+//effects ที่ต้องลบออกจากผู้เล่นเมื่อจบเกม
+const UHC_EFFECTS = [
+   'regeneration',
+   'blindness',
+   'invisibility',
+   'resistance',
+   'conduit_power',
+   'slow_falling',
 ];
 
+const EFFECT_HIDDEN = { amplifier: 255, showParticles: false };
+
+const START_EFFECTS = [
+   ['regeneration', 26],
+   ['blindness', 26],
+   ['invisibility', 60],
+   ['resistance', 60],
+   ['night_vision', 99999],
+];
+
+//อรรถประโยชน์สำหรับ UhcMatchManager: จัดการ items, effects, สถานะผู้เล่น
 class UtilUhcMatchManager {
-    playerSetupAddItems(player) {
-        if (!player?.isValid) return;
-        const inv = player.getComponent('minecraft:inventory')?.container;
-        if (!inv) return;
-        inv.addItem(new ItemStack('minecraft:stone_axe', 1));
-        inv.addItem(new ItemStack('minecraft:stone_pickaxe', 1));
-        inv.addItem(new ItemStack('minecraft:cooked_beef', 3));
-        inv.addItem(new ItemStack('minecraft:oak_boat', 1));
-    }
+   //ให้ items เริ่มต้น (ข้าวของ, อาหาร, เรือ)
+   playerSetupAddItems(player) {
+      if (!player?.isValid) return;
+      const inv = getPlayerInventoryContainer(player);
+      if (!inv) return;
+      inv.addItem(new ItemStack('minecraft:stone_axe', 1));
+      inv.addItem(new ItemStack('minecraft:stone_pickaxe', 1));
+      inv.addItem(new ItemStack('minecraft:cooked_beef', 3));
+      inv.addItem(new ItemStack('minecraft:oak_boat', 1));
+   }
 
-    playerSetupClearEffects(player) {
-        if (!player?.isValid) return;
-        for (let i = 0; i < UHC_EFFECTS.length; i++) {
-            try {
-                player.removeEffect(UHC_EFFECTS[i]);
-            } catch (e) {
-                console.warn('[UtilUHC] Failed to remove effect', UHC_EFFECTS[i], ':', e);
+   // ลบ effects ทั้งหมดออกจากผู้เล่น
+   playerSetupClearEffects(player) {
+      if (!player?.isValid) return;
+      for (let i = 0; i < UHC_EFFECTS.length; i++) {
+         try {
+            player.removeEffect(UHC_EFFECTS[i]);
+         } catch (error) {
+            console.error('[UtilUHC] Failed to remove effect', UHC_EFFECTS[i], ':', error);
+         }
+      }
+   }
+
+   // คืนค่าผู้เล่นเมื่อจบเกม
+   //คืนค่าผู้เล่นเมื่อจบเกม ลบ uhc tag, เพิ่ม regen 26 วิ
+   playerSetupApplyEndState(player) {
+      if (!player?.isValid) return;
+      try {
+         if (getPlayerTeam(player)) {
+            player.removeTag('uhc');
+            player.addEffect('regeneration', 26 * 20, EFFECT_HIDDEN);
+            return;
+         }
+         setAdventure(player);
+         player.removeEffect('conduit_power');
+      } catch (error) {
+         console.error('[UtilUHC] Failed to apply end state for', player.name, ':', error);
+      }
+   }
+
+   //ตั้งค่าผู้เล่นเมื่อเริ่มเกม: uhc tag, effects, spectator ถ้าไม่มีทีม
+   playerSetupApplyStartState(player) {
+      if (!player?.isValid) return;
+
+      try {
+         if (getPlayerTeam(player)) {
+            if (!player.hasTag('uhc')) {
+               player.addTag('uhc');
             }
-        }
-    }
-
-    playerSetupApplyEndState(player) {
-        if (!player?.isValid) return;
-        try {
-            if (getPlayerTeam(player)) {
-                player.removeTag('uhc');
-                player.addEffect('regeneration', 520, effectOptionsHidden);
-                return;
+            for (const [effect, seconds] of START_EFFECTS) {
+               player.addEffect(effect, seconds * 20, EFFECT_HIDDEN);
             }
-            player.setGameMode(GameMode.Adventure);
-            player.removeEffect('conduit_power');
-        } catch (e) {
-            console.warn('[UtilUHC] Failed to apply end state for', player.name, ':', e);
-        }
-    }
+            player.addEffect('conduit_power', 250 * 20, { amplifier: 0, showParticles: false });
+            return;
+         }
+         setSpectator(player);
+         player.addEffect('conduit_power', 9999, { amplifier: 0, showParticles: false });
+      } catch (error) {
+         console.error('[UtilUHC] Failed to apply start state for', player.name, ':', error);
+      }
+   }
 
-    playerSetupApplyStartState(player) {
-        if (!player?.isValid) return;
+   // ล้างของ inventory คงไว้เฉพาะ compass
+   playerSetupClearItemsKeepCompass(targetPlayer) {
+      const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : world.getPlayers();
+      const total = players.length;
+      if (total === 0) return;
 
-        try {
-            if (getPlayerTeam(player)) {
-                if (!player.hasTag('uhc')) {
-                    player.addTag('uhc');
-                }
-                for (let i = 0; i < UHC_PLAYER_EFFECTS.length; i++) {
-                    const [effect, duration] = UHC_PLAYER_EFFECTS[i];
-                    player.addEffect(effect, duration, effectOptionsHidden);
-                }
-                player.addEffect('conduit_power', 5000, { amplifier: 0, showParticles: false });
-                return;
-            }
-            player.setGameMode(GameMode.Spectator);
-            player.addEffect('conduit_power', 9999, { amplifier: 0, showParticles: false });
-        } catch (e) {
-            console.warn('[UtilUHC] Failed to apply start state for', player.name, ':', e);
-        }
-    }
+      for (let i = 0; i < total; i++) {
+         const p = players[i];
+         if (!p?.isValid) continue;
 
-    playerSetupClearItemsKeepCompass(targetPlayer) {
-        const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : world.getPlayers();
-        const total = players.length;
-        if (total === 0) return;
+         const inv = getPlayerInventoryContainer(p);
+         if (!inv) continue;
 
-        for (let i = 0; i < total; i++) {
-            const p = players[i];
-            if (!p?.isValid) continue;
+         let foundCompass = false;
 
-            const inv = p.getComponent('minecraft:inventory')?.container;
-            if (!inv) continue;
+         for (let slot = 0; slot < inv.size; slot++) {
+            const item = inv.getItem(slot);
+            if (!item) continue;
 
-            let foundCompass = false;
+            if (item.typeId === COMPASS_ITEM) {
+               if (!foundCompass) {
+                  foundCompass = true;
 
-            for (let slot = 0; slot < inv.size; slot++) {
-                const item = inv.getItem(slot);
-                if (!item) continue;
+                  if (item.amount !== 1) {
+                     item.amount = 1;
+                     inv.setItem(slot, item);
+                  }
 
-                if (item.typeId === 'minecraft:compass') {
-                    if (!foundCompass) {
-                        foundCompass = true;
-
-                        if (item.amount !== 1) {
-                            item.amount = 1;
-                            inv.setItem(slot, item);
-                        }
-
-                        continue;
-                    }
-                }
-
-                inv.setItem(slot, undefined);
-            }
-
-            if (!foundCompass) {
-                inv.setItem(0, new ItemStack('minecraft:compass', 1));
+                  continue;
+               }
             }
 
-            const equip = p.getComponent('minecraft:equippable');
-            if (!equip) continue;
+            inv.setItem(slot, undefined);
+         }
 
-            equip.setEquipment(EquipmentSlot.Offhand, undefined);
-            equip.setEquipment(EquipmentSlot.Head, undefined);
-            equip.setEquipment(EquipmentSlot.Chest, undefined);
-            equip.setEquipment(EquipmentSlot.Legs, undefined);
-            equip.setEquipment(EquipmentSlot.Feet, undefined);
-        }
-    }
+         if (!foundCompass) {
+            inv.setItem(0, new ItemStack(COMPASS_ITEM, 1));
+         }
+
+         const equip = p.getComponent('minecraft:equippable');
+         if (!equip) continue;
+
+         equip.setEquipment(EquipmentSlot.Offhand, undefined);
+         equip.setEquipment(EquipmentSlot.Head, undefined);
+         equip.setEquipment(EquipmentSlot.Chest, undefined);
+         equip.setEquipment(EquipmentSlot.Legs, undefined);
+         equip.setEquipment(EquipmentSlot.Feet, undefined);
+      }
+   }
 }
 
 export default new UtilUhcMatchManager();

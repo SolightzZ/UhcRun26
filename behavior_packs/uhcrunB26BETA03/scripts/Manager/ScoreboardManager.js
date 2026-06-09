@@ -1,102 +1,35 @@
-import { DisplaySlotId, system, world } from "@minecraft/server";
-import { isGameRunning } from "./State_Game.js";
-import {
-  cachedBoard,
-  dirtySidebarTeams,
-  setCachedBoard,
-  setSidebarFlushTask,
-  sidebarFlushTask,
-} from "./State_Sidebar.js";
-import { TEAM_LOOKUP, teamCounts } from "./State_Team.js";
-import { CONFIG, TEAMS } from "./UtilTeamManager.js";
+//นำเข้า API จาก minecraft server
+import { DisplaySlotId, world } from '@minecraft/server';
 
-function getBoard() {
-  if (cachedBoard) {
-    const obj = world.scoreboard.getObjective(CONFIG.objectiveName);
-    if (obj) return obj;
-    setCachedBoard(null);
-  }
-
-  let board = world.scoreboard.getObjective(CONFIG.objectiveName);
-  if (!board) {
-    board = world.scoreboard.addObjective(
-      CONFIG.objectiveName,
-      CONFIG.displayName,
-    );
-  }
-
-  setCachedBoard(board);
-  return board;
+//ดึงหรือสร้าง scoreboard objective ถ้ายังไม่มี
+export function ensureObjective(id, displayName) {
+   try {
+      let obj = world.scoreboard.getObjective(id);
+      if (!obj) obj = world.scoreboard.addObjective(id, displayName);
+      return obj;
+   } catch (error) {
+      console.error('[Scoreboard] Failed to ensure objective ' + id + ':', error);
+      return null;
+   }
 }
 
-const SCOREBOARD_CACHE = new Map();
-
-function flushSidebarUpdates() {
-  if (isGameRunning) return;
-
-  const board = getBoard();
-  const dirtyArr = [...dirtySidebarTeams];
-  for (let d = 0, dLen = dirtyArr.length; d < dLen; d++) {
-    const teamId = dirtyArr[d];
-    const team = TEAM_LOOKUP.get(teamId);
-    if (!team) continue;
-
-    const entry = `${team.color}${team.name}`;
-    const count = teamCounts.get(teamId) ?? 0;
-    const cached = SCOREBOARD_CACHE.get(teamId);
-
-    // ข้ามไปหากคะแนนไม่เปลี่ยนแปลง
-    if (cached === count) continue;
-    SCOREBOARD_CACHE.set(teamId, count);
-
-    if (count <= 0) {
-      try {
-        board.removeParticipant(entry);
-      } catch (error) {
-        console.error("[Board Remove Participant]: " + error);
-      }
-    } else {
-      board.setScore(entry, count);
-    }
-  }
-
-  dirtySidebarTeams.clear();
-}
-
-function updateSidebar(teamId) {
-  if (isGameRunning || !TEAM_LOOKUP.has(teamId)) return;
-
-  dirtySidebarTeams.add(teamId);
-  if (sidebarFlushTask !== null) return;
-
-  setSidebarFlushTask(
-    system.runTimeout(() => {
-      setSidebarFlushTask(null);
-      flushSidebarUpdates();
-    }, 1),
-  );
-}
-
-function bindSidebarIfNeeded(board) {
-  const current = world.scoreboard.getObjectiveAtDisplaySlot(
-    DisplaySlotId.Sidebar,
-  );
-  if (current?.objective?.id === board.id) return;
-  world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, {
-    objective: board,
-  });
-}
-
+//ตั้งค่า scoreboard แสดงผลในช่องต่างๆ ของ UI
 export function refreshScoreboardUI() {
-  if (isGameRunning) return;
-  const board = getBoard();
-  bindSidebarIfNeeded(board);
+   try {
+      const teamKills = ensureObjective('uhc_teamkills', 'Team Kills');
+      const deaths = ensureObjective('uhc_deaths', 'Player Deaths');
+      const kills = ensureObjective('uhc_kills', 'Player Kills');
 
-  SCOREBOARD_CACHE.clear();
-  for (let i = 0, len = TEAMS.length; i < len; i++) {
-    dirtySidebarTeams.add(TEAMS[i].id);
-  }
-  flushSidebarUpdates();
+      world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: teamKills });
+      world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.BelowName, { objective: deaths });
+      world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.List, { objective: kills });
+   } catch (error) {
+      console.error('[Scoreboard] Failed to refresh scoreboard UI:', error);
+   }
 }
 
-export { flushSidebarUpdates, getBoard, updateSidebar };
+//ฟังก์ชันว่าง เตรียมไว้สำหรับอัปเดต sidebar
+export function updateSidebar(_teamId) {}
+
+//ฟังก์ชันว่าง เตรียมไว้สำหรับ flush ค่า sidebar
+export function flushSidebarUpdates() {}

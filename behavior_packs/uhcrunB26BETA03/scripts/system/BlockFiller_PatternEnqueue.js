@@ -1,156 +1,156 @@
-import { system } from "@minecraft/server";
-import fillQueue from "./BlockFiller_FillQueue.js";
-import taskBuilder from "./BlockFiller_TaskBuilder.js";
-import util from "./BlockFiller_Util.js";
+import { system } from '@minecraft/server';
+import fillQueue from './BlockFiller_FillQueue.js';
+import taskBuilder from './BlockFiller_TaskBuilder.js';
+import util from './BlockFiller_Util.js';
 
+//จัดการ pattern task: เข้าแถว segment, วน layered tasks ทีละชั้น
 class BlockFillerPatternEnqueue {
-  ACTIVE_LAYERED_TASKS = [];
+   ACTIVE_LAYERED_TASKS = [];
 
-  enqueuePatternSegment(
-    dim,
-    segment,
-    startY,
-    endY,
-    mode,
-    yDirection = util.UPWARD_Y,
-    fillOptions = {},
-  ) {
-    const segments = taskBuilder.createFillTask(
+   // เข้าแถว segment เดียวเข้า fill queue
+   enqueuePatternSegment(
       dim,
-      segment.x1,
+      segment,
       startY,
-      segment.z1,
-      segment.x2,
       endY,
-      segment.z2,
       mode,
-      yDirection,
-      fillOptions,
-    );
-    if (!segments || segments.length === 0) return;
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      if (!seg || typeof seg.task !== "function") continue;
-      fillQueue.fillAddTask(seg.task, seg.blockCount);
-    }
-  }
-
-  enqueuePatternSegments(dim, y, patternTask) {
-    const endY = patternTask.fillBottomY ?? y;
-    for (let i = 0; i < patternTask.segments.length; i++) {
-      this.enqueuePatternSegment(
-        dim,
-        patternTask.segments[i],
-        y,
-        endY,
-        patternTask.mode,
-        patternTask.yDirection,
-        patternTask.fillOptions,
+      yDirection = util.UPWARD_Y,
+      fillOptions = {},
+   ) {
+      const segments = taskBuilder.createFillTask(
+         dim,
+         segment.x1,
+         startY,
+         segment.z1,
+         segment.x2,
+         endY,
+         segment.z2,
+         mode,
+         yDirection,
+         fillOptions,
       );
-    }
-  }
 
-  enqueueRotatedPatternSegments(dim, y, patternTask, rotationIndex) {
-    const rotation = patternTask.rotationCache?.[rotationIndex];
-    if (!rotation) return;
-    for (let i = 0; i < rotation.length; i++) {
-      this.enqueuePatternSegment(
-        dim,
-        rotation[i],
-        y,
-        y,
-        patternTask.mode,
-        patternTask.yDirection,
-        patternTask.fillOptions,
-      );
-    }
-  }
+      if (!segments || segments.length === 0) return;
 
-  processLayeredTasks() {
-    const len = this.ACTIVE_LAYERED_TASKS.length;
-    if (len === 0) return;
+      for (let i = 0; i < segments.length; i++) {
+         const seg = segments[i];
+         if (!seg || typeof seg.task !== 'function') continue;
+         fillQueue.fillAddTask(seg.task, seg.blockCount);
+      }
+   }
 
-    // จำกัดจำนวนงานที่ใช้งานอยู่ต่อรอบการประมวลผล เพื่อกระจายภาระไปยังหลายรอบการประมวลผล
-    // ปรับขนาดตามจำนวนงานที่ใช้งานอยู่ เพื่อไม่ให้เกิดคอขวดที่รูปแบบ 1-2 รูปแบบ
-    const MAX_LAYERED_PER_TICK = Math.min(4, Math.max(1, Math.ceil(len / 4)));
-    let processed = 0;
+   // เข้าแถวทุก segment ของ patternTask
+   enqueuePatternSegments(dim, y, patternTask) {
+      const endY = patternTask.fillBottomY ?? y;
+      for (let i = 0; i < patternTask.segments.length; i++) {
+         this.enqueuePatternSegment(
+            dim,
+            patternTask.segments[i],
+            y,
+            endY,
+            patternTask.mode,
+            patternTask.yDirection,
+            patternTask.fillOptions,
+         );
+      }
+   }
 
-    for (let i = len - 1; i >= 0 && processed < MAX_LAYERED_PER_TICK; i--) {
-      const lt = this.ACTIVE_LAYERED_TASKS[i];
-      if (lt.stopped || !lt.player?.isValid) {
-        const lastIdx = this.ACTIVE_LAYERED_TASKS.length - 1;
-        if (i !== lastIdx)
-          this.ACTIVE_LAYERED_TASKS[i] = this.ACTIVE_LAYERED_TASKS[lastIdx];
-        this.ACTIVE_LAYERED_TASKS.pop();
-        continue;
+   enqueueRotatedPatternSegments(dim, y, patternTask, rotationIndex) {
+      const rotation = patternTask.rotationCache?.[rotationIndex];
+      if (!rotation) return;
+      for (let i = 0; i < rotation.length; i++) {
+         this.enqueuePatternSegment(
+            dim,
+            rotation[i],
+            y,
+            y,
+            patternTask.mode,
+            patternTask.yDirection,
+            patternTask.fillOptions,
+         );
+      }
+   }
+
+   // วน layered tasks เพื่อเข้าแถวทีละชั้น
+   processLayeredTasks() {
+      const len = this.ACTIVE_LAYERED_TASKS.length;
+      if (len === 0) return;
+
+      // จำกัดงานต่อ tick เพื่อกระจายภาระ ไม่ให้คอขวด
+      const MAX_LAYERED_PER_TICK = Math.min(4, Math.max(1, Math.ceil(len / 4)));
+      let processed = 0;
+
+      for (let i = len - 1; i >= 0 && processed < MAX_LAYERED_PER_TICK; i--) {
+         const lt = this.ACTIVE_LAYERED_TASKS[i];
+         if (lt.stopped || !lt.player?.isValid) {
+            const lastIdx = this.ACTIVE_LAYERED_TASKS.length - 1;
+            if (i !== lastIdx) this.ACTIVE_LAYERED_TASKS[i] = this.ACTIVE_LAYERED_TASKS[lastIdx];
+            this.ACTIVE_LAYERED_TASKS.pop();
+            continue;
+         }
+
+         if (system.currentTick % lt.delay !== 0) continue;
+
+         const y = lt.baseY - lt.layer;
+         if (y < util.WORLD_MIN_Y) {
+            lt.stopped = true;
+            continue;
+         }
+
+         if (lt.patternTask.rotationCache) {
+            this.enqueueRotatedPatternSegments(lt.dim, y, lt.patternTask, lt.rotationIndex);
+            lt.rotationIndex = (lt.rotationIndex + 1) & 3;
+         } else {
+            this.enqueuePatternSegments(lt.dim, y, lt.patternTask);
+         }
+         lt.layer++;
+         processed++;
+      }
+   }
+
+   // เพิ่ม layered task สำหรับผู้เล่น (ไล่ชั้นจากบนลงล่าง)
+   registerLayeredTask(player, patternTask) {
+      if (!player?.isValid) return;
+      for (let i = 0; i < this.ACTIVE_LAYERED_TASKS.length; i++) {
+         const t = this.ACTIVE_LAYERED_TASKS[i];
+         if (t.player === player && t.patternTask.name === patternTask.name) {
+            return;
+         }
       }
 
-      if (system.currentTick % lt.delay !== 0) continue;
+      const dim = player.dimension;
+      const baseY = patternTask.startTopY ?? ~~player.location.y - 1;
 
-      const y = lt.baseY - lt.layer;
-      if (y < util.WORLD_MIN_Y) {
-        lt.stopped = true;
-        continue;
+      this.ACTIVE_LAYERED_TASKS.push({
+         player,
+         dim,
+         patternTask,
+         baseY,
+         layer: 0,
+         rotationIndex: 0,
+         delay: patternTask.delay ?? 20,
+         stopped: false,
+      });
+
+      fillQueue.startFillLoopIfNeeded();
+   }
+
+   // ลบ task ที่หยุดแล้วหรือผู้เล่นออก
+   cleanupDeadTasks() {
+      if (system.currentTick % 100 !== 0) return;
+      for (let i = this.ACTIVE_LAYERED_TASKS.length - 1; i >= 0; i--) {
+         const lt = this.ACTIVE_LAYERED_TASKS[i];
+         if (lt.stopped || !lt.player?.isValid) {
+            const lastIdx = this.ACTIVE_LAYERED_TASKS.length - 1;
+            if (i !== lastIdx) this.ACTIVE_LAYERED_TASKS[i] = this.ACTIVE_LAYERED_TASKS[lastIdx];
+            this.ACTIVE_LAYERED_TASKS.pop();
+         }
       }
+   }
 
-      if (lt.patternTask.rotationCache) {
-        this.enqueueRotatedPatternSegments(
-          lt.dim,
-          y,
-          lt.patternTask,
-          lt.rotationIndex,
-        );
-        lt.rotationIndex = (lt.rotationIndex + 1) & 3;
-      } else {
-        this.enqueuePatternSegments(lt.dim, y, lt.patternTask);
-      }
-      lt.layer++;
-      processed++;
-    }
-  }
-
-  registerLayeredTask(player, patternTask) {
-    if (!player?.isValid) return;
-    for (let i = 0; i < this.ACTIVE_LAYERED_TASKS.length; i++) {
-      const t = this.ACTIVE_LAYERED_TASKS[i];
-      if (t.player === player && t.patternTask.name === patternTask.name) {
-        return;
-      }
-    }
-
-    const dim = player.dimension;
-    const baseY = patternTask.startTopY ?? ~~player.location.y - 1;
-
-    this.ACTIVE_LAYERED_TASKS.push({
-      player,
-      dim,
-      patternTask,
-      baseY,
-      layer: 0,
-      rotationIndex: 0,
-      delay: patternTask.delay ?? 20,
-      stopped: false,
-    });
-
-    fillQueue.startFillLoopIfNeeded();
-  }
-
-  cleanupDeadTasks() {
-    if (system.currentTick % 100 !== 0) return;
-    for (let i = this.ACTIVE_LAYERED_TASKS.length - 1; i >= 0; i--) {
-      const lt = this.ACTIVE_LAYERED_TASKS[i];
-      if (lt.stopped || !lt.player?.isValid) {
-        const lastIdx = this.ACTIVE_LAYERED_TASKS.length - 1;
-        if (i !== lastIdx)
-          this.ACTIVE_LAYERED_TASKS[i] = this.ACTIVE_LAYERED_TASKS[lastIdx];
-        this.ACTIVE_LAYERED_TASKS.pop();
-      }
-    }
-  }
-
-  resetActiveTasks() {
-    this.ACTIVE_LAYERED_TASKS.length = 0;
-  }
+   resetActiveTasks() {
+      this.ACTIVE_LAYERED_TASKS.length = 0;
+   }
 }
 
 export default new BlockFillerPatternEnqueue();

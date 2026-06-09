@@ -1,128 +1,138 @@
-import { system, world } from "@minecraft/server";
-import { refreshPlayerCaches } from "./CacheManager.js";
-import {
-  NPCS,
-  NPC_QUERY_OPTIONS,
-  UI,
-  resetCache,
-} from "./LeaderboardConfig.js";
-import { getStats, getTeamText } from "./LeaderboardData.js";
-import { getDeathsText, getPlayerText } from "./LeaderboardFormat.js";
+//จัดการ NPC leaderboard: render, spawn, update
+import { system } from '@minecraft/server';
+import { getOverworld } from '../plugin/Util.js';
+import { refreshPlayerCaches } from './CacheManager.js';
+import { NPCS, NPC_QUERY_OPTIONS, UI, resetCache } from './LeaderboardConfig.js';
+import { getStats, getTeamText } from './LeaderboardData.js';
+import { getDeathsText, getPlayerText } from './LeaderboardFormat.js';
 
+//แยก NPC ตาม tag (teams, players, deaths)
 function collectNpcsByTag(allNpcs) {
-  const teamNpcs = [];
-  const playerNpcs = [];
-  const deathNpcs = [];
+   const teamNpcs = [];
+   const playerNpcs = [];
+   const deathNpcs = [];
 
-  for (let ni = 0, nLen = allNpcs.length; ni < nLen; ni++) {
-    const npcEntity = allNpcs[ni];
-    if (!npcEntity?.isValid) continue;
-    if (npcEntity.hasTag("lb:teams")) teamNpcs.push(npcEntity);
-    else if (npcEntity.hasTag("lb:players")) playerNpcs.push(npcEntity);
-    else if (npcEntity.hasTag("lb:deaths")) deathNpcs.push(npcEntity);
-  }
+   for (const npcEntity of allNpcs) {
+      if (!npcEntity?.isValid) continue;
+      if (npcEntity.hasTag('lb:teams')) teamNpcs.push(npcEntity);
+      else if (npcEntity.hasTag('lb:players')) playerNpcs.push(npcEntity);
+      else if (npcEntity.hasTag('lb:deaths')) deathNpcs.push(npcEntity);
+   }
 
-  return { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs };
+   return { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs };
 }
 
+//อัปเดตข้อความบน NPC leaderboard ทั้ง 3 ตัว
 export function renderBoard() {
-  const overworldDimension = world.getDimension("overworld");
-  let allNpcs = [];
+   const overworldDimension = getOverworld();
+   let allNpcs = [];
 
-  try {
-    allNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
-  } catch (error) {
-    console.warn("[DEBUG] Error getting NPCs:", error);
-    return;
-  }
+   try {
+      allNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
+   } catch (error) {
+      console.error('[DEBUG] Error getting NPCs:', error);
+      return;
+   }
 
-  if (!allNpcs.length) return;
+   if (!allNpcs.length) return;
 
-  const {
-    pNpcs: playerNpcs,
-    tNpcs: teamNpcs,
-    dNpcs: deathNpcs,
-  } = collectNpcsByTag(allNpcs);
+   const { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs } = collectNpcsByTag(allNpcs);
 
-  if (!teamNpcs.length && !playerNpcs.length && !deathNpcs.length) return;
+   if (!teamNpcs.length && !playerNpcs.length && !deathNpcs.length) return;
 
-  const playerStats = getStats();
+   const playerStats = getStats();
 
-  if (teamNpcs.length) {
-    const teamText = getTeamText();
-    updateNpcText(teamNpcs, `${UI.HEAD}${teamText}${UI.FOOT}`);
-  }
+   if (teamNpcs.length) {
+      const teamText = getTeamText();
+      updateNpcText(teamNpcs, `${UI.HEAD}${teamText}${UI.FOOT}`);
+   }
 
-  if (playerNpcs.length) {
-    const playerText = getPlayerText(playerStats);
-    updateNpcText(playerNpcs, `${UI.HEAD}${playerText}${UI.FOOT}`);
-  }
+   if (playerNpcs.length) {
+      const playerText = getPlayerText(playerStats);
+      updateNpcText(playerNpcs, `${UI.HEAD}${playerText}${UI.FOOT}`);
+   }
 
-  if (deathNpcs.length) {
-    const deathsText = getDeathsText(playerStats);
-    updateNpcText(deathNpcs, `${UI.HEAD}${deathsText}${UI.FOOT}`);
-  }
+   if (deathNpcs.length) {
+      const deathsText = getDeathsText(playerStats);
+      updateNpcText(deathNpcs, `${UI.HEAD}${deathsText}${UI.FOOT}`);
+   }
 }
 
 function updateNpcText(npcList, displayText) {
-  for (let ni = 0, nLen = npcList.length; ni < nLen; ni++) {
-    const npcEntity = npcList[ni];
-    if (!npcEntity?.isValid) continue;
-    if (typeof npcEntity.nameTag !== "string") continue;
-    if (npcEntity.nameTag === displayText) continue;
-    npcEntity.nameTag = displayText;
-  }
+   for (const npcEntity of npcList) {
+      if (!npcEntity?.isValid) continue;
+      if (typeof npcEntity.nameTag !== 'string') continue;
+      if (npcEntity.nameTag === displayText) continue;
+      npcEntity.nameTag = displayText;
+   }
 }
 
+//สร้าง NPC 3 ตัวที่ตำแหน่งกำหนด พร้อม tag
 function spawnLeaderboardNPCNow() {
-  const overworldDimension = world.getDimension("overworld");
+   try {
+      const overworldDimension = getOverworld();
 
-  const existingNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
-  for (let xi = 0, xLen = existingNpcs.length; xi < xLen; xi++) {
-    existingNpcs[xi].remove();
-  }
+      const existingNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
+      for (const npc of existingNpcs) {
+         try {
+            npc.remove();
+         } catch (error) {
+            console.error('[LeaderboardNPC] Failed to remove existing NPC:', error);
+         }
+      }
 
-  for (let ni = 0, nLen = NPCS.length; ni < nLen; ni++) {
-    const npcConfig = NPCS[ni];
+      NPCS.forEach((npcConfig, ni) => {
+         try {
+            const newNpcEntity = overworldDimension.spawnEntity('minecraft:npc', {
+               x: npcConfig.x,
+               y: npcConfig.y,
+               z: npcConfig.z,
+            });
 
-    const newNpcEntity = overworldDimension.spawnEntity("minecraft:npc", {
-      x: npcConfig.x,
-      y: npcConfig.y,
-      z: npcConfig.z,
-    });
+            if (ni === 0) {
+               newNpcEntity.nameTag = '§b§lTOP TEAMS (KILLS)';
+               newNpcEntity.addTag('lb:teams');
+            } else if (ni === 1) {
+               newNpcEntity.nameTag = '§e§lTOP PLAYERS (KILLS)';
+               newNpcEntity.addTag('lb:players');
+            } else if (ni === 2) {
+               newNpcEntity.nameTag = '§c§lTOP PLAYERS (DEATHS)';
+               newNpcEntity.addTag('lb:deaths');
+            }
+         } catch (error) {
+            console.error('[LeaderboardNPC] Failed to spawn NPC:', error);
+         }
+      });
 
-    if (ni === 0) {
-      newNpcEntity.nameTag = "§b§lTOP TEAMS (KILLS)";
-      newNpcEntity.addTag("lb:teams");
-    } else if (ni === 1) {
-      newNpcEntity.nameTag = "§e§lTOP PLAYERS (KILLS)";
-      newNpcEntity.addTag("lb:players");
-    } else if (ni === 2) {
-      newNpcEntity.nameTag = "§c§lTOP PLAYERS (DEATHS)";
-      newNpcEntity.addTag("lb:deaths");
-    }
-  }
-
-  updateLeaderboard();
+      updateLeaderboard();
+   } catch (error) {
+      console.error('[LeaderboardNPC] Failed to spawn leaderboard NPC:', error);
+   }
 }
 
+//รีเซ็ต cache และ render board ใหม่
 export function updateLeaderboard() {
-  system.runTimeout(() => {
-    resetCache();
-    refreshPlayerCaches();
-    renderBoard();
-  }, 40);
+   system.runTimeout(() => {
+      resetCache();
+      refreshPlayerCaches();
+      renderBoard();
+   }, 40);
 }
 
 export function spawnLeaderboardNPC() {
-  system.runTimeout(spawnLeaderboardNPCNow, 20);
+   system.runTimeout(spawnLeaderboardNPCNow, 20);
 }
 
 system.run(renderBoard);
 
+//ป้องกันไม่ให้ผู้เล่นโต้ตอบกับ NPC
 export function HandlerCancelNPC(eventData) {
-  const { target } = eventData;
-  if (target.typeId === "minecraft:npc") {
-    eventData.cancel = true;
-  }
+   try {
+      const { target } = eventData;
+      if (target?.typeId === 'minecraft:npc') {
+         eventData.cancel = true;
+      }
+   } catch (error) {
+      console.error('[LeaderboardNPC] HandlerCancelNPC error:', error);
+   }
 }

@@ -1,77 +1,93 @@
+//รวบรวมข้อมูล scoreboard จาก objective สำหรับสร้าง leaderboard
+import { world } from '@minecraft/server';
 import { lbCache, MAX_TEAMS } from './LeaderboardConfig.js';
 import { buildTeamText } from './LeaderboardFormat.js';
 import { playerCache } from './State_Cache.js';
-import { playerStats, TEAM_LOOKUP, teamStats } from './State_Team.js';
+import { TEAM_LOOKUP } from './State_Team.js';
 import { getPlayersByTeam } from './TeamActions.js';
 import { TEAMS } from './UtilTeamManager.js';
 
+//อ่านคะแนนจาก scoreboard objective (kills, deaths, teamkills)
+function buildScoreLookup(obj) {
+   const map = new Map();
+
+   if (!obj) return map;
+
+   try {
+      for (const p of obj.getParticipants()) {
+         map.set(p.displayName, obj.getScore(p));
+      }
+   } catch (error) {
+      console.error('[LeaderboardData] buildScoreLookup error:', error);
+   }
+   return map;
+}
+
+//รวบรวม kills/deaths ของผู้เล่นจาก scoreboard
 export function getStats() {
-    const playerStatsMap = new Map();
-    if (!playerStats?.size) return playerStatsMap;
+   const killsLookup = buildScoreLookup(world.scoreboard?.getObjective('uhc_kills'));
+   const deathsLookup = buildScoreLookup(world.scoreboard?.getObjective('uhc_deaths'));
 
-    const entries = [...playerStats.entries()];
-    for (let i = 0, len = entries.length; i < len; i++) {
-        const [playerId, stats] = entries[i];
-        const killCount = stats?.kills ?? 0;
-        const deathCount = stats?.deaths ?? 0;
-        if (!killCount && !deathCount) continue;
+   if (!killsLookup.size && !deathsLookup.size) return new Map();
 
-        const playerName = stats?.name ?? playerCache.get(playerId)?.name ?? playerId;
-        const teamInfo = stats?.teamId ? TEAM_LOOKUP.get(stats.teamId) : null;
-        const teamLabel = teamInfo ? teamInfo.color + teamInfo.name : null;
+   const allIds = new Set([...killsLookup.keys(), ...deathsLookup.keys()]);
+   const playerStatsMap = new Map();
 
-        playerStatsMap.set(playerName, {
-            kills: killCount,
-            deaths: deathCount,
-            teamId: stats?.teamId ?? null,
-            teamLabel,
-        });
-    }
+   for (const playerId of allIds) {
+      const killCount = killsLookup.get(playerId) ?? 0;
+      const deathCount = deathsLookup.get(playerId) ?? 0;
+      if (!killCount && !deathCount) continue;
 
-    return playerStatsMap;
+      const playerName = playerCache.get(playerId)?.name ?? playerId;
+      const teamId = playerCache.get(playerId)?.teamId ?? null;
+      const teamInfo = teamId ? TEAM_LOOKUP.get(teamId) : null;
+      const teamLabel = teamInfo ? teamInfo.color + teamInfo.name : null;
+
+      playerStatsMap.set(playerName, {
+         kills: killCount,
+         deaths: deathCount,
+         teamId,
+         teamLabel,
+      });
+   }
+
+   return playerStatsMap;
 }
 
 function getRuntimeTeamList() {
-    const teamList = [];
-    if (!TEAMS?.length) return teamList;
+   if (!TEAMS?.length) return [];
 
-    for (let i = 0, len = TEAMS.length; i < len; i++) {
-        const teamInfo = TEAMS[i];
-        const stats = teamStats?.size ? teamStats.get(teamInfo.id) : null;
-        const killCount = stats?.kills ?? 0;
-        const memberCount = getPlayersByTeam(teamInfo.id).length;
+   const teamKillLookup = buildScoreLookup(world.scoreboard?.getObjective('uhc_teamkills'));
 
-        teamList.push({
-            name: teamInfo.color + teamInfo.name,
-            kills: killCount,
-            members: memberCount,
-            order: i,
-        });
-    }
+   const teamList = TEAMS.map((teamInfo, i) => ({
+      name: teamInfo.color + teamInfo.name,
+      kills: teamKillLookup.get(teamInfo.color + teamInfo.name) ?? 0,
+      members: getPlayersByTeam(teamInfo.id).length,
+      order: i,
+   }));
 
-    teamList.sort((a, b) => {
-        if (b.kills !== a.kills) return b.kills - a.kills;
-        return a.order - b.order;
-    });
+   teamList.sort((a, b) => {
+      if (b.kills !== a.kills) return b.kills - a.kills;
+      return a.order - b.order;
+   });
 
-    if (teamList.length > MAX_TEAMS) teamList.length = MAX_TEAMS;
-    return teamList;
+   if (teamList.length > MAX_TEAMS) teamList.length = MAX_TEAMS;
+   return teamList;
 }
 
 export function getTeamText() {
-    const teamList = getRuntimeTeamList();
+   const teamList = getRuntimeTeamList();
 
-    let teamHash = '';
-    for (let i = 0, len = teamList.length; i < len; i++) {
-        const team = teamList[i];
-        teamHash += `${team.name}${team.kills}${team.members}${team.order}`;
-    }
+   let teamHash = '';
+   for (const team of teamList) {
+      teamHash += `${team.name}${team.kills}${team.members}${team.order}`;
+   }
 
-    if (teamHash === lbCache.lastTeamHash && lbCache.cachedTeamText) {
-        return lbCache.cachedTeamText;
-    }
+   if (teamHash === lbCache.lastTeamHash && lbCache.cachedTeamText) {
+      return lbCache.cachedTeamText;
+   }
 
-    lbCache.cachedTeamText = buildTeamText(teamList);
-    lbCache.lastTeamHash = teamHash;
-    return lbCache.cachedTeamText;
+   lbCache.cachedTeamText = buildTeamText(teamList);
+   lbCache.lastTeamHash = teamHash;
+   return lbCache.cachedTeamText;
 }

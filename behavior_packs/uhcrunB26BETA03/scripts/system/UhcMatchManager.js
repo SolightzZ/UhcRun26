@@ -1,20 +1,26 @@
-import { Difficulty, GameMode, InputPermissionCategory, system, world } from '@minecraft/server';
+import { Difficulty, InputPermissionCategory, system, world } from '@minecraft/server';
 
 import {
-    clearAllPlayerNametags,
-    clearAllTaguhcAndDynamicProperty,
-    getPlayerTeam,
-    getUhcPlayers,
-    refreshPlayerCaches,
-    refreshScoreboardUI,
-    registerAliveTeamDirtyHandler,
-    resetAnnouncer,
-    setGameRunningState,
+   clearAllPlayerNametags,
+   clearAllTaguhcAndDynamicProperty,
+   getPlayerTeam,
+   getUhcPlayers,
+   refreshPlayerCaches,
+   refreshScoreboardUI,
+   registerAliveTeamDirtyHandler,
+   resetAnnouncer,
+   setGameRunningState,
 } from '../Manager/TeamManager.js';
 
 import { spawnLeaderboardNPC } from '../Manager/LeaderboardNPC.js';
 
-import { dynamicToast } from '../plugin/Util.js';
+import {
+   dynamicToast,
+   getOverworld,
+   setAdventure,
+   setSurvival,
+   SND_PLING,
+} from '../plugin/Util.js';
 import bf from './BlockFiller.js';
 
 import bm, { ctx, icons, MinecraftColor, ticks } from './BorderManager.js';
@@ -37,329 +43,409 @@ const soundOptionsStart = { volume: 0.8, pitch: 1 };
 const soundOptionsPlayers = { volume: 1, pitch: 1 };
 const soundOptionsExplode = { volume: 0.7, pitch: 0.9 };
 
+//ตัวจัดการหลักของ UHC Match: game loop, start/end/reset, PVP countdown, scatter
 class UhcMatchManager {
-    startBars;
+   startBars;
 
-    constructor() {
-        const prefix = '§fGame Start §l»§r ';
-        const bars = new Array(actionBar + 1);
-        for (let tick = 0; tick <= actionBar; tick++) {
-            const remaining = actionBar - tick;
-            const filled = ((tick * actionNum) / actionBar) | 0;
-            const empty = actionNum - filled;
-            bars[tick] = prefix + MinecraftColor.darkAqua + '▌'.repeat(filled) + MinecraftColor.gray + '▌'.repeat(empty) + MinecraftColor.white + ` ${remaining}`;
-        }
-        this.startBars = bars;
+   constructor() {
+      const prefix = '§fGame Start §l»§r ';
+      const bars = new Array(actionBar + 1);
+      for (let tick = 0; tick <= actionBar; tick++) {
+         const remaining = actionBar - tick;
+         const filled = ((tick * actionNum) / actionBar) | 0;
+         const empty = actionNum - filled;
+         bars[tick] =
+            prefix +
+            MinecraftColor.darkAqua +
+            '▌'.repeat(filled) +
+            MinecraftColor.gray +
+            '▌'.repeat(empty) +
+            MinecraftColor.white +
+            ` ${remaining}`;
+      }
+      this.startBars = bars;
 
-        registerAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
-    }
+      registerAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
+   }
 
-    handlePlayerLeave() {
-        system.run(() => {
-            // Stop game loop only when server is completely empty
-            if (ctx.isRunning && world.getPlayers().length === 0) {
-                this.stopGameLoop();
-            }
-        });
-    }
+   // หยุดเกมถ้าเซิร์ฟเวอร์ว่าง
+   handlePlayerLeave() {
+      system.run(() => {
+         if (ctx.isRunning && world.getPlayers().length === 0) {
+            this.stopGameLoop();
+         }
+      });
+   }
 
-    handlePlayerSpawn(event) {
-        if (ctx.isRunning && ctx.checkInterval === null) {
-            this.gameLoopRun();
-        }
-    }
+   // เริ่มเกมใหม่ถ้ามีผู้เล่นกลับมา
+   handlePlayerSpawn(event) {
+      if (ctx.isRunning && ctx.checkInterval === null) {
+         this.gameLoopRun();
+      }
+   }
 
-    getUhcPlayersCached() {
-        const players = getUhcPlayers();
-        if (players.length > 0) return players;
+   // ดึงผู้เล่น UHC จาก cache ถ้าว่างให้รีเฟรช
+   getUhcPlayersCached() {
+      const players = getUhcPlayers();
+      if (players.length > 0) {
+         ctx.cacheRetryTick = 0;
+         return players;
+      }
 
-        // Use cached allPlayersCache from TeamManager instead of world.getPlayers()
-        refreshPlayerCaches();
-        return getUhcPlayers();
-    }
+      if (ctx.uhcTick < ctx.cacheRetryTick + 5) return players;
+      ctx.cacheRetryTick = ctx.uhcTick;
 
-    playerSetupSpawnParticles(player) {
-        if (!player?.isValid || !getPlayerTeam(player)) return;
-        const { x, y, z } = player.location;
-        if (!player.dimension) return;
-        const particleY = y + 2.5;
-        if (particleY > 320 || particleY < -64) return;
-        try {
-            explosionLocPool.x = x;
-            explosionLocPool.y = particleY;
-            explosionLocPool.z = z;
-            player.dimension.spawnParticle('minecraft:huge_explosion_emitter', explosionLocPool);
-        } catch (e) {
-            console.warn('[UHC] Failed to spawn explosion particle:', e);
-        }
-    }
+      refreshPlayerCaches();
+      return getUhcPlayers();
+   }
 
-    playerSetupHandleGameStart(player, tick) {
-        if (tick > 26) return;
+   // spawn อนุภาคระเบิดที่ตำแหน่งผู้เล่น
+   playerSetupSpawnParticles(player) {
+      if (!player?.isValid || !getPlayerTeam(player)) return;
+      const { x, y, z } = player.location;
+      if (!player.dimension) return;
+      const particleY = y + 2.5;
+      if (particleY > 320 || particleY < -64) return;
+      try {
+         explosionLocPool.x = x;
+         explosionLocPool.y = particleY;
+         explosionLocPool.z = z;
+         player.dimension.spawnParticle('minecraft:huge_explosion_emitter', explosionLocPool);
+      } catch (error) {
+         console.error('[UHC] Failed to spawn explosion particle:', error);
+      }
+   }
 
-        const input = player.inputPermissions;
+   // จัดการสถานะผู้เล่น Adventure → Survival
+   playerSetupHandleGameStart(player, tick) {
+      if (tick > 26) return;
 
-        switch (tick) {
-            case 1:
-                player.setGameMode(GameMode.Adventure);
-                input?.setPermissionCategory(InputPermissionCategory.Movement, false);
-                break;
+      const input = player.inputPermissions;
 
-            case 2:
-                player.playSound('start', soundOptionsStart);
-                break;
+      switch (tick) {
+         case 1:
+            setAdventure(player);
+            input?.setPermissionCategory(InputPermissionCategory.Movement, false);
+            break;
 
-            case 4:
-                player.playSound('players', soundOptionsPlayers);
-                break;
+         case 2:
+            player.playSound('start', soundOptionsStart);
+            break;
 
-            case 24:
-                player.playSound('startPlayer', soundOptionsStart);
-                break;
+         case 4:
+            player.playSound('players', soundOptionsPlayers);
+            break;
 
-            case 26:
-                input?.setPermissionCategory(InputPermissionCategory.Movement, true);
-                player.setGameMode(GameMode.Survival);
-                player.removeEffect('invisibility');
-                player.onScreenDisplay.setTitle('Good Luck, Have Fun');
-                player.playSound('random.explode', soundOptionsExplode);
-                this.playerSetupSpawnParticles(player);
-                break;
-        }
-    }
+         case 24:
+            player.playSound('startPlayer', soundOptionsStart);
+            break;
 
-    playerSetupDisplayGameStart(player) {
-        const tick = ctx.uhcTick;
-        if (tick < 0 || tick > actionBar) return;
-        if (!player?.isValid) return;
-        const remaining = actionBar - tick,
-            playSound = remaining === 20 || remaining === 10 || remaining <= 5;
-        player.onScreenDisplay.setActionBar(this.startBars[tick]);
-        if (playSound) player.playSound('note.pling', { volume: 1, pitch: 1 });
-    }
+         case 26:
+            input?.setPermissionCategory(InputPermissionCategory.Movement, true);
+            setSurvival(player);
+            player.removeEffect('invisibility');
+            player.onScreenDisplay.setTitle('Good Luck, Have Fun');
+            player.playSound('random.explode', soundOptionsExplode);
+            this.playerSetupSpawnParticles(player);
+            break;
+      }
+   }
 
-    stopGameLoop() {
-        if (ctx.checkInterval === null) return;
-        system.clearRun(ctx.checkInterval);
-        ctx.checkInterval = null;
-    }
+   // แสดง action bar countdown
+   playerSetupDisplayGameStart(player) {
+      const tick = ctx.countdownTicks;
+      if (tick < 0 || tick > actionBar) return;
+      if (!player?.isValid) return;
+      const remaining = actionBar - tick,
+         playSound = remaining === 20 || remaining === 10 || remaining <= 5;
+      player.onScreenDisplay.setActionBar(this.startBars[tick]);
+      if (playSound) player.playSound(SND_PLING, { volume: 1, pitch: 1 });
+   }
 
-    gameLoopHandleWorldStart(tick, players) {
-        if (tick > PVP_TICK + 1 || !players.length) return;
+   // หยุด game loop
+   stopGameLoop() {
+      if (ctx.checkInterval === null) return;
+      system.clearRun(ctx.checkInterval);
+      ctx.checkInterval = null;
+   }
 
-        switch (tick) {
-            case 1:
-                tlm.teleportManagerTeleportTeam();
-                break;
-            case 24:
-                for (let i = 0; i < players.length; i++) {
-                    if (players[i]?.isValid) utilUmm.playerSetupAddItems(players[i]);
-                }
-                break;
-            case 26:
-                world.gameRules.showCoordinates = true;
-                world.gameRules.pvp = false;
-                world.sendMessage('[UHC] Good Luck, Have Fun');
-                break;
-            case PVP_WARN:
-                bm.broadcast({
-                    message: dynamicToast(`PVP starts in ${MinecraftColor.red}${PVP_DELAY} ${MinecraftColor.white}s`, 'textures/ui/icon_multiplayer'),
-                    sound: 'noti',
-                });
-                break;
-            case PVP_CD3:
-            case PVP_CD2:
-            case PVP_CD1:
-                bm.broadcast({
-                    message: dynamicToast(`PVP in ${MinecraftColor.red}${PVP_TICK - tick}`),
-                    sound: 'note.pling',
-                });
-                break;
-            case PVP_TICK:
-                world.gameRules.pvp = true;
-                bm.broadcast({
-                    message: dynamicToast('PVP enabled!!', 'textures/ui/strength_effect'),
-                    title: icons.Sword,
-                    subtitle: MinecraftColor.green + 'PVP enabled!!',
-                    sound: 'world_noti',
-                });
-                break;
-        }
-    }
+   // event โลก: scatter + PVP countdown
+   gameLoopHandleWorldStart(tick, players) {
+      if (tick > PVP_TICK + 1 || !players.length) return;
 
-    gameLoopPlayersTick(players) {
-        if (!players.length || ctx.uhcTick > 26) return;
+      switch (tick) {
+         case 1:
+            tlm.teleportManagerTeleportTeam(undefined, () => {
+               ctx.teleportComplete = true;
+               ctx.countdownTicks = -1;
+               world.gameRules.showCoordinates = true;
+               world.gameRules.pvp = false;
+               world.sendMessage('[UHC] Good Luck, Have Fun');
+               const uhcPlayers = getUhcPlayers();
+               for (let i = 0; i < uhcPlayers.length; i++) {
+                  if (uhcPlayers[i]?.isValid) utilUmm.playerSetupAddItems(uhcPlayers[i]);
+               }
+            });
+            break;
+         case PVP_WARN:
+            bm.broadcast({
+               message: dynamicToast(
+                  `PVP starts in ${MinecraftColor.red}${PVP_DELAY} ${MinecraftColor.white}s`,
+                  'textures/ui/icon_multiplayer',
+               ),
+               sound: 'noti',
+            });
+            break;
+         case PVP_CD3:
+         case PVP_CD2:
+         case PVP_CD1:
+            bm.broadcast({
+               message: dynamicToast(`PVP in ${MinecraftColor.red}${PVP_TICK - tick}`),
+               sound: SND_PLING,
+            });
+            break;
+         case PVP_TICK:
+            world.gameRules.pvp = true;
+            bm.broadcast({
+               message: dynamicToast('PVP enabled!!', 'textures/ui/strength_effect'),
+               title: icons.Sword,
+               subtitle: MinecraftColor.green + 'PVP enabled!!',
+               sound: 'world_noti',
+            });
+            break;
+      }
+   }
 
-        const tick = ctx.uhcTick;
+   // วนผู้เล่น: setup + display (หลัง scatter เสร็จ)
+   gameLoopPlayersTick(players) {
+      if (!ctx.teleportComplete || !players.length || ctx.countdownTicks > 26) return;
 
-        for (let i = 0; i < players.length; i++) {
-            const p = players[i];
-            if (!p?.isValid) continue;
+      const tick = ctx.countdownTicks;
 
-            this.playerSetupHandleGameStart(p, tick);
-            this.playerSetupDisplayGameStart(p);
-        }
-    }
+      for (let i = 0; i < players.length; i++) {
+         const p = players[i];
+         if (!p?.isValid) continue;
 
-    gameLoopWorld(uhcPlayers) {
-        bm.borderManagerTick();
-        bm.borderManagerTickShrink();
-        if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
-        if (ctx.objective && ctx.uhcTick % 2 === 0) bm.scoreboardUpdate(ctx.objective, uhcPlayers);
-        // Border damage every 5 ticks instead of every tick — reduces 30 calls/tick to 6 calls/tick
-        if (ctx.uhcTick % 5 === 0) {
-            for (let i = 0; i < uhcPlayers.length; i++) {
-                bm.borderManagerApplyDamage(uhcPlayers[i]);
-            }
-        }
-        bm.particleRendererTick(uhcPlayers);
-    }
+         this.playerSetupHandleGameStart(p, tick);
+         this.playerSetupDisplayGameStart(p);
+      }
+   }
 
-    gameLoopRun() {
-        ctx.checkInterval = system.runInterval(() => {
+   // border + scoreboard + damage
+   gameLoopWorld(uhcPlayers) {
+      bm.borderManagerTick();
+
+      bm.borderManagerTickShrink();
+
+      if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) {
+         this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
+      }
+
+      if (ctx.objective && ctx.uhcTick) {
+         bm.scoreboardUpdate(ctx.objective, uhcPlayers);
+      }
+
+      if (uhcPlayers.length > 0) {
+         const DAMAGE_BATCH = Math.max(1, Math.ceil(uhcPlayers.length / 5));
+
+         for (let i = 0; i < DAMAGE_BATCH; i++) {
+            if (ctx.borderDamageIndex >= uhcPlayers.length) ctx.borderDamageIndex = 0;
+            bm.borderManagerApplyDamage(uhcPlayers[ctx.borderDamageIndex]);
+            ctx.borderDamageIndex++;
+         }
+      }
+
+      bm.particleRendererTick(uhcPlayers);
+   }
+
+   // เริ่ม game loop
+   gameLoopRun() {
+      ctx.checkInterval = system.runInterval(() => {
+         try {
             if (!ctx.isRunning) return;
             ctx.uhcTick++;
 
-            if (ctx.uhcTick % 60 === 0) vic.victoryManagerCheck();
+            if (ctx.teleportComplete) {
+               ctx.countdownTicks++;
+            }
+
+            // if (ctx.uhcTick % 60 === 0) {
+            //    vic.victoryManagerCheck();
+            // }
 
             const uhcPlayers = this.getUhcPlayersCached();
             this.gameLoopWorld(uhcPlayers);
 
-            if (ctx.uhcTick <= 26) {
-                this.gameLoopPlayersTick(uhcPlayers);
+            if (ctx.countdownTicks <= 26) {
+               this.gameLoopPlayersTick(uhcPlayers);
             }
-        }, ticks);
-    }
+         } catch (error) {
+            console.error('[UHC] Game loop error at tick ' + ctx.uhcTick + ':', error);
+         }
+      }, ticks);
+   }
 
-    markAliveTeamDirty() {
-        ctx.aliveTeamDirty = true;
-    }
+   // สั่งให้ sidebar re-render
+   markAliveTeamDirty() {
+      ctx.aliveTeamDirty = true;
+   }
 
-    startGameUhc() {
-        if (ctx.isRunning) return;
+   // START / END / RESET
 
-        vic.resetCountdownRunning();
-        this.stopGameLoop();
-        this.initializeGameState();
-        this.setupPlayers();
-        this.gameLoopRun();
-    }
+   // เริ่ม UHC
+   startGameUhc() {
+      if (ctx.isRunning) return;
 
-    initializeGameState() {
-        ctx.isRunning = true;
-        ctx.prevShowCoordinates = world.gameRules.showCoordinates;
-        ctx.uhcTick = 0;
-        ctx.cachedDimension = world.getDimension('overworld');
+      vic.resetCountdownRunning();
+      this.stopGameLoop();
+      this.initializeGameState();
+      this.setupPlayers();
+      this.gameLoopRun();
+   }
 
-        tlm.safeYCache.clear();
-        tlm.abortAllTeleportQueues();
+   // เตรียม state ก่อนเริ่ม
+   initializeGameState() {
+      ctx.isRunning = true;
+      ctx.prevShowCoordinates = world.gameRules.showCoordinates;
+      ctx.uhcTick = 0;
+      ctx.teleportComplete = false;
+      ctx.countdownTicks = -1;
+      try {
+         ctx.cachedDimension = getOverworld();
+      } catch (error) {
+         console.error('[UHC] Failed to get overworld dimension:', error);
+         ctx.cachedDimension = null;
+      }
 
-        setGameRunningState(true);
-        bm.init();
-        bm.resetBorderState();
-        bm.resetUiState();
-        bm.scoreboardInit();
-    }
+      tlm.safeYCache.clear();
+      tlm.abortAllTeleportQueues();
 
-    setupPlayers() {
-        // Must use world.getPlayers() — uhc tags haven't been applied yet
-        // (applyStartState adds the tag; refreshPlayerCaches rebuilds cache after)
-        const players = world.getPlayers();
+      setGameRunningState(true);
+      bm.init();
+      bm.resetBorderState();
+      bm.resetUiState();
+      bm.scoreboardInit();
+   }
 
-        utilUmm.playerSetupClearItemsKeepCompass();
+   // batch ล้างของ + ตั้งค่าผู้เล่น
+   setupPlayers() {
+      const players = world.getPlayers();
+      if (!players.length) return;
+      this._batchSetupPlayers(players, 0, 6);
+   }
 
-        for (let i = 0; i < players.length; i++) {
-            utilUmm.playerSetupApplyStartState(players[i]);
-        }
+   _batchSetupPlayers(players, index, batchSize) {
+      for (let i = 0; i < batchSize && index < players.length; i++, index++) {
+         const player = players[index];
+         if (!player?.isValid) continue;
+         utilUmm.playerSetupClearItemsKeepCompass(player);
+         utilUmm.playerSetupApplyStartState(player);
+      }
+      if (index < players.length) {
+         system.runTimeout(() => this._batchSetupPlayers(players, index, batchSize), 1);
+      } else {
+         refreshPlayerCaches();
+      }
+   }
 
-        refreshPlayerCaches();
-    }
+   // จบเกม
+   endGameUhc() {
+      world.setDifficulty(Difficulty.Peaceful);
+      const prevShowCoordinates = ctx.prevShowCoordinates;
 
-    endGameUhc() {
-        world.setDifficulty(Difficulty.Peaceful);
-        const prevShowCoordinates = ctx.prevShowCoordinates;
+      this.stopGameLoop();
+      vic.resetCountdownRunning();
 
-        this.stopGameLoop();
-        vic.resetCountdownRunning();
+      this.cleanupGameState();
+      this.resetPlayerStates();
+      this.restoreWorldSettings(prevShowCoordinates);
+   }
 
-        this.cleanupGameState();
-        this.resetPlayerStates();
-        this.restoreWorldSettings(prevShowCoordinates);
-    }
+   cleanupGameState() {
+      tlm.abortAllTeleportQueues();
+      bf.fillReset();
+      bm.endSequenceReset();
+      bm.scoreboardClear();
+      resetAnnouncer();
+      setGameRunningState(false);
+      refreshScoreboardUI();
+      bm.resetContext(ctx);
+   }
 
-    cleanupGameState() {
-        tlm.abortAllTeleportQueues();
-        bf.fillReset();
-        bm.endSequenceReset();
-        bm.scoreboardClear();
-        resetAnnouncer();
-        setGameRunningState(false);
-        refreshScoreboardUI();
-        bm.resetContext(ctx);
-    }
+   // batch reset ผู้เล่น UHC
+   resetPlayerStates() {
+      const players = getUhcPlayers();
+      if (!players.length) return;
+      this._batchResetPlayerStates(players, 0, 10);
+   }
 
-    resetPlayerStates() {
-        // Called during endGameUhc — cleanupGameState runs first but doesn't
-        // remove 'uhc' tags (that happens in applyEndState within this loop)
-        // So getUhcPlayers() is safe here
-        const players = getUhcPlayers();
-        for (let i = 0; i < players.length; i++) {
-            utilUmm.playerSetupApplyEndState(players[i]);
-        }
-    }
+   _batchResetPlayerStates(players, index, batchSize) {
+      for (let i = 0; i < batchSize && index < players.length; i++, index++) {
+         utilUmm.playerSetupApplyEndState(players[index]);
+      }
+      if (index < players.length) {
+         system.runTimeout(() => this._batchResetPlayerStates(players, index, batchSize), 1);
+      }
+   }
 
-    restoreWorldSettings(prevShowCoordinates) {
-        world.gameRules.showCoordinates = prevShowCoordinates;
-        bm.borderManagerSyncGeometry();
-    }
+   restoreWorldSettings(prevShowCoordinates) {
+      world.gameRules.showCoordinates = prevShowCoordinates;
+      bm.borderManagerSyncGeometry();
+   }
 
-    resetGameUhc() {
-        world.setDifficulty(Difficulty.Peaceful);
-        const prevShowCoordinates = ctx.prevShowCoordinates;
+   // hard reset
+   resetGameUhc() {
+      world.setDifficulty(Difficulty.Peaceful);
+      const prevShowCoordinates = ctx.prevShowCoordinates;
 
-        vic.resetCountdownRunning();
-        this.stopGameLoop();
-        this.cleanupResetState();
-        this.resetAllPlayers();
-        this.restoreWorldDefaults(prevShowCoordinates);
-        spawnLeaderboardNPC();
-    }
+      vic.resetCountdownRunning();
+      this.stopGameLoop();
+      this.cleanupResetState();
+      this.resetAllPlayers();
+      this.restoreWorldDefaults(prevShowCoordinates);
+      spawnLeaderboardNPC();
+   }
 
-    cleanupResetState() {
-        tlm.safeYCache.clear();
-        bf.fillReset();
-        bm.resetContext(ctx);
-        bm.endSequenceReset();
-        tlm.abortAllTeleportQueues();
+   cleanupResetState() {
+      tlm.safeYCache.clear();
+      bf.fillReset();
+      bm.resetContext(ctx);
+      bm.endSequenceReset();
+      tlm.abortAllTeleportQueues();
 
-        clearAllPlayerNametags();
-        setGameRunningState(false);
-        bm.scoreboardClear();
-        clearAllTaguhcAndDynamicProperty();
-        refreshScoreboardUI();
-    }
+      clearAllPlayerNametags();
+      setGameRunningState(false);
+      bm.scoreboardClear();
+      clearAllTaguhcAndDynamicProperty();
+      refreshScoreboardUI();
+   }
 
-    resetAllPlayers() {
-        // Must use world.getPlayers() — cleanupResetState (called before this)
-        // already removed all 'uhc' tags via clearAllTaguhcAndDynamicProperty
-        const players = world.getPlayers();
+   // batch reset ผู้เล่นทั้งหมดในโลก
+   resetAllPlayers() {
+      const players = world.getPlayers();
+      if (!players.length) return;
+      this._batchResetAllPlayers(players, 0, 6);
+   }
 
-        for (let i = 0; i < players.length; i++) {
-            const p = players[i];
-            if (!p?.isValid) continue;
+   _batchResetAllPlayers(players, index, batchSize) {
+      for (let i = 0; i < batchSize && index < players.length; i++, index++) {
+         const p = players[index];
+         if (!p?.isValid) continue;
 
-            utilUmm.playerSetupClearEffects(p);
-            utilUmm.playerSetupApplyEndState(p);
-        }
+         utilUmm.playerSetupClearEffects(p);
+         utilUmm.playerSetupApplyEndState(p);
+         utilUmm.playerSetupClearItemsKeepCompass(p);
+      }
+      if (index < players.length) {
+         system.runTimeout(() => this._batchResetAllPlayers(players, index, batchSize), 1);
+      }
+   }
 
-        utilUmm.playerSetupClearItemsKeepCompass();
-    }
-
-    restoreWorldDefaults(prevShowCoordinates) {
-        bm.borderManagerSyncGeometry();
-        world.gameRules.pvp = false;
-        world.gameRules.showCoordinates = prevShowCoordinates;
-    }
+   restoreWorldDefaults(prevShowCoordinates) {
+      bm.borderManagerSyncGeometry();
+      world.gameRules.pvp = false;
+      world.gameRules.showCoordinates = prevShowCoordinates;
+   }
 }
 
 export default new UhcMatchManager();

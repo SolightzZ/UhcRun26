@@ -5,5 +5,5 @@ import border from '../system/border.js';
 const beforeEvents = [(ev) => border.handlePlayerBreakBlock(ev)];
 
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
-    runEventHandlers('PlayerBreakBlock', beforeEvents, event);
+   runEventHandlers('PlayerBreakBlock', beforeEvents, event);
 });

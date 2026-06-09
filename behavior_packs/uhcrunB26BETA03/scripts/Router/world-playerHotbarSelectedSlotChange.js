@@ -5,5 +5,5 @@ import enchant from '../plugin/enchant/Controller.js';
 const afterEvents = [(ev) => enchant.onPlayerHotbarSelectedSlotChange(ev)];
 
 world.afterEvents.playerHotbarSelectedSlotChange.subscribe((event) => {
-    runEventHandlers('PlayerHotbarSelectedSlotChange', afterEvents, event);
+   runEventHandlers('PlayerHotbarSelectedSlotChange', afterEvents, event);
 });

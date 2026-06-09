@@ -1,31 +1,31 @@
 import model from './Model.js';
 
 class Service {
-    isCookedFood = (itemId) => {
-        if (!itemId) return false;
-        return model.COOKED_FOOD.items.includes(itemId);
-    };
+   isCookedFood = (itemId) => {
+      if (!itemId) return false;
+      return model.COOKED_FOOD.items.includes(itemId);
+   };
 
-    applyCookedEffect = (player) => {
-        if (!player?.isValid) return;
-        try {
-            const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
-            player.addEffect(id, duration, { amplifier, showParticles });
-            player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
-            player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
-        } catch (e) {
-            console.warn('[ItemConsume] Failed to apply cooked effect:', e);
-        }
-    };
+   applyCookedEffect = (player) => {
+      if (!player?.isValid) return;
+      try {
+         const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
+         player.addEffect(id, duration, { amplifier, showParticles });
+         player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
+         player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
+   } catch (error) {
+      console.error('[ItemConsume] Failed to apply cooked effect:', error);
+   }
+   };
 
-    handleConsume = (player, item) => {
-        if (!player || !item) return;
+   handleConsume = (player, item) => {
+      if (!player || !item) return;
 
-        const itemId = item.typeId;
-        if (!this.isCookedFood(itemId)) return;
+      const itemId = item.typeId;
+      if (!this.isCookedFood(itemId)) return;
 
-        this.applyCookedEffect(player);
-    };
+      this.applyCookedEffect(player);
+   };
 }
 
 export default new Service();

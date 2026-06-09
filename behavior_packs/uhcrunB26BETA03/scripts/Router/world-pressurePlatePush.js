@@ -5,5 +5,5 @@ import plateKnockback from '../plugin/plate-knockback/Controller.js';
 const afterEvents = [(ev) => plateKnockback.onPressurePlatePush(ev)];
 
 world.afterEvents.pressurePlatePush.subscribe((event) => {
-    runEventHandlers('PressurePlatePush', afterEvents, event);
+   runEventHandlers('PressurePlatePush', afterEvents, event);
 });

@@ -8,138 +8,169 @@ const uhcName = '§h§nUhcRun26';
 
 const LINE_ID_SUFFIX = Array.from({ length: 10 }, (_, i) => '§r'.repeat(i + 1));
 
+//จัดการ scoreboard sidebar: แสดง border radius, เวลา, จำนวนผู้เล่น, ทีมที่รอด
 class BorderManagerScoreboard {
-    scoreCache = new Map();
+   scoreCache = new Map();
 
-    clearCache() {
-        this.scoreCache.clear();
-    }
+   clearCache() {
+      this.scoreCache.clear();
+   }
 
-    scoreboardInit() {
-        const score = world.scoreboard;
-        const old = score.getObjective(uhc);
-        if (old) score.removeObjective(old);
-        const obj = score.addObjective(uhc, uhcName);
-        score.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: obj, sortOrder: ObjectiveSortOrder.Descending });
-        ctx.objective = obj;
-        this.scoreCache.clear();
-    }
+   // สร้าง scoreboard sidebar
+   scoreboardInit() {
+      const score = world.scoreboard;
+      const old = score.getObjective(uhc);
 
-    scoreboardClear() {
-        const sb = world.scoreboard;
-        sb.clearObjectiveAtDisplaySlot(DisplaySlotId.Sidebar);
-        const obj = sb.getObjective(uhc);
-        if (obj) sb.removeObjective(obj);
-        this.scoreCache.clear();
-        ctx.objective = null;
-    }
+      if (old) score.removeObjective(old);
+      const obj = score.addObjective(uhc, uhcName);
 
-    scoreboardMakeLineId(text, index) {
-        return `${text}${LINE_ID_SUFFIX[index] ?? '§r'.repeat(index + 1)}`;
-    }
+      score.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, {
+         objective: obj,
+         sortOrder: ObjectiveSortOrder.Descending,
+      });
 
-    scoreboardUpdateLine(obj, index, text) {
-        const cache = this.scoreCache;
-        const old = cache.get(index);
+      ctx.objective = obj;
 
-        if (old === text) return;
+      this.scoreCache.clear();
+   }
 
-        if (old) obj.removeParticipant(this.scoreboardMakeLineId(old, index));
+   // ลบ scoreboard
+   scoreboardClear() {
+      const sb = world.scoreboard;
 
-        obj.setScore(this.scoreboardMakeLineId(text, index), 10 - index);
-        cache.set(index, text);
-    }
+      sb.clearObjectiveAtDisplaySlot(DisplaySlotId.Sidebar);
 
-    scoreboardComputeNextLabel() {
-        const t = ctx.uhcTick;
+      const obj = sb.getObjective(uhc);
 
-        if (ctx.nextShrinkIndex >= CHECKPOINTS.length && ctx.targetRadius === null) {
-            return bf.getEndSequenceLabel(t, ctx.endSeqState, ctx.endSeqStartTick, bf.fillHasPendingWork());
-        }
+      if (obj) sb.removeObjective(obj);
 
-        if (ctx.targetRadius != null) {
-            const r = ctx.shrinkDuration - (t - ctx.shrinkStartTick);
-            return `${Math.max(0, r)}s`;
-        }
+      this.scoreCache.clear();
 
-        const r = ctx.nextShrinkTick - t;
-        return r > 0 ? `${r}s` : `${MinecraftColor.darkBlue}NOW`;
-    }
+      ctx.objective = null;
+   }
 
-    scoreboardComputeNextBorder() {
-        if (ctx.targetRadius != null) return ctx.targetRadius;
-        if (ctx.nextShrinkIndex >= CHECKPOINTS.length) return borderEnd;
-        return CHECKPOINTS[ctx.nextShrinkIndex];
-    }
+   scoreboardMakeLineId(text, index) {
+      return `${text}${LINE_ID_SUFFIX[index] ?? '§r'.repeat(index + 1)}`;
+   }
 
-    scoreboardCollectAliveTeams(players) {
-        const aliveTeams = new Set();
+   // อัปเดตข้อความในบรรทัด ถ้าต่างจาก cache
+   scoreboardUpdateLine(obj, index, text) {
+      const cache = this.scoreCache;
+      const old = cache.get(index);
 
-        for (let i = 0, len = players.length; i < len; i++) {
-            const player = players[i];
-            const teamId = getPlayerTeam(player);
+      if (old === text) return;
 
-            if (teamId) aliveTeams.add(teamId);
-        }
+      if (old) obj.removeParticipant(this.scoreboardMakeLineId(old, index));
 
-        return aliveTeams;
-    }
+      obj.setScore(this.scoreboardMakeLineId(text, index), 10 - index);
+      cache.set(index, text);
+   }
 
-    scoreboardGetAliveTeamBar(players) {
-        if (ctx.aliveTeamDirty) {
-            const aliveTeams = this.scoreboardCollectAliveTeams(players);
+   // คำนวณ label ถัดไป (เวลาที่เหลือ / สถานะ)
+   scoreboardComputeNextLabel() {
+      const tick = ctx.uhcTick;
 
-            if (aliveTeams.size) {
-                let result = '';
+      if (ctx.nextShrinkIndex >= CHECKPOINTS.length && ctx.targetRadius === null) {
+         return bf.getEndSequenceLabel(
+            tick,
+            ctx.endSeqState,
+            ctx.endSeqStartTick,
+            bf.fillHasPendingWork(),
+         );
+      }
 
-                const teams = bm.getTeamsCached();
-                for (let i = 0, len = teams.length; i < len; i++) {
-                    const team = teams[i];
+      if (ctx.targetRadius != null) {
+         const remaining = ctx.shrinkDuration - (tick - ctx.shrinkStartTick);
+         return `${Math.max(0, remaining)}s`;
+      }
 
-                    if (aliveTeams.has(team.id)) {
-                        result += team.color + '▒';
-                    }
-                }
+      const remaining = ctx.nextShrinkTick - tick;
+      return remaining > 0 ? `${remaining}s` : `${MinecraftColor.darkBlue}NOW`;
+   }
 
-                ctx.aliveTeamBarCache = result;
-            } else {
-                ctx.aliveTeamBarCache = MinecraftColor.gray + '-';
+   // คำนวณ border ถัดไป
+   scoreboardComputeNextBorder() {
+      if (ctx.targetRadius != null) return ctx.targetRadius;
+      if (ctx.nextShrinkIndex >= CHECKPOINTS.length) return borderEnd;
+      return CHECKPOINTS[ctx.nextShrinkIndex];
+   }
+
+   // เก็บทีมที่ยังมีผู้เล่นรอด
+   scoreboardCollectAliveTeams(players) {
+      const aliveTeams = new Set();
+
+      for (let i = 0, len = players.length; i < len; i++) {
+         const player = players[i];
+         const teamId = getPlayerTeam(player);
+
+         if (teamId) aliveTeams.add(teamId);
+      }
+
+      return aliveTeams;
+   }
+
+   // สร้างแถบสีแสดงทีมที่รอด
+   scoreboardGetAliveTeamBar(players) {
+      if (ctx.aliveTeamDirty) {
+         const aliveTeams = this.scoreboardCollectAliveTeams(players);
+
+         if (aliveTeams.size) {
+            let result = '';
+
+            const teams = bm.getTeamsCached();
+            for (let i = 0, len = teams.length; i < len; i++) {
+               const team = teams[i];
+
+               if (aliveTeams.has(team.id)) {
+                  result += team.color + '▒';
+               }
             }
 
-            ctx.aliveTeamDirty = false;
-        }
+            ctx.aliveTeamBarCache = result;
+         } else {
+            ctx.aliveTeamBarCache = MinecraftColor.gray + '-';
+         }
 
-        return ctx.aliveTeamBarCache;
-    }
+         ctx.aliveTeamDirty = false;
+      }
 
-    scoreboardGetGameState() {
-        if (!ctx.isRunning) return `${icons.Hourglass}`;
-        if (ctx.uhcTick < 30) return `?`;
-        if (!world.gameRules.pvp) return `${icons.shield}`;
-        if (ctx.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
-        return `?`;
-    }
+      return ctx.aliveTeamBarCache;
+   }
 
-    scoreboardUpdate(obj, uhcPlayers) {
-        const c = ctx.targetRadius !== null ? MinecraftColor.red : MinecraftColor.white,
-            pCount = uhcPlayers.length;
+   // สถานะเกม (ไอคอน)
+   scoreboardGetGameState() {
+      if (!ctx.isRunning) return `${icons.Hourglass}`;
+      if (ctx.uhcTick < 30) return `?`;
+      if (!world.gameRules.pvp) return `${icons.shield}`;
+      if (ctx.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
+      return `?`;
+   }
 
-        if (ctx.borderRadius !== ctx.lastBorderRadius || ctx.targetRadius !== ctx.lastTargetRadius) {
-            this.scoreboardUpdateLine(obj, 0, `${c}${icons.Border} ${ctx.borderRadius}${MinecraftColor.gray}/${this.scoreboardComputeNextBorder()}`);
-            ctx.lastBorderRadius = ctx.borderRadius;
-            ctx.lastTargetRadius = ctx.targetRadius;
-        }
+   // อัปเดต scoreboard ทั้งหมด
+   scoreboardUpdate(obj, uhcPlayers) {
+      const color = ctx.targetRadius !== null ? MinecraftColor.red : MinecraftColor.white,
+         pCount = uhcPlayers.length;
 
-        this.scoreboardUpdateLine(obj, 1, `${c}${this.scoreboardComputeNextLabel()}`);
+      if (ctx.borderRadius !== ctx.lastBorderRadius || ctx.targetRadius !== ctx.lastTargetRadius) {
+         this.scoreboardUpdateLine(
+            obj,
+            0,
+            `${color}${icons.Border} ${ctx.borderRadius}${MinecraftColor.gray}/${this.scoreboardComputeNextBorder()}`,
+         );
+         ctx.lastBorderRadius = ctx.borderRadius;
+         ctx.lastTargetRadius = ctx.targetRadius;
+      }
 
-        if (pCount !== ctx.lastPlayerCount) {
-            this.scoreboardUpdateLine(obj, 2, `${c}${icons.Bot} ${MinecraftColor.white}${pCount}`);
-            ctx.lastPlayerCount = pCount;
-        }
+      this.scoreboardUpdateLine(obj, 1, `${color}${this.scoreboardComputeNextLabel()}`);
 
-        this.scoreboardUpdateLine(obj, 3, this.scoreboardGetAliveTeamBar(uhcPlayers));
-        this.scoreboardUpdateLine(obj, 4, this.scoreboardGetGameState());
-    }
+      if (pCount !== ctx.lastPlayerCount) {
+         this.scoreboardUpdateLine(obj, 2, `${color}${icons.Bot} ${MinecraftColor.white}${pCount}`);
+         ctx.lastPlayerCount = pCount;
+      }
+
+      this.scoreboardUpdateLine(obj, 3, this.scoreboardGetAliveTeamBar(uhcPlayers));
+      this.scoreboardUpdateLine(obj, 4, this.scoreboardGetGameState());
+   }
 }
 
 export default new BorderManagerScoreboard();

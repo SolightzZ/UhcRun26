@@ -1,4 +1,6 @@
+//UI revive: แสดงรายชื่อผู้เล่นที่ตายในทีมเพื่อเลือกชุบ
 import { ActionFormData } from '@minecraft/server-ui';
+import { SND_BASS, TEX_CANCEL, TEX_HEART } from '../plugin/Util.js';
 import { notifyReviverCooldown } from './ReviveManager_Cooldown.js';
 import { tryStartRevive } from './ReviveManager_Core.js';
 import { getDeadPlayersInTeam, hasReviveItem, resolvePlayer } from './ReviveManager_Util.js';
@@ -7,51 +9,55 @@ import { deathLocation } from './State_Team.js';
 import { getPlayerTeam } from './TeamActions.js';
 import { REVIVE_MSG } from './UtilTeamManager.js';
 
+//เปิด GUI รายชื่อผู้เล่นตายในทีมให้เลือก revive
 export function openReviveUI(player, deadList) {
-    if (!player?.isValid) return;
+   if (!player?.isValid) return;
 
-    const targetIds = deadList.map((target) => target.id);
-    const reviverTeamId = getPlayerTeam(player);
+   const targetIds = deadList.map((target) => target.id);
+   const reviverTeamId = getPlayerTeam(player);
 
-    const form = new ActionFormData();
-    form.title(REVIVE_MSG.uiTitle);
-    form.body(REVIVE_MSG.uiBody);
+   const form = new ActionFormData();
+   form.title(REVIVE_MSG.uiTitle);
+   form.body(REVIVE_MSG.uiBody);
 
-    for (let di = 0, dLen = deadList.length; di < dLen; di++) {
-        form.button(deadList[di].name, 'textures/ui/heart_new');
-    }
+   for (let di = 0, dLen = deadList.length; di < dLen; di++) {
+      form.button(deadList[di].name, TEX_HEART);
+   }
 
-    form.button(REVIVE_MSG.uiBack, 'textures/ui/cancel');
-    form.show(player).then((res) => {
-        if (!res || res.canceled) return;
-        if (res.selection === targetIds.length) return;
+   form.button(REVIVE_MSG.uiBack, TEX_CANCEL);
+   form.show(player).then((res) => {
+      if (!res || res.canceled) return;
+      if (res.selection === targetIds.length) return;
 
-        const targetId = targetIds[res.selection];
-        if (!targetId) return;
+      const targetId = targetIds[res.selection];
+      if (!targetId) return;
 
-        const target = resolvePlayer(targetId);
-        if (!target) return;
-        if (!deathLocation.has(targetId)) return;
-        if (getPlayerTeam(target) !== reviverTeamId) return;
+      const target = resolvePlayer(targetId);
+      if (!target) return;
+      if (!deathLocation.has(targetId)) return;
+      if (getPlayerTeam(target) !== reviverTeamId) return;
 
-        tryStartRevive(player, target);
-    });
+      tryStartRevive(player, target);
+   }).catch((error) => {
+      console.error('[ReviveUI] openReviveUI form error:', error);
+   });
 }
 
+//ตรวจสอบเงื่อนไขและเปิด revive UI เมื่อใช้ไอเทมหัวผู้เล่น
 export function onUseReviveItem(player) {
-    if (!player?.isValid) return;
-    if (!isGameRunning) return;
-    if (!player.hasTag('uhc')) return;
-    if (!hasReviveItem(player)) return;
+   if (!player?.isValid) return;
+   if (!isGameRunning) return;
+   if (!player.hasTag('uhc')) return;
+   if (!hasReviveItem(player)) return;
 
-    if (notifyReviverCooldown(player, true)) return;
+   if (notifyReviverCooldown(player, true)) return;
 
-    const deadList = getDeadPlayersInTeam(player);
+   const deadList = getDeadPlayersInTeam(player);
 
-    if (deadList.length === 0) {
-        player.playSound('note.bassattack');
-        return;
-    }
+   if (deadList.length === 0) {
+      player.playSound(SND_BASS);
+      return;
+   }
 
-    openReviveUI(player, deadList);
+   openReviveUI(player, deadList);
 }

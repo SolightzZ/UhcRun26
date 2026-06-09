@@ -5,5 +5,5 @@ import { runEventHandlers } from '../plugin/Util.js';
 const startupHandlers = [HandlerCustomCommands];
 
 system.beforeEvents.startup.subscribe((init) => {
-    runEventHandlers('Startup', startupHandlers, init);
+   runEventHandlers('Startup', startupHandlers, init);
 });
