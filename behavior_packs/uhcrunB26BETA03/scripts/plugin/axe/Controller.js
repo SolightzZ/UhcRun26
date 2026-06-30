@@ -2,13 +2,12 @@ import { system } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
-class Controller {
-   register = () => {
-      system.run(() => {
-         model.getAir();
-      });
-   };
+// self-register: pre-cache air block type
+system.run(() => {
+   model.getAir();
+});
 
+class Controller {
    onPlayerBreakBlock = (ev) => {
       service.onPlayerBreakBlock(ev);
    };

@@ -1,4 +1,5 @@
 import { ItemComponentTypes } from '@minecraft/server';
+import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
@@ -10,7 +11,7 @@ class Service {
       try {
          enchantable.addEnchantment({ type: model.getEfficiency(), level: model.ENCHANT_LEVEL });
    } catch (error) {
-      console.error('[Enchant] Failed to add enchantment:', error);
+      logError('Enchant', 'Failed to add enchantment', error);
       return null;
    }
 

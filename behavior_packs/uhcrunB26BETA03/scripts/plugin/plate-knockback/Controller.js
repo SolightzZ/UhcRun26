@@ -1,4 +1,4 @@
-import { KB, applyKnockbackXZ, normalizeXZ } from '../Util.js';
+import { KB, applyKnockbackXZ, normalizeXZ } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
 
@@ -10,14 +10,7 @@ class Controller {
 
       const dir = player.getViewDirection();
       const { nx, nz } = normalizeXZ(dir.x, dir.z);
-      applyKnockbackXZ(
-         player,
-         nx,
-         nz,
-         model.PLATE.horizontal,
-         model.PLATE.vertical,
-         KB.maxHorizontal,
-      );
+      applyKnockbackXZ(player, nx, nz, model.PLATE.horizontal, model.PLATE.vertical, KB.maxHorizontal);
       block.dimension.playSound(service.nextSound(), player.location);
    };
 }

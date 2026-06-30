@@ -1,5 +1,5 @@
 import { BlockPermutation } from '@minecraft/server';
-import { LRUMap } from '../LRUMap.js';
+import { LRUMap } from '../../shared/LRUMap.js';
 
 class Model {
    CONFIG = Object.freeze({

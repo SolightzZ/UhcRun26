@@ -1,4 +1,5 @@
 import { EntityInventoryComponent, ItemComponentTypes, ItemStack, system } from '@minecraft/server';
+import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
@@ -43,7 +44,7 @@ class Service {
       try {
          return dim?.id !== undefined;
       } catch (error) {
-         console.error('[Axe] Dimension validation failed:', error);
+         logError('Axe', 'Dimension validation failed', error);
          return false;
       }
    };
@@ -139,7 +140,7 @@ class Service {
          try {
             block = dim.getBlock(loc);
          } catch (error) {
-            console.error('[Axe] getBlock failed during leaf scan:', error);
+            logError('Axe', 'getBlock failed during leaf scan', error);
             continue;
          }
          calls++;
@@ -195,7 +196,7 @@ class Service {
                broken++;
             }
          } catch (error) {
-            console.error('[Axe] Failed to break log block:', error);
+            logError('Axe', 'Failed to break log block', error);
          }
          if (++batch >= model.CONFIG.BREAK_PER_TICK) {
             batch = 0;
@@ -238,7 +239,7 @@ class Service {
                }
             }
          } catch (error) {
-            console.error('[Axe] Failed to break leaf block:', error);
+            logError('Axe', 'Failed to break leaf block', error);
          }
          if (++batch >= model.CONFIG.LEAF_BREAK_PER_TICK) {
             batch = 0;
@@ -266,7 +267,7 @@ class Service {
          this.scanTrunk(dim, x, brokenY - 1, z, logType, -1, logsBelow);
          this.scanTrunk(dim, x, brokenY + 1, z, logType, 1, logsAbove);
       } catch (error) {
-         console.error('[Axe] Trunk scan failed:', error);
+         logError('Axe', 'Trunk scan failed', error);
          return;
       }
 
@@ -288,7 +289,7 @@ class Service {
          }
          leaves = result.value || [];
       } catch (error) {
-         console.error('[Axe] Leaf scan failed:', error);
+         logError('Axe', 'Leaf scan failed', error);
          return;
       }
 

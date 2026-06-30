@@ -1,5 +1,5 @@
 import { EquipmentSlot, system } from '@minecraft/server';
-import { dynamicToast } from '../Util.js';
+import { dynamicToast } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
 
@@ -29,9 +29,7 @@ class Controller {
       if (!newItem) return;
 
       equip.setEquipment(EquipmentSlot.Mainhand, newItem);
-      player.sendMessage(
-         dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`),
-      );
+      player.sendMessage(dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`));
       player.playSound(model.SOUND);
    };
 

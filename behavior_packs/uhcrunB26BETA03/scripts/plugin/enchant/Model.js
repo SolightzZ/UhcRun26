@@ -1,5 +1,5 @@
 import { EnchantmentType } from '@minecraft/server';
-import { LRUMap } from '../LRUMap.js';
+import { LRUMap } from '../../shared/LRUMap.js';
 
 class Model {
    ENCHANT_LEVEL = 4;

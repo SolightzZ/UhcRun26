@@ -1,4 +1,4 @@
-import { LRUMap } from '../LRUMap.js';
+import { LRUMap } from '../../shared/LRUMap.js';
 
 class Model {
    PLAYER = 'minecraft:player';

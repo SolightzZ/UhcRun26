@@ -1,4 +1,5 @@
 import { system } from '@minecraft/server';
+import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
@@ -34,11 +35,11 @@ class Service {
                   z: z + 0.5,
                });
             } catch (error) {
-               console.error('[TNT] Failed to spawn smoke particle:', error);
+               logError('TNT', 'Failed to spawn smoke particle', error);
             }
          }
       } catch (error) {
-         console.error('[TNT] Failed to spawn TNT entity:', error);
+         logError('TNT', 'Failed to spawn TNT entity', error);
       }
    };
 }

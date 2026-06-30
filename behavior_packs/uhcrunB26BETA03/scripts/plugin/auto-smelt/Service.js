@@ -1,5 +1,6 @@
 import { ItemStack, system } from '@minecraft/server';
-import { dynamicToast, getPlayerInventoryContainer, isValidEntity, randomInt } from '../Util.js';
+import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
+import { dynamicToast, isValidEntity, logError, randomInt } from '../../shared/Util.js';
 import Model from './Model.js';
 
 const formatHealth = (val) => val.toFixed(1);
@@ -73,12 +74,7 @@ class Service {
                case 'flint':
                   spawnStacked(dimension, 'minecraft:arrow', stack.amount, spawnAt);
                   entity.remove();
-                  player.sendMessage(
-                     dynamicToast(
-                        Model.CONFIG.feedback.arrow.message,
-                        Model.CONFIG.feedback.arrow.texture,
-                     ),
-                  );
+                  player.sendMessage(dynamicToast(Model.CONFIG.feedback.arrow.message, Model.CONFIG.feedback.arrow.texture));
                   return { xp: 0, lapis: null };
 
                case 'lapis':
@@ -131,7 +127,7 @@ class Service {
             if (ench.type.id === enchantId) return ench.level;
          }
       } catch (error) {
-         console.error('[AutoSmelt] Failed to get enchantment level:', error);
+         logError('AutoSmelt', 'Failed to get enchantment level', error);
       }
       return 0;
    };
@@ -159,9 +155,7 @@ class Service {
       if (randomInt(0, 99) < finalChance) {
          dimension.spawnItem(safeStack('minecraft:book', 1), pos);
          if (system.currentTick % 2 === 0) {
-            player.sendMessage(
-               dynamicToast(Model.CONFIG.feedback.book.message, Model.CONFIG.feedback.book.texture),
-            );
+            player.sendMessage(dynamicToast(Model.CONFIG.feedback.book.message, Model.CONFIG.feedback.book.texture));
          }
       }
 
@@ -208,7 +202,7 @@ class Service {
                maxDistance: Model.CONFIG.scan.itemRadius,
             });
          } catch (error) {
-            console.error('[AutoSmelt] Failed to get nearby entities:', error);
+            logError('AutoSmelt', 'Failed to get nearby entities', error);
             return;
          }
          if (!entities.length) return;
@@ -268,7 +262,7 @@ class Service {
             maxDistance: halfDiag,
          });
       } catch (error) {
-         console.error('[AutoSmelt] Failed to get all entities:', error);
+         logError('AutoSmelt', 'Failed to get all entities', error);
          return;
       }
 
@@ -325,12 +319,7 @@ class Service {
 
       const newHealth = Math.min(max, current + Model.CONFIG.redstone.healAmount);
       health.setCurrentValue(newHealth);
-      player.sendMessage(
-         dynamicToast(
-            `§a+${formatHealth(newHealth - current)} §7(${formatHealth(newHealth)})`,
-            Model.CONFIG.feedback.health.texture,
-         ),
-      );
+      player.sendMessage(dynamicToast(`§a+${formatHealth(newHealth - current)} §7(${formatHealth(newHealth)})`, Model.CONFIG.feedback.health.texture));
    };
 
    // สุ่ม Absorption 16% นานตาม config
@@ -342,12 +331,7 @@ class Service {
          amplifier: 0,
          showParticles: false,
       });
-      player.sendMessage(
-         dynamicToast(
-            `§fAbsorption §7(${Model.CONFIG.redstone.absorptionMinutes}m)`,
-            Model.CONFIG.feedback.absorption.texture,
-         ),
-      );
+      player.sendMessage(dynamicToast(`§fAbsorption §7(${Model.CONFIG.redstone.absorptionMinutes}m)`, Model.CONFIG.feedback.absorption.texture));
       player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
       return true;
    };
@@ -356,8 +340,7 @@ class Service {
    handleRedstone = (player) => {
       this.addXp(player, randomInt(Model.CONFIG.xp.redstone[0], Model.CONFIG.xp.redstone[1]));
       this.healPlayer(player);
-      if (!this.tryAbsorption(player))
-         player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.orb);
+      if (!this.tryAbsorption(player)) player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.orb);
    };
 
    // จุดเริ่มต้น action ตามประเภทบล็อก

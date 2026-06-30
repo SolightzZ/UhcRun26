@@ -1,9 +1,10 @@
+import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
    isCookedFood = (itemId) => {
       if (!itemId) return false;
-      return model.COOKED_FOOD.items.includes(itemId);
+      return model.COOKED_FOOD.items.has(itemId);
    };
 
    applyCookedEffect = (player) => {
@@ -13,9 +14,9 @@ class Service {
          player.addEffect(id, duration, { amplifier, showParticles });
          player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
          player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
-   } catch (error) {
-      console.error('[ItemConsume] Failed to apply cooked effect:', error);
-   }
+      } catch (error) {
+         logError('ItemConsume', 'Failed to apply cooked effect', error);
+      }
    };
 
    handleConsume = (player, item) => {

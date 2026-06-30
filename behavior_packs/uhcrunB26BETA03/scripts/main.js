@@ -1,36 +1,24 @@
-// Plugins
-import './plugin/axe/Routes.js';
+// Events
+import './events/system-startup.js';
+import './events/system-runInterval.js';
+import './events/world-entityDie.js';
+import './events/world-entityHurt.js';
+import './events/world-itemUse.js';
+import './events/world-playerInteractWithEntity.js';
+import './events/world-playerLeave.js';
+import './events/world-playerSpawn.js';
+import './events/world-playerBreakBlock.js';
+import './events/world-playerPlaceBlock.js';
+import './events/world-playerInteractWithBlock.js';
+import './events/world-entityHitEntity.js';
+import './events/world-playerBreakBlockAfter.js';
+import './events/world-entitySpawn.js';
+import './events/world-playerHotbarSelectedSlotChange.js';
+import './events/world-projectileHitEntity.js';
+import './events/world-itemCompleteUse.js';
+import './events/world-entityItemPickup.js';
+import './events/world-pressurePlatePush.js';
+import './events/world-playerPlaceBlockAfter.js';
 
-// System Games
-import './system/border.js';
-
-// Team Manager
-import './Manager/TeamManager.js';
-
-// Leaderboard
-import './Manager/LeaderboardNPC.js';
-
-// Router — startup
-import './Router/system-startup.js';
-import './Router/system-runInterval.js';
-
-// Router — world events
-import './Router/world-chatSend.js';
-import './Router/world-entityDie.js';
-import './Router/world-entityHurt.js';
-import './Router/world-itemUse.js';
-import './Router/world-playerInteractWithEntity.js';
-import './Router/world-playerLeave.js';
-import './Router/world-playerSpawn.js';
-import './Router/world-playerBreakBlock.js';
-import './Router/world-playerPlaceBlock.js';
-import './Router/world-playerInteractWithBlock.js';
-import './Router/world-entityHitEntity.js';
-import './Router/world-playerBreakBlockAfter.js';
-import './Router/world-entitySpawn.js';
-import './Router/world-playerHotbarSelectedSlotChange.js';
-import './Router/world-projectileHitEntity.js';
-import './Router/world-itemCompleteUse.js';
-import './Router/world-entityItemPickup.js';
-import './Router/world-pressurePlatePush.js';
-import './Router/world-playerPlaceBlockAfter.js';
+import { logWarn } from './shared/Util.js';
+logWarn('UHC', 'uhcrunB26BETA03 loaded');

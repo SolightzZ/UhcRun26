@@ -19,3 +19,6 @@ UHCRUN.zip
 world_icon.jpeg
 SKILLmd
 log.log
+.agents
+package-lock.json
+.claude

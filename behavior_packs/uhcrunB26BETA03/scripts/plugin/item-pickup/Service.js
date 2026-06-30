@@ -1,5 +1,5 @@
 import { ItemStack, system } from '@minecraft/server';
-import { getPlayerInventoryContainer } from '../Util.js';
+import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
 import model from './Model.js';
 
 class Service {

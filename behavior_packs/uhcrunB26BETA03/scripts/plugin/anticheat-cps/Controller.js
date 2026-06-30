@@ -6,6 +6,15 @@ class Controller {
    // ล้าง state ผู้เล่นเมื่อออก
    onPlayerLeave = ({ playerId }) => {
       model.playerState.delete(playerId);
+      model.adminPlayers.delete(playerId);
+   };
+
+   onPlayerSpawn = (event) => {
+      const player = event.player;
+      if (!player?.isValid) return;
+      if (player.hasTag('admin')) {
+         model.adminPlayers.set(player.id, player);
+      }
    };
 
    // ตรวจจับ CPS เมื่อผู้เล่นตี entity

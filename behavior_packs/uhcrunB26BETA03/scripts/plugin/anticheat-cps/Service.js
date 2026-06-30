@@ -1,4 +1,5 @@
 import { system, world } from '@minecraft/server';
+import { logError, logWarn } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
@@ -24,13 +25,11 @@ class Service {
    // แจ้ง admin ทางแชท
    alertAdmins = (attacker, cps) => {
       const name = attacker.name;
-      console.warn(`[CPS Alert] ${name} is clicking fast: ${cps} hits/${model.WINDOW_TICKS} ticks`);
+      logWarn('CPS', `${name} is clicking fast: ${cps} hits/${model.WINDOW_TICKS} ticks`);
 
       system.run(() => {
-         const players = world.getPlayers();
-         for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
-            const p = players[pi];
-            if (p?.isValid && p.hasTag('admin')) {
+         for (const [, p] of model.adminPlayers) {
+            if (p?.isValid) {
                p.sendMessage(`§c[CPS Anticheat] §e${name} §7approaching click limit: §f${cps} CPS`);
                p.playSound('random.screenshot', { volume: 0.5, pitch: 1.0 });
             }
@@ -43,12 +42,12 @@ class Service {
       const name = player.name;
       const safeName = name.replace(/"/g, '\\"');
       const kickMessage = `\nUHCRun\n§c[CPS] ${name} ${cps}/${model.MAX_CPS} (Auto-cheat)`;
-      console.warn(`[CPS] ${name} kicked: ${cps} hits/${model.WINDOW_TICKS} ticks`);
+      logWarn('CPS', `${name} kicked: ${cps} hits/${model.WINDOW_TICKS} ticks`);
       system.run(() => {
          if (!player?.isValid) return;
-   player.dimension.runCommand(`kick "${safeName}" ${kickMessage}`).catch((error) => {
-      console.error('[CPS] Kick command failed:', error);
-   });
+         player.dimension.runCommand(`kick "${safeName}" ${kickMessage}`).catch((error) => {
+            logError('CPS', 'Kick command failed', error);
+         });
       });
    };
 }

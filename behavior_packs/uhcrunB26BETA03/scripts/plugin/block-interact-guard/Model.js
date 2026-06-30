@@ -1,4 +1,4 @@
-import { LRUMap } from '../LRUMap.js';
+import { LRUMap } from '../../shared/LRUMap.js';
 
 class Model {
    BLOCK_DENYLIST = new Set([
@@ -17,25 +17,14 @@ class Model {
       'minecraft:composter',
    ]);
 
-   SPECTATOR_DENYLIST = new Set([
-      'minecraft:chest',
-      'minecraft:trapped_chest',
-      'minecraft:dispenser',
-      'minecraft:dropper',
-      'minecraft:chiseled_bookshelf',
-   ]);
+   SPECTATOR_DENYLIST = new Set(['minecraft:chest', 'minecraft:trapped_chest', 'minecraft:dispenser', 'minecraft:dropper', 'minecraft:chiseled_bookshelf']);
 
    DOOR_KEYWORDS = ['gate', 'trapdoor', 'candle', 'decorated_pot', 'crafter'];
    DOOR_REGEX = new RegExp(this.DOOR_KEYWORDS.join('|'));
 
    doorLikeCache = new LRUMap(128);
 
-   SHULKER_SOUNDS = [
-      'mob.shulker.shoot',
-      'firework.blast',
-      'firework.large_blast',
-      'firework.twinkle',
-   ];
+   SHULKER_SOUNDS = ['mob.shulker.shoot', 'firework.blast', 'firework.large_blast', 'firework.twinkle'];
    shulkerSoundIdx = 0;
 }
 

@@ -1,3 +1,4 @@
+import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Controller {
@@ -11,7 +12,7 @@ class Controller {
             ? ev.source
             : (ev.projectile.getComponent('minecraft:projectile')?.owner ?? null);
       } catch (error) {
-         console.error('[ProjectileHitSounds] Failed to resolve shooter:', error);
+         logError('ProjectileHitSounds', 'Failed to resolve shooter', error);
       }
       if (shooter?.typeId !== 'minecraft:player') return;
 
@@ -19,7 +20,7 @@ class Controller {
       try {
          target = ev.getEntityHit()?.entity;
       } catch (error) {
-         console.error('[ProjectileHitSounds] Failed to get entity hit information:', error);
+         logError('ProjectileHitSounds', 'Failed to get entity hit information', error);
       }
 
       if (target?.isValid) {

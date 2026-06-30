@@ -1,5 +1,5 @@
 import { system } from '@minecraft/server';
-import { KB, applyKnockbackFromDelta } from '../Util.js';
+import { KB, applyKnockbackFromDelta } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Controller {
@@ -19,16 +19,7 @@ class Controller {
       const aLoc = attacker.location;
       if (!vLoc || !aLoc) return;
 
-      applyKnockbackFromDelta(
-         victim,
-         aLoc.x,
-         aLoc.z,
-         vLoc.x,
-         vLoc.z,
-         KB.horizontal,
-         KB.vertical,
-         KB.maxHorizontal,
-      );
+      applyKnockbackFromDelta(victim, aLoc.x, aLoc.z, vLoc.x, vLoc.z, KB.horizontal, KB.vertical, KB.maxHorizontal);
    };
 
    // ล้าง throttle เมื่อผู้เล่นออก

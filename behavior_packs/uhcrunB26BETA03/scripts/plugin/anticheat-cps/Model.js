@@ -1,4 +1,4 @@
-import { LRUMap } from '../LRUMap.js';
+import { LRUMap } from '../../shared/LRUMap.js';
 
 //LRU cache พร้อม TTL cleanup สำหรับเก็บ playerState
 //Override cleanup สำหรับ object structure ที่มี lastWarnTick
@@ -8,6 +8,8 @@ class Model {
    HARD_LIMIT = 24; //ขีด kick
    WINDOW_TICKS = 20;
    BUF_SIZE = this.HARD_LIMIT;
+
+   adminPlayers = new Map(); // id → Player สำหรับ admins (cache แทน world.getPlayers())
 
    playerState = Object.assign(new LRUMap(Infinity, 200), {
       cleanup(currentTick) {
