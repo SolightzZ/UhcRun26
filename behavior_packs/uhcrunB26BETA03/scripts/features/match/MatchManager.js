@@ -2,6 +2,7 @@ import { Difficulty, InputPermissionCategory, system, world } from '@minecraft/s
 import { PVP_DELAY, PVP_TICK_BASE } from '../../constants/game.js';
 import { ctx } from '../../features/border/BorderState.js';
 import { spawnLeaderboardNPC } from '../../features/leaderboard/LeaderboardManager.js';
+import { enqueueBroadcast, enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { dynamicToast, getOverworld, logError, setAdventure, setSurvival, SND_PLING } from '../../shared/Util.js';
 import BlockFiller from '../block-filler/BlockFiller.js';
 import BorderManager from '../border/BorderManager.js';
@@ -105,48 +106,50 @@ class UhcMatchManager {
       }
    }
 
-   playerSetupHandleGameStart(player, tick) {
+   playerSetupHandleGameStart(players, tick) {
       if (tick > 26) return;
-
-      const input = player.inputPermissions;
 
       switch (tick) {
          case 1:
-            setAdventure(player);
-            input?.setPermissionCategory(InputPermissionCategory.Movement, false);
+            for (let i = 0; i < players.length; i++) {
+               setAdventure(players[i]);
+               players[i].inputPermissions?.setPermissionCategory(InputPermissionCategory.Movement, false);
+            }
             break;
 
          case 2:
-            player.playSound('start', soundOptionsStart);
+            enqueuePlayerSound(players, 'start', soundOptionsStart);
             break;
 
          case 4:
-            player.playSound('players', soundOptionsPlayers);
+            enqueuePlayerSound(players, 'players', soundOptionsPlayers);
             break;
 
          case 24:
-            player.playSound('startPlayer', soundOptionsStart);
+            enqueuePlayerSound(players, 'startPlayer', soundOptionsStart);
             break;
 
          case 26:
-            input?.setPermissionCategory(InputPermissionCategory.Movement, true);
-            setSurvival(player);
-            player.removeEffect('invisibility');
-            player.onScreenDisplay.setTitle('Good Luck, Have Fun');
-            player.playSound('random.explode', soundOptionsExplode);
-            this.playerSetupSpawnParticles(player);
+            for (let i = 0; i < players.length; i++) {
+               players[i].inputPermissions?.setPermissionCategory(InputPermissionCategory.Movement, true);
+               setSurvival(players[i]);
+               players[i].removeEffect('invisibility');
+               players[i].onScreenDisplay.setTitle('Good Luck, Have Fun');
+               this.playerSetupSpawnParticles(players[i]);
+            }
+            enqueuePlayerSound(players, 'random.explode', soundOptionsExplode);
             break;
       }
    }
 
-   playerSetupDisplayGameStart(player) {
+   playerSetupDisplayGameStart(players) {
       const tick = ctx.countdownTicks;
       if (tick < 0 || tick > actionBar) return;
-      if (!player?.isValid) return;
+      if (players.length === 0) return;
       const remaining = actionBar - tick,
          playSound = remaining === 20 || remaining === 10 || remaining <= 5;
-      player.onScreenDisplay.setActionBar(this.startBars[tick]);
-      if (playSound) player.playSound(SND_PLING, { volume: 1, pitch: 1 });
+      enqueuePlayerSetActionBar(players, this.startBars[tick]);
+      if (playSound) enqueuePlayerSound(players, SND_PLING, { volume: 1, pitch: 1 });
    }
 
    stopGameLoop() {
@@ -166,7 +169,7 @@ class UhcMatchManager {
                ctx.countdownTicks = -1;
                world.gameRules.showCoordinates = true;
                world.gameRules.pvp = false;
-               world.sendMessage('[UHC] Good Luck, Have Fun');
+               enqueueBroadcast('[UHC] Good Luck, Have Fun');
                const uhcPlayers = uhcPlayersCache;
                for (let i = 0; i < uhcPlayers.length; i++) {
                   if (uhcPlayers[i]?.isValid) MatchUtil.playerSetupAddItems(uhcPlayers[i]);
@@ -205,19 +208,18 @@ class UhcMatchManager {
       const tick = ctx.countdownTicks;
       const isSetupTick = tick === 1 || tick === 2 || tick === 4 || tick === 24 || tick === 26;
 
+      // กรองผู้เล่นที่ valid เพียงครั้งเดียวสำหรับ batch
+      const validPlayers = [];
+      for (let i = 0; i < players.length; i++) {
+         if (players[i]?.isValid) validPlayers.push(players[i]);
+      }
+      if (validPlayers.length === 0) return;
+
       if (isSetupTick) {
-         for (let i = 0; i < players.length; i++) {
-            const p = players[i];
-            if (!p?.isValid) continue;
-            this.playerSetupHandleGameStart(p, tick);
-         }
+         this.playerSetupHandleGameStart(validPlayers, tick);
       }
 
-      for (let i = 0; i < players.length; i++) {
-         const p = players[i];
-         if (!p?.isValid) continue;
-         this.playerSetupDisplayGameStart(p);
-      }
+      this.playerSetupDisplayGameStart(validPlayers);
    }
 
    gameLoopWorld(uhcPlayers) {
@@ -305,12 +307,7 @@ class UhcMatchManager {
       ctx.uhcTick = 0;
       ctx.teleportComplete = false;
       ctx.countdownTicks = -1;
-      try {
-         ctx.cachedDimension = getOverworld();
-      } catch (error) {
-         logError('UHC', 'Failed to get overworld dimension', error);
-         ctx.cachedDimension = null;
-      }
+      ctx.cachedDimension = getOverworld();
    }
 
    #initTeleport() {

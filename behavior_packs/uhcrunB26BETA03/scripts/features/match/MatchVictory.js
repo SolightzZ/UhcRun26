@@ -1,5 +1,6 @@
 import { system, world } from '@minecraft/server';
 import { showVictoryMessage } from '../../features/team/TeamManager.js';
+import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
 import { SND_PLING, logError } from '../../shared/Util.js';
 import BorderManager from '../border/BorderManager.js';
 import { MinecraftColor, ctx, icons } from '../border/BorderState.js';
@@ -36,7 +37,7 @@ class UhcMatchManagerVictory {
          time--;
 
          if (time <= 5 && time > 0) {
-            world.sendMessage(`${MinecraftColor.red}${icons.Hourglass} Game ending in ${time}`);
+            enqueueBroadcast(`${MinecraftColor.red}${icons.Hourglass} Game ending in ${time}`);
          }
 
          if (time <= 0) {

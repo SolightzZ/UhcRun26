@@ -2,7 +2,9 @@ import { Difficulty, world } from '@minecraft/server';
 import { SPAWN_CONFIG, TICKING_AREAS } from '../constants/game.js';
 import { spawnLeaderboardNPC, updateLeaderboard } from '../features/leaderboard/LeaderboardManager.js';
 import MatchManager from '../features/match/MatchManager.js';
+import { enqueueBroadcast } from '../shared/MessageBatcher.js';
 import { logError } from '../shared/Util.js';
+
 import { confirmAction } from './confirmAction.js';
 import { beginLifecycle, endLifecycle } from './lifecycle.js';
 import { batch, cmd, end, setupOrReset } from './playerUtil.js';
@@ -15,7 +17,7 @@ export function uhcSetup(source) {
       () => {
          if (!beginLifecycle('setup')) return;
          try {
-            world.sendMessage(
+            enqueueBroadcast(
                '§7------------ UHCRun26 -----------\n' +
                   '§f Battle. Survive. Win.\n' +
                   '§f Presented by Sleeplite\n' +
@@ -71,7 +73,10 @@ export function uhcReset(source) {
       () => {
          if (!beginLifecycle('reset')) return;
          try {
-            world.sendMessage('[UHC] Reset complete.');
+            enqueueBroadcast('[UHC] Reset complete.');
+            cmd('effect @a clear');
+            cmd('clearspawnpoint @a');
+            cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
 
             MatchManager.resetGameUhc();
 
@@ -83,9 +88,6 @@ export function uhcReset(source) {
             world.gameRules.doMobLoot = false;
             world.gameRules.pvp = false;
             world.setDifficulty(Difficulty.Peaceful);
-
-            cmd('clearspawnpoint @a');
-            cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
 
             batch({
                step: setupOrReset,
@@ -146,7 +148,7 @@ export function uhcEnd(source) {
       () => {
          if (!beginLifecycle('end')) return;
          try {
-            world.sendMessage('[UHC] The game is over.');
+            enqueueBroadcast('[UHC] The game is over.');
             cmd('effect @a clear');
 
             MatchManager.endGameUhc();

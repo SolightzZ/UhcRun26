@@ -1,5 +1,6 @@
 import { ItemStack, system } from '@minecraft/server';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
+import { enqueuePlayerMessage, enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { dynamicToast, isValidEntity, logError, randomInt } from '../../shared/Util.js';
 import Model from './Model.js';
 
@@ -73,7 +74,7 @@ class Service {
                case 'flint':
                   spawnStacked(dimension, 'minecraft:arrow', stack.amount, spawnAt);
                   entity.remove();
-                  player.sendMessage(dynamicToast(Model.CONFIG.feedback.arrow.message, Model.CONFIG.feedback.arrow.texture));
+                  enqueuePlayerMessage(player, dynamicToast(Model.CONFIG.feedback.arrow.message, Model.CONFIG.feedback.arrow.texture));
                   return { xp: 0, lapis: null };
 
                case 'lapis':
@@ -136,8 +137,8 @@ class Service {
       if (randomInt(0, 99) >= Model.CONFIG.chance.premiumBlock) return;
 
       player.addEffect('haste', 100, { amplifier: 1, showParticles: false });
-      player.onScreenDisplay.setActionBar('§bMining Boost II (5s)');
-      player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
+      enqueuePlayerSetActionBar(player, '§bMining Boost II (5s)');
+      enqueuePlayerSound(player, Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
    };
 
    // โอกาสได้รับหนังสือตามระดับของมนต์สะกด Fortune บนแร่ลาปิส; โดยจะดรอปแร่ลาปิส 1 ชิ้นเสมอ
@@ -153,7 +154,7 @@ class Service {
       if (randomInt(0, 99) < finalChance) {
          dimension.spawnItem(safeStack('minecraft:book', 1), pos);
          if (system.currentTick % 2 === 0) {
-            player.sendMessage(dynamicToast(Model.CONFIG.feedback.book.message, Model.CONFIG.feedback.book.texture));
+            enqueuePlayerMessage(player, dynamicToast(Model.CONFIG.feedback.book.message, Model.CONFIG.feedback.book.texture));
          }
       }
 
@@ -315,7 +316,7 @@ class Service {
 
       const newHealth = Math.min(max, current + Model.CONFIG.redstone.healAmount);
       health.setCurrentValue(newHealth);
-      player.sendMessage(dynamicToast(`§a+${formatHealth(newHealth - current)} §7(${formatHealth(newHealth)})`, Model.CONFIG.feedback.health.texture));
+      enqueuePlayerMessage(player, dynamicToast(`§a+${formatHealth(newHealth - current)} §7(${formatHealth(newHealth)})`, Model.CONFIG.feedback.health.texture));
    };
 
    tryAbsorption = (player) => {
@@ -326,19 +327,19 @@ class Service {
          amplifier: 0,
          showParticles: false,
       });
-      player.sendMessage(dynamicToast(`§fAbsorption §7(${Model.CONFIG.redstone.absorptionMinutes}m)`, Model.CONFIG.feedback.absorption.texture));
-      player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
+      enqueuePlayerMessage(player, dynamicToast(`§fAbsorption §7(${Model.CONFIG.redstone.absorptionMinutes}m)`, Model.CONFIG.feedback.absorption.texture));
+      enqueuePlayerSound(player, Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
       return true;
    };
 
    handleRedstone = (player) => {
       this.addXp(player, randomInt(Model.CONFIG.xp.redstone[0], Model.CONFIG.xp.redstone[1]));
       this.healPlayer(player);
-      if (!this.tryAbsorption(player)) player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.orb);
+      if (!this.tryAbsorption(player)) enqueuePlayerSound(player, Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.orb);
    };
 
    executeAction = (player, location, action, dimension) => {
-      player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.effect);
+      enqueuePlayerSound(player, Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.effect);
 
       if (action === Model.ACTION.REDSTONE) {
          this.handleRedstone(player);

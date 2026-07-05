@@ -1,4 +1,5 @@
 import { world } from '@minecraft/server';
+import { enqueuePlayerBroadcast } from '../../shared/MessageBatcher.js';
 import { getCachedPlayers } from '../team/TeamActions.js';
 
 export const icons = Object.freeze({
@@ -31,9 +32,6 @@ export const borderColors = {
 
 export const ticks = 20;
 export const center = { x: 0, z: 0 };
-
-const titleConfig = Object.freeze({ stayDuration: 200, fadeInDuration: 10, fadeOutDuration: 20 });
-const soundConfig = Object.freeze({ volume: 0.8, pitch: 1 });
 
 //ฟังก์ชันสร้างบริบทเกม (Game Context Factory)
 
@@ -77,7 +75,7 @@ export const renderCache = {
    scoreboardUpdateThrottle: 0,
 };
 
-// ส่งข้อความ/ชื่อเรื่อง/เสียงไปยังผู้เล่นทุกคน
+// ส่งข้อความ/ชื่อเรื่อง/เสียงไปยังผู้เล่นทุกคน (ผ่าน MessageBatcher แบบ Async)
 export function broadcast(targetOrPayload, maybePayload) {
    let targets, payload;
 
@@ -91,7 +89,7 @@ export function broadcast(targetOrPayload, maybePayload) {
 
    if (!payload || !targets?.length) return;
 
-   const { message, title, subtitle, sound } = payload;
+   const { message, title, subtitle, sound, soundOptions } = payload;
 
    const hasMessage = typeof message === 'string';
    const hasTitle = typeof title === 'string' || typeof subtitle === 'string';
@@ -99,29 +97,7 @@ export function broadcast(targetOrPayload, maybePayload) {
 
    if (!hasMessage && !hasTitle && !hasSound) return;
 
-   let titleOptions;
-
-   if (hasTitle) {
-      titleOptions = {
-         stayDuration: titleConfig.stayDuration,
-         fadeInDuration: titleConfig.fadeInDuration,
-         fadeOutDuration: titleConfig.fadeOutDuration,
-         subtitle: typeof subtitle === 'string' ? subtitle : '',
-      };
-   }
-
-   for (let i = 0; i < targets.length; i++) {
-      const player = targets[i];
-      if (!player?.isValid) continue;
-
-      if (hasMessage) player.sendMessage(message);
-
-      if (hasTitle) {
-         player.onScreenDisplay.setTitle(typeof title === 'string' ? title : '', titleOptions);
-      }
-
-      if (hasSound) player.playSound(sound, soundConfig);
-   }
+   enqueuePlayerBroadcast(targets, { message, title, subtitle, sound, soundOptions });
 }
 
 // ส่งคืนไอคอนสถานะเกมในรูปแบบที่อ่านง่าย

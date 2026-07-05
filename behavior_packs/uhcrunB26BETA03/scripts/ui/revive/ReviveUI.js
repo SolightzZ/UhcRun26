@@ -7,6 +7,7 @@ import { tryStartRevive } from '../../features/revive/ReviveManager.js';
 import { getDeadPlayersInTeam, hasReviveItem, resolvePlayer } from '../../features/revive/ReviveUtil.js';
 import { deathLocation } from '../../features/team/State_Team.js';
 import { getPlayerTeam } from '../../features/team/TeamActions.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { logError, SND_BASS, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
 
 function openReviveUI(player, deadList) {
@@ -56,7 +57,7 @@ export function onUseReviveItem(player) {
    const deadList = getDeadPlayersInTeam(player);
 
    if (deadList.length === 0) {
-      player.playSound(SND_BASS);
+      enqueuePlayerSound(player, SND_BASS);
       return;
    }
 

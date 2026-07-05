@@ -5,13 +5,14 @@ import { uhcPlayerIds } from '../../features/cache/State_Cache.js';
 import { isGameRunning } from '../../features/match/State_Game.js';
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { getPlayerTeam, getTeamPlayerCount, getTotalTeamPlayers, joinTeam, leaveTeam } from '../../features/team/TeamActions.js';
+import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { createLoc, dynamicToast, freeLoc, logError, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { go, setNav } from '../MenuRouter.js';
 
 export function openTeamMenu(player) {
    if (isGameRunning && uhcPlayerIds.has(player.id) && !player.hasTag(CONFIG.adminTag)) {
-      player.sendMessage(dynamicToast(TEAM_MENU.cannotChangeMidGame, TEX_CANCEL));
-      player.playSound(SND_BASS);
+      enqueuePlayerMessage(player, dynamicToast(TEAM_MENU.cannotChangeMidGame, TEX_CANCEL));
+      enqueuePlayerSound(player, SND_BASS);
       return;
    }
    const form = new ActionFormData();
@@ -45,14 +46,14 @@ export function openTeamMenu(player) {
       if (selection < teamsLen) {
          const selectedTeam = TEAMS[selection];
          if (currentTeamId === selectedTeam.id) {
-            player.playSound(SND_BASS);
-            player.sendMessage(dynamicToast(TEAM_MENU.alreadyOnTeam, selectedTeam.icon));
+            enqueuePlayerSound(player, SND_BASS);
+            enqueuePlayerMessage(player, dynamicToast(TEAM_MENU.alreadyOnTeam, selectedTeam.icon));
             return;
          }
 
          if (!currentTeamId && getTotalTeamPlayers() >= CONFIG.maxTotalPlayers) {
-            player.playSound(SND_BASS);
-            player.sendMessage(dynamicToast(TEAM_MENU.serverFullShort(CONFIG.maxTotalPlayers), TEX_CANCEL));
+            enqueuePlayerSound(player, SND_BASS);
+            enqueuePlayerMessage(player, dynamicToast(TEAM_MENU.serverFullShort(CONFIG.maxTotalPlayers), TEX_CANCEL));
             return;
          }
 
@@ -66,8 +67,8 @@ export function openTeamMenu(player) {
             logError('TeamActions', 'Failed to spawn team particle', error);
          }
 
-         player.playSound('random.orb', { pitch: 0.6, volume: 0.4 });
-         player.sendMessage(dynamicToast(`Joined ${selectedTeam.color}${selectedTeam.name}`, selectedTeam.icon));
+         enqueuePlayerSound(player, 'random.orb', { pitch: 0.6, volume: 0.4 });
+         enqueuePlayerMessage(player, dynamicToast(`Joined ${selectedTeam.color}${selectedTeam.name}`, selectedTeam.icon));
          return;
       }
 
@@ -76,15 +77,15 @@ export function openTeamMenu(player) {
       switch (actionIndex) {
          case 0: {
             if (!currentTeamId || !currentTeam) {
-               player.playSound(SND_BASS);
-               player.sendMessage(dynamicToast(TEAM_MENU.noTeam, TEX_CANCEL));
+               enqueuePlayerSound(player, SND_BASS);
+               enqueuePlayerMessage(player, dynamicToast(TEAM_MENU.noTeam, TEX_CANCEL));
                system.run(() => openTeamMenu(player));
                return;
             }
 
             leaveTeam(player);
-            player.playSound('random.break');
-            player.sendMessage(dynamicToast(`§c§oLeft from ${currentTeam.color}${currentTeam.name}`, 'textures/ui/permissions_visitor_hand'));
+            enqueuePlayerSound(player, 'random.break');
+            enqueuePlayerMessage(player, dynamicToast(`§c§oLeft from ${currentTeam.color}${currentTeam.name}`, 'textures/ui/permissions_visitor_hand'));
             system.run(() => openTeamMenu(player));
             return;
          }

@@ -1,4 +1,5 @@
 import { ItemStack, system } from '@minecraft/server';
+import { enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
 import model from './Model.js';
 
@@ -41,8 +42,8 @@ class Service {
       }
 
       if (smeltedAny) {
-         player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.2 });
-         player.onScreenDisplay.setActionBar(`§6Auto-Smelted: +${totalIngots} Ingots (Pickup)`);
+         enqueuePlayerSound(player, 'random.orb', { volume: 0.5, pitch: 1.2 });
+         enqueuePlayerSetActionBar(player, `§6Auto-Smelted: +${totalIngots} Ingots (Pickup)`);
       }
    };
 

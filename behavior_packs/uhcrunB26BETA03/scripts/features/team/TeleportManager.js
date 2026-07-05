@@ -1,5 +1,6 @@
 import { system, world } from '@minecraft/server';
 import { MENU_MSG, SPAWN_CONFIG } from '../../constants/game.js';
+import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { createLoc, freeLoc, getSafeDimension, logError } from '../../shared/Util.js';
 import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
 
@@ -24,7 +25,7 @@ export function AdminTeleport(source, target) {
 export function playerTeleport(source, target) {
    if (!source?.isValid) return;
    if (!target?.isValid) {
-      source.sendMessage(MENU_MSG.targetOffline);
+      enqueuePlayerMessage(source, MENU_MSG.targetOffline);
       return;
    }
 
@@ -36,7 +37,7 @@ export function playerTeleport(source, target) {
       const pLoc = createLoc(loc.x + Math.sin(yawRad) * 5, loc.y, loc.z - Math.cos(yawRad) * 5);
       source.teleport(pLoc, { dimension: target.dimension });
       freeLoc(pLoc);
-      source.playSound('teleport.ender_pearl');
+      enqueuePlayerSound(source, 'teleport.ender_pearl');
    } catch (error) {
       logError('Teleport', 'playerTeleport failed', error);
    }
@@ -62,7 +63,7 @@ export function teleportToSpawn(player) {
 
    system.runTimeout(() => {
       if (!player?.isValid) return;
-      player.playSound('random.enderchestopen', { volume: 0.9, pitch: 0.95 });
+      enqueuePlayerSound(player, 'random.enderchestopen', { volume: 0.9, pitch: 0.95 });
 
       try {
          _spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });

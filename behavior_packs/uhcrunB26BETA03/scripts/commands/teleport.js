@@ -1,6 +1,7 @@
 import { system } from '@minecraft/server';
 import { CONFIG, MENU_MSG } from '../constants/game.js';
 import { isGameRunning } from '../features/match/State_Game.js';
+import { enqueuePlayerMessage } from '../shared/MessageBatcher.js';
 import { showTeleportForm } from '../ui/menu/MenuTeleport.js';
 
 export function tpa(player) {
@@ -12,7 +13,7 @@ export function tpa(player) {
          return;
       }
       if (player.hasTag(CONFIG.uhcTag)) {
-         player.sendMessage(MENU_MSG.tpaBlockedInUhc);
+         enqueuePlayerMessage(player, MENU_MSG.tpaBlockedInUhc);
          return;
       }
       showTeleportForm(player, false);

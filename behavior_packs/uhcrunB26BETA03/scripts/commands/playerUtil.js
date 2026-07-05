@@ -2,6 +2,7 @@ import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/se
 import { SPAWN_CONFIG } from '../constants/game.js';
 import { getPlayerInventoryContainer } from '../features/cache/CacheManager.js';
 import { allPlayersCache } from '../features/cache/State_Cache.js';
+import { enqueuePlayerSound } from '../shared/MessageBatcher.js';
 import { COMPASS_ITEM, logError, setAdventure } from '../shared/Util.js';
 
 let SPAWN_DIMENSION = null;
@@ -79,7 +80,7 @@ function applyEffects(player, effects = []) {
 function setPlayerSpawn(player) {
    if (!player?.isValid) return;
    try {
-      player.playSound('spawn');
+      enqueuePlayerSound(player, 'spawn');
       setAdventure(player);
       player.inputPermissions.setPermissionCategory(InputPermissionCategory.Movement, true);
       player.teleport({ x: SPAWN_CONFIG.x, y: SPAWN_CONFIG.y, z: SPAWN_CONFIG.z }, { dimension: getSpawnDimension() });

@@ -1,4 +1,5 @@
 import { uhcPlayerIds } from '../../features/cache/State_Cache.js';
+import { enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
@@ -15,7 +16,7 @@ class Controller {
 
       if (!uhcPlayerIds.has(player.id) && (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))) {
          event.cancel = true;
-         player.onScreenDisplay.setActionBar('§cSpectators cannot interact with this block!');
+         enqueuePlayerSetActionBar(player, '§cSpectators cannot interact with this block!');
       }
    };
 

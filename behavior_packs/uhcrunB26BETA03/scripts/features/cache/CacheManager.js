@@ -1,4 +1,5 @@
 import { world } from '@minecraft/server';
+import { enqueueBroadcast, enqueuePlayerMessage } from '../../shared/MessageBatcher.js';
 import { CONFIG, TEAMS } from '../../constants/game.js';
 import cacheRegistry from '../../shared/CacheRegistry.js';
 import { logError } from '../../shared/Util.js';
@@ -186,23 +187,23 @@ export function purgePlayerCacheOnLeave(id) {
 export function dumpCacheInfo(player) {
    const msg =
       `§b[UHC Cache] Current Sizes:\n` +
-      `§7• allPlayersCache: §f${allPlayersCache.length}\n` +
-      `§7• uhcPlayersCache: §f${uhcPlayersCache.length}\n` +
-      `§7• allPlayersCacheIds: §f${allPlayersCacheIds.size}\n` +
-      `§7• playerCache: §f${playerCache.size}\n` +
-      `§7• playerTeamCache: §f${playerTeamCache.size}\n` +
-      `§7• hitRegistry: §f${hitRegistry.size}\n` +
-      `§7• multiKill: §f${multiKill.size}\n` +
-      `§7• killStreak: §f${killStreak.size}\n` +
-      `§7• inventoryCache: §f${inventoryCache.size}\n` +
-      `§7• uhcPlayerIds: §f${uhcPlayerIds.size}\n` +
-      `§7• playerStats (State_Team): §f${playerStats.size}\n` +
-      `§7• teamStats (State_Team): §f${teamStats.size}\n` +
-      `§7• deathLocation (State_Team): §f${deathLocation.size}`;
+      `§7allPlayersCache: §f${allPlayersCache.length}\n` +
+      `§7uhcPlayersCache: §f${uhcPlayersCache.length}\n` +
+      `§7allPlayersCacheIds: §f${allPlayersCacheIds.size}\n` +
+      `§7playerCache: §f${playerCache.size}\n` +
+      `§7playerTeamCache: §f${playerTeamCache.size}\n` +
+      `§7hitRegistry: §f${hitRegistry.size}\n` +
+      `§7multiKill: §f${multiKill.size}\n` +
+      `§7killStreak: §f${killStreak.size}\n` +
+      `§7inventoryCache: §f${inventoryCache.size}\n` +
+      `§7uhcPlayerIds: §f${uhcPlayerIds.size}\n` +
+      `§7playerStats (State_Team): §f${playerStats.size}\n` +
+      `§7teamStats (State_Team): §f${teamStats.size}\n` +
+      `§7deathLocation (State_Team): §f${deathLocation.size}`;
    if (player?.isValid && typeof player.sendMessage === 'function') {
-      player.sendMessage(msg);
+      enqueuePlayerMessage(player, msg);
    } else {
-      world.sendMessage(msg);
+      logError('Cache', 'dumpCacheInfo: invalid player, cannot send message');
    }
 }
 

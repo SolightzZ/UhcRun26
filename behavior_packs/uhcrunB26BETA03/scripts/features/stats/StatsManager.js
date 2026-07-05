@@ -1,5 +1,6 @@
 import { system, world } from '@minecraft/server';
 import { DP_SIZE_LIMIT, TEAMS } from '../../constants/game.js';
+import { enqueueBroadcast, enqueuePlayerMessage, enqueuePlayerSound, enqueuePlayerTitle } from '../../shared/MessageBatcher.js';
 import { dynamicToast, logError, logWarn } from '../../shared/Util.js';
 import { allPlayersCache, allPlayersCacheIds, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache } from '../cache/State_Cache.js';
 import { HIT_TIMEOUT_TICKS, MULTI_TIMEOUT_TICKS, firstBloodDone, kdHistoryObj, setFirstBloodDone, setStatsDirty, setStatsSaveTask, statsDirty, statsSaveTask } from '../match/State_Game.js';
@@ -93,6 +94,7 @@ export function resetAllStats() {
    for (const team of TEAMS) {
       setTeamStats(team.id, { kills: 0, deaths: 0 });
    }
+
    clearPlayerStats();
    clearStatsDynamicProperties();
 }
@@ -207,9 +209,9 @@ function handleMultiKill(killer) {
    try {
       const safeName = killer.name.replace(/§./g, '');
       const message = info.text + ' §7| §f' + safeName;
-      world.sendMessage(dynamicToast(message, 'textures/ui/icons/icon_multiplayer'));
-      world.sendMessage(message);
-      killer.playSound(info.sound);
+      enqueueBroadcast(dynamicToast(message, 'textures/ui/icons/icon_multiplayer'));
+      enqueueBroadcast(message);
+      enqueuePlayerSound(killer, info.sound);
    } catch (error) {
       logError('Stats', 'Multi kill broadcast failed', error);
    }
@@ -238,9 +240,9 @@ function handleFirstBlood(killer, victim) {
       const safeKiller = killer.name.replace(/§./g, '');
       const safeVictim = victim.name.replace(/§./g, '');
       const message = '§cFIRST BLOOD §7| ' + safeKiller + ' > §f' + safeVictim;
-      world.sendMessage(dynamicToast(message, 'textures/ui/friend_glyph_desaturated'));
-      world.sendMessage(message);
-      killer.playSound('mob.wither.death');
+      enqueueBroadcast(dynamicToast(message, 'textures/ui/friend_glyph_desaturated'));
+      enqueueBroadcast(message);
+      enqueuePlayerSound(killer, 'mob.wither.death');
    } catch (error) {
       logError('Stats', 'First blood broadcast failed', error);
    }
@@ -438,7 +440,7 @@ function showDeathUI(player, deathInfo) {
          fadeOutDuration: 100,
          subtitle,
       });
-      player.playSound('random.orb', {
+      enqueuePlayerSound(player, 'random.orb', {
          volume: 1,
          pitch: 0.6,
       });
@@ -452,7 +454,8 @@ function sendDeathMessage(player, deathInfo) {
       const stats = playerStats.get(player.id) ?? { kills: 0, deaths: 0 };
       const detailLine = deathInfo?.isPlayerKill ? `§eKilled by §r${deathInfo.text}` : `§eCause: §r${deathInfo?.text ?? 'unknown'}`;
 
-      player.sendMessage(
+      enqueuePlayerMessage(
+         player,
          `\n` +
             `§7==========================\n` +
             `§c            YOU DIED\n` +

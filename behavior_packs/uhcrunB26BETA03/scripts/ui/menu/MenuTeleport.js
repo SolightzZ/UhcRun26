@@ -2,6 +2,7 @@ import { ActionFormData } from '@minecraft/server-ui';
 import { MENU_MSG, TEAMS } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
 import { playerCache, playerTeamCache } from '../../features/cache/State_Cache.js';
+import { enqueuePlayerMessage } from '../../shared/MessageBatcher.js';
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { AdminTeleport, getOtherUhcPlayers, playerTeleport, teleportGetAllPlayers } from '../../features/team/TeleportManager.js';
 import { logError } from '../../shared/Util.js';
@@ -83,7 +84,7 @@ function teleportRandom(player, isAdmin) {
 
    if (candidates.length === 0) {
       try {
-         player.sendMessage(MENU_MSG.noValidUhc);
+         enqueuePlayerMessage(player, MENU_MSG.noValidUhc);
       } catch (error) {
          logError('TeleportMenu', 'Failed to send no valid UHC message', error);
       }

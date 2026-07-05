@@ -1,3 +1,4 @@
+import { enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
@@ -12,8 +13,8 @@ class Service {
       try {
          const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
          player.addEffect(id, duration, { amplifier, showParticles });
-         player.onScreenDisplay.setActionBar('§a[+] Regeneration II (10s)');
-         player.playSound('random.orb', { location: player.location, volume: 0.5, pitch: 1.5 });
+         enqueuePlayerSetActionBar(player, '§a[+] Regeneration II (10s)');
+         enqueuePlayerSound(player, 'random.orb', { volume: 0.5, pitch: 1.5 });
       } catch (error) {
          logError('ItemConsume', 'Failed to apply cooked effect', error);
       }

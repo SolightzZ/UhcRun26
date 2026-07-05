@@ -1,4 +1,5 @@
 import { EquipmentSlot, system } from '@minecraft/server';
+import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { dynamicToast } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
@@ -29,8 +30,8 @@ class Controller {
       if (!newItem) return;
 
       equip.setEquipment(EquipmentSlot.Mainhand, newItem);
-      player.sendMessage(dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`));
-      player.playSound(model.SOUND);
+      enqueuePlayerMessage(player, dynamicToast(`§f${tool.name}\n§7Efficiency §bIV`, `textures/items/${tool.texture}`));
+      enqueuePlayerSound(player, model.SOUND);
    };
 
    onPlayerLeave = ({ playerId }) => {

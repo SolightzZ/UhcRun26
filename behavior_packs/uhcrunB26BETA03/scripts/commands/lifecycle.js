@@ -1,10 +1,10 @@
-import { world } from '@minecraft/server';
+import { enqueueBroadcast } from '../shared/MessageBatcher.js';
 
 let lifecycleLock = null;
 
 export function beginLifecycle(opName) {
    if (lifecycleLock) {
-      world.sendMessage(`§c[UHC] Busy: ${lifecycleLock} is still running.`);
+      enqueueBroadcast(`§c[UHC] Busy: ${lifecycleLock} is still running.`);
       return false;
    }
    lifecycleLock = opName;

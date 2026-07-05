@@ -1,3 +1,4 @@
+import { enqueuePlayerActionBar } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
 import { playerCache, playerTeamCache } from '../cache/State_Cache.js';
@@ -54,7 +55,9 @@ export function removeOneReviveItem(player) {
 export function sendReviveTeamActionBar(teamId, message) {
    if (!teamId || !message) return;
 
+   const targets = [];
    const seen = new Set();
+
    const memberIds = teamPlayerIndex.get(teamId);
    if (memberIds) {
       const memberArr = Array.from(memberIds);
@@ -63,12 +66,7 @@ export function sendReviveTeamActionBar(teamId, message) {
          if (seen.has(id)) continue;
          seen.add(id);
          const player = resolvePlayer(id);
-         if (!player) continue;
-         try {
-            player.onScreenDisplay.setActionBar(message);
-         } catch (error) {
-            logError('ReviveUtil', 'Failed to send actionbar to team member', error);
-         }
+         if (player) targets.push(player);
       }
    }
 
@@ -78,14 +76,11 @@ export function sendReviveTeamActionBar(teamId, message) {
       if (seen.has(id)) continue;
       if (playerTeamCache.get(id) !== teamId) continue;
       const player = resolvePlayer(id);
-      if (!player) continue;
-      seen.add(id);
-      try {
-         player.onScreenDisplay.setActionBar(message);
-      } catch (error) {
-         logError('ReviveUtil', 'Failed to send actionbar to dead player', error);
-      }
+      if (player) targets.push(player);
    }
+
+   if (targets.length === 0) return;
+   enqueuePlayerActionBar(targets, message);
 }
 
 export function getDeadPlayersInTeam(player) {

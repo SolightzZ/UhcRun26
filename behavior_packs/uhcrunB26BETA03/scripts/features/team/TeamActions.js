@@ -1,5 +1,6 @@
 import { system, world } from '@minecraft/server';
 import { CONFIG, TEAM_MENU, TEAMS } from '../../constants/game.js';
+import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { dynamicToast, logError, logWarn, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { clearTeamRuntimeState, refreshPlayerCaches, removePlayerFromRuntimeState } from '../cache/CacheManager.js';
 import { allPlayersCache, allPlayersCacheIds, hitRegistry, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
@@ -151,8 +152,8 @@ export function joinTeam(player, newTeamId) {
    const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
 
    if (shouldTrack && !oldTeam && !canJoinTeam(newTeamId)) {
-      player.sendMessage(dynamicToast(TEAM_MENU.serverFull(CONFIG.maxTotalPlayers), TEX_CANCEL));
-      player.playSound(SND_BASS);
+      enqueuePlayerMessage(player, dynamicToast(TEAM_MENU.serverFull(CONFIG.maxTotalPlayers), TEX_CANCEL));
+      enqueuePlayerSound(player, SND_BASS);
       return;
    }
 
@@ -217,29 +218,33 @@ export function clearAllTeams(executor) {
    }
 }
 
-// ล้างข้อมูลรันไทม์ และลบแท็กเอนทิตี ป้ายชื่อ และคุณสมบัติไดนามิกของผู้เล่นออก
+// ล้างสถานะรันไทม์ — ลบแท็ก ชื่อแท็ก และคุณสมบัติแบบไดนามิก
+// ข้ามผู้เล่นที่มีแท็กทีมอยู่แล้ว (ข้อมูลทีมของผู้เล่นเดิมจะถูกเก็บรักษาไว้)
 export function clearAllTaguhcAndDynamicProperty(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
 
    const freshPlayers = world.getPlayers();
 
-   // ลบแท็กเอนทิตี: วนลูปข้อมูล freshPlayers เพื่อไม่ให้ขึ้นตรงกับหน่วยความจำแคช
    for (let pi = 0, pLen = freshPlayers.length; pi < pLen; pi++) {
       const p = freshPlayers[pi];
       if (!p?.isValid) continue;
-      // ตรวจสอบว่าผู้เล่นมีข้อมูลทีมก่อนที่จะทำการลบข้อมูล
+
+      // ข้ามผู้เล่นที่สังกัดทีมอยู่แล้ว
       let hasTeam = false;
       for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
-         const tid = TEAMS[ti].id;
-         if (p.hasTag(tid)) {
+         if (p.hasTag(TEAMS[ti].id)) {
             hasTeam = true;
-            p.removeTag(tid);
+            break;
          }
       }
-      if (p.getDynamicProperty(CONFIG.key)) hasTeam = true;
-      p.setDynamicProperty(CONFIG.key, undefined);
-      // รีเซ็ตป้ายชื่อเฉพาะกรณีที่ผู้เล่นไม่มีข้อมูลทีมเท่านั้น — นอกเหนือจากนั้นให้คงป้ายชื่อที่จัดรูปแบบไว้
-      if (!hasTeam) p.nameTag = p.name;
+
+      if (hasTeam) continue;
+
+      if (p.getDynamicProperty(CONFIG.key)) {
+         p.setDynamicProperty(CONFIG.key, undefined);
+      }
+
+      p.nameTag = p.name;
    }
 
    // ยกเลิกการอัปเดตป้ายชื่อที่ค้างอยู่ก่อนที่จะทำการล้างหน่วยความจำแคช
@@ -247,11 +252,11 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
       system.clearRun(nametagFlushTask);
       nametagFlushTask = null;
    }
+
    dirtyNametagIds.clear();
 
    clearAllReviveRuntime();
    refreshPlayerCaches();
-
    clearTeamRuntimeState();
 
    hitRegistry.clear();

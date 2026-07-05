@@ -1,4 +1,5 @@
 import { system } from '@minecraft/server';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import model from './Model.js';
 
 class Service {
@@ -28,7 +29,7 @@ class Service {
       system.run(() => {
          if (!player?.isValid) return;
          player.applyKnockback({ x: kbX, z: kbZ }, 0.5);
-         player.playSound(this.nextShulkerSound(), player.location);
+         enqueuePlayerSound(player, this.nextShulkerSound());
       });
    };
 }

@@ -1,4 +1,5 @@
 import { ItemComponentTypes, ItemStack, system } from '@minecraft/server';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
@@ -32,7 +33,7 @@ class Service {
       dur.damage = Math.min(dur.damage + amount, dur.maxDurability);
       if (dur.damage >= dur.maxDurability) {
          container.setItem(slot, undefined);
-         player.playSound('random.break', { location: player.location, volume: 1.0, pitch: 0.9 });
+         enqueuePlayerSound(player, 'random.break', { volume: 1.0, pitch: 0.9 });
          return false;
       }
       if (dur.damage !== prev) container.setItem(slot, item);
@@ -234,7 +235,7 @@ class Service {
       if (appleBatch > 0 && player?.isValid) {
          const appleStack = new ItemStack('minecraft:apple', appleBatch);
          dim.spawnItem(appleStack, { x: loc.x, y: loc.y, z: loc.z });
-         player.playSound('random.orb', { location: player.location, volume: 0.8, pitch: 1.2 });
+         enqueuePlayerSound(player, 'random.orb', { volume: 0.8, pitch: 1.2 });
       }
 
       return broken;

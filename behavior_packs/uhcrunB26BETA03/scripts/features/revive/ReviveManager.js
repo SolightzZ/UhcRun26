@@ -1,5 +1,6 @@
-import { system, world } from '@minecraft/server';
+import { system } from '@minecraft/server';
 import { REVIVE_MSG } from '../../constants/game.js';
+import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
 import { createLoc, dynamicToast, freeLoc, logError, setSurvival, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
 import { uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
 import { isGameRunning } from '../match/State_Game.js';
@@ -85,7 +86,7 @@ function finishRevive(targetId) {
    const reviveMessage = REVIVE_MSG.revived(reviver.name, target.name);
    sendReviveTeamActionBar(teamId, reviveMessage);
    try {
-      world.sendMessage(dynamicToast(reviveMessage, TEX_HEART));
+      enqueueBroadcast(dynamicToast(reviveMessage, TEX_HEART));
       reviver.playSound('random.levelup');
       target.playSound('random.totem');
    } catch (error) {

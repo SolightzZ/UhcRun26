@@ -1,4 +1,5 @@
-import { system, world } from '@minecraft/server';
+import { system } from '@minecraft/server';
+import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
 import { ctx } from '../../features/border/BorderState.js';
 import { logError } from '../../shared/Util.js';
 import { center, MinecraftColor } from '../border/BorderState.js';
@@ -163,7 +164,7 @@ class UhcMatchManagerTeleport {
 
          const shouldRetry = retryCount < entry.maxRetries;
          if (!shouldRetry) {
-            world.sendMessage(`${MinecraftColor.red}[x] Failed to scatter ${player.name}`);
+            enqueueBroadcast(`${MinecraftColor.red}[x] Failed to scatter ${player.name}`);
          }
          return { success: false, shouldRetry };
       }
@@ -187,7 +188,7 @@ class UhcMatchManagerTeleport {
 
       const finishQueue = () => {
          removeAbortHandler();
-         world.sendMessage(`${MinecraftColor.green}[/] All players scattered across the map!`);
+         enqueueBroadcast(`${MinecraftColor.green}[/] All players scattered across the map!`);
          if (typeof onComplete === 'function') onComplete();
       };
 
@@ -291,7 +292,7 @@ class UhcMatchManagerTeleport {
             retryQueue.push(retryEntry);
 
             if (entry.retryCount === 0) {
-               world.sendMessage(`${MinecraftColor.yellow}[x] Retrying teleport for ${entry.player.name}...`);
+               enqueueBroadcast(`${MinecraftColor.yellow}[x] Retrying teleport for ${entry.player.name}...`);
             }
          } else {
             onFail();
@@ -308,7 +309,7 @@ class UhcMatchManagerTeleport {
       if (!Number.isFinite(radius)) radius = ctx.borderRadius;
 
       if (!ctx.cachedDimension) {
-         world.sendMessage(MinecraftColor.red + '§c[x] Server error: Cannot initialize world dimension');
+         enqueueBroadcast(MinecraftColor.red + '§c[x] Server error: Cannot initialize world dimension');
 
          if (typeof onComplete === 'function') onComplete();
          return;
@@ -322,7 +323,7 @@ class UhcMatchManagerTeleport {
          return;
       }
 
-      world.sendMessage(`${MinecraftColor.cyan}§l» §r${MinecraftColor.gray}Scattering ${teamsData.length} teams across the map...`);
+      enqueueBroadcast(`${MinecraftColor.cyan}§l» §r${MinecraftColor.gray}Scattering ${teamsData.length} teams across the map...`);
 
       const positions = this.teleportManagerGenerateXZ(teamsData.length, radius);
       this.teleportManagerRunQueue(teamsData, positions, ctx.cachedDimension, onComplete);

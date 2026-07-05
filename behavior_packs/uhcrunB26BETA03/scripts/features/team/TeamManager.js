@@ -1,5 +1,6 @@
 import { system, world } from '@minecraft/server';
 import { CONFIG, TEAMS } from '../../constants/game.js';
+import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
 import { COMPASS_ITEM, createLoc, freeLoc, getSafeDimension, logError, logWarn, setAdventure, setSpectator } from '../../shared/Util.js';
 import { openMainMenu } from '../../ui/menu/MenuMain.js';
 import { onUseReviveItem } from '../../ui/revive/ReviveUI.js';
@@ -58,7 +59,7 @@ export function showVictoryMessage(winnerTeamId, uhcTick = 0) {
    const minutes = Math.floor(totalSeconds / 60);
    const seconds = totalSeconds % 60;
 
-   world.sendMessage(
+   enqueueBroadcast(
       `\n§7=======================================\n§6      UHC RUN26 MATCH FINISHED\n§7=======================================\n\n§eVICTORY ${teamInfo.color}${teamInfo.name}§r\n\n§ePLAYERS\n${playerLine}\n§eSTATS\n§7 » Total Kills: §c${teamStat.kills}\n§7 » Match Time: §e${minutes}m ${seconds}s\n\n§9 » Sleeplite: discord.gg/gtqfbmvTJK\n\n§7=======================================\n\n`,
    );
 }
