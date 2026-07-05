@@ -1,8 +1,8 @@
 import { system } from '@minecraft/server';
-import util from './BlockFillerUtil.js';
+import { wrapTick } from '../../shared/profiler/index.js';
 import { logError } from '../../shared/Util.js';
+import util from './BlockFillerUtil.js';
 
-//Queue จัดการ task เติมบล็อก แบบ batch พร้อม retry เมื่องานโดน block
 class BlockFillerFillQueue {
    TASK_QUEUE = [];
    RETRY_QUEUE = [];
@@ -22,27 +22,33 @@ class BlockFillerFillQueue {
       this.isEndgameHandler = typeof handler === 'function' ? handler : () => false;
    }
 
-   // ประมวลผล task ใน queue ตาม batch size
+   // time-budgeted processing using tick boundary instead of Date.now()
    processFillQueue() {
       const isEndgame = this.isEndgameHandler();
       if (!isEndgame && system.currentTick % 2 !== 0) return 0;
 
-      const BATCH_SIZE = isEndgame ? util.BATCH_SIZE_ENDGAME : util.BATCH_SIZE_NORMAL;
+      const startTick = system.currentTick;
+      const PER_TASK_LIMIT = 500;
+      const MAX_ITERATIONS = isEndgame ? 80 : 48;
       let processed = 0;
       let head = this.queueHead;
       const queue = this.TASK_QUEUE;
+      let iterCount = 0;
 
-      while (head < queue.length && processed < BATCH_SIZE) {
+      while (head < queue.length && iterCount < MAX_ITERATIONS) {
+         if (iterCount > 0 && system.currentTick !== startTick) break;
+         iterCount++;
+
          const task = queue[head];
 
          let result;
          try {
-            result = task(BATCH_SIZE - processed);
-      } catch (error) {
-         logError('FillQueue', 'Task execution failed', error);
-         head++;
-         continue;
-      }
+            result = task(PER_TASK_LIMIT);
+         } catch (error) {
+            logError('FillQueue', 'Task execution failed', error);
+            head++;
+            continue;
+         }
 
          if (result.blocked) {
             this.pushRetry(task, this.normalizeRemaining(result.remaining));
@@ -67,7 +73,6 @@ class BlockFillerFillQueue {
       return processed;
    }
 
-   // เช็คว่าสามารถเพิ่ม task ได้หรือไม่
    canQueueTask(blockCount) {
       if (blockCount > util.MAX_BLOCKS_PER_TASK) return false;
       if (this.TASK_QUEUE.length - this.queueHead >= util.TASK_QUEUE_HARD_CAP) return false;
@@ -91,13 +96,11 @@ class BlockFillerFillQueue {
       return true;
    }
 
-   // ตัดหัว queue ที่ประมวลผลแล้วออก
    compactQueue() {
       this.TASK_QUEUE.splice(0, this.queueHead);
       this.queueHead = 0;
    }
 
-   // เพิ่ม task ถ้า queue เต็มให้เข้า retry
    fillAddTask(task, blockCount) {
       if (blockCount <= 0 || !Number.isFinite(blockCount)) return;
 
@@ -112,7 +115,6 @@ class BlockFillerFillQueue {
       return value | 0;
    }
 
-   // เก็บ task ที่ถูก block ไว้รอลองใหม่
    pushRetry(task, blockCount) {
       if (blockCount <= 0 || !Number.isFinite(blockCount)) return;
 
@@ -137,7 +139,6 @@ class BlockFillerFillQueue {
       });
    }
 
-   // ประมวลผล retry queue (รอจนกว่าจะลองได้)
    processRetryQueue() {
       if (this.RETRY_QUEUE.length === 0) return;
 
@@ -175,7 +176,7 @@ class BlockFillerFillQueue {
       }
    }
 
-   // เริ่ม fill loop (ใช้ runTimeout ไม่ใช่ interval เพื่อประหยัด CPU)
+   // runTimeout instead of interval to save CPU
    startFillLoopIfNeeded() {
       if (this.fillIntervalId !== null) return;
 
@@ -188,7 +189,6 @@ class BlockFillerFillQueue {
       this.fillIntervalId = system.runTimeout(tick, util.FILL_INTERVAL_TICKS);
    }
 
-   // นัดหมาย tick ถัดไปถ้ายังมีงานเหลือ
    _rescheduleIfNeeded() {
       if (this.fillIntervalId !== null) return;
       if (this.TASK_QUEUE.length - this.queueHead === 0 && this.RETRY_QUEUE.length === 0) return;
@@ -200,10 +200,6 @@ class BlockFillerFillQueue {
       this.fillIntervalId = system.runTimeout(tick, util.FILL_INTERVAL_TICKS);
    }
 
-   getAdaptiveBatchSize() {
-      return this.isEndgameHandler() ? util.BATCH_SIZE_ENDGAME : util.BATCH_SIZE_NORMAL;
-   }
-
    fillIsIdle() {
       return this.fillIntervalId === null;
    }
@@ -212,7 +208,6 @@ class BlockFillerFillQueue {
       return !this.fillIsIdle() && this.pendingBlocks > 0;
    }
 
-   // หยุด fill loop
    stopFillLoop() {
       if (this.fillIntervalId !== null) {
          system.clearRun(this.fillIntervalId);
@@ -230,4 +225,7 @@ class BlockFillerFillQueue {
    }
 }
 
-export default new BlockFillerFillQueue();
+const _fillQueue = new BlockFillerFillQueue();
+const _boundProcess = _fillQueue.processFillQueue.bind(_fillQueue);
+_fillQueue.processFillQueue = wrapTick('fillProcess', _boundProcess);
+export default _fillQueue;

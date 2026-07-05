@@ -1,34 +1,30 @@
 import { system, world } from '@minecraft/server';
 import { showVictoryMessage } from '../../features/team/TeamManager.js';
-import { getCachedPlayers, getPlayerTeam, getPlayersByTeam } from '../team/TeamActions.js';
-import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { SND_PLING, logError } from '../../shared/Util.js';
-import bm, { ctx, icons, MinecraftColor } from '../border/BorderManager.js';
-import { recordPlacement, recordGamesPlayed, recordWin } from '../rank/RankData.js';
+import bm, { MinecraftColor, ctx, icons } from '../border/BorderManager.js';
+import { recordGamesPlayed, recordPlacement, recordWin } from '../rank/RankData.js';
+import { TEAM_LOOKUP } from '../team/State_Team.js';
+import { getCachedPlayers, getPlayerTeam, getPlayersByTeam } from '../team/TeamActions.js';
 import matchManager from './MatchManager.js';
 
-//ตรวจสอบผู้ชนะ: นับทีมที่เหลือรอด, แสดงข้อความชนะ/เสมอ, นับถอยหลังจบเกม
 class UhcMatchManagerVictory {
    countdownRunning = false;
    aliveTeamsSet = new Set();
    _prevAliveTeams = new Set();
 
-   // เสมอ: ไม่มีทีมเหลือรอด
    victoryManagerTriggerDraw() {
       if (!ctx.isRunning) return;
       ctx.isRunning = false;
       matchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      // บันทึกสถิติ Rank: ทุกคนได้เล่น +1 เกม (ไม่มีผู้ชนะ)
-      const allPlayerIds = matchManager.getUhcPlayersCached().map((p) => p.id);
-      recordGamesPlayed(allPlayerIds);
+      const allPlayerNames = matchManager.getUhcPlayersCached().map((p) => p.name);
+      recordGamesPlayed(allPlayerNames);
 
       bm.broadcast(getCachedPlayers(), { message: '[x]: No Team Survived', sound: SND_PLING });
       this.victoryManagerStartCountdown();
    }
 
-   // เริ่มนับถอยหลัง 10 วิ ก่อนจบเกม
    victoryManagerStartCountdown() {
       if (this.countdownRunning) return;
       this.countdownRunning = true;
@@ -54,7 +50,6 @@ class UhcMatchManagerVictory {
       }, 20);
    }
 
-   // ทีม winTag ชนะ
    victoryManagerTriggerWin(winTag) {
       if (!ctx.isRunning) return;
 
@@ -62,11 +57,10 @@ class UhcMatchManagerVictory {
       matchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      // บันทึกสถิติ Rank: ทีมชนะได้อันดับ 1 + ทุกคนได้เล่น +1 เกม
-      const allPlayerIds = matchManager.getUhcPlayersCached().map((p) => p.id);
-      const winPlayers = getPlayersByTeam(winTag).map((p) => p.id);
+      const allPlayerNames = matchManager.getUhcPlayersCached().map((p) => p.name);
+      const winPlayers = getPlayersByTeam(winTag).map((p) => p.name);
       recordWin(winTag, winPlayers);
-      recordGamesPlayed(allPlayerIds);
+      recordGamesPlayed(allPlayerNames);
 
       const teamInfo = TEAM_LOOKUP.get(winTag) ?? null;
       const teamName = teamInfo ? `${teamInfo.color}${teamInfo.name}` : winTag;
@@ -105,7 +99,6 @@ class UhcMatchManagerVictory {
       this.victoryManagerStartCountdown();
    }
 
-   // ตรวจสอบว่าเหลือกี่ทีม ถ้าเหลือ 1 ทีม = ชนะ
    victoryManagerCheck() {
       if (!ctx.isRunning) return;
 
@@ -124,7 +117,6 @@ class UhcMatchManagerVictory {
 
          this.aliveTeamsSet.add(tag);
          if (this.aliveTeamsSet.size > 1) {
-            // ตรวจจับทีมที่ตกรอบ (มีใน prev แต่ไม่มีใน curr)
             this._detectEliminatedTeams();
             this._prevAliveTeams.clear();
             for (const t of this.aliveTeamsSet) this._prevAliveTeams.add(t);
@@ -132,7 +124,6 @@ class UhcMatchManagerVictory {
          }
       }
 
-      // ตรวจจับทีมที่ตกรอบ (มีใน prev แต่ไม่มีใน curr)
       this._detectEliminatedTeams();
       this._prevAliveTeams.clear();
 
@@ -144,7 +135,7 @@ class UhcMatchManagerVictory {
       this.victoryManagerTriggerDraw();
    }
 
-   // ตรวจจับทีมที่เพิ่งตกรอบ (อยู่ใน prev แต่หายไป)
+   // detect newly eliminated teams (in prev but not in curr)
    _detectEliminatedTeams() {
       if (this._prevAliveTeams.size === 0) return;
 
@@ -156,7 +147,6 @@ class UhcMatchManagerVictory {
       }
    }
 
-   // ยกเลิก countdown
    resetCountdownRunning() {
       if (ctx.countdownIntervalId !== null) {
          system.clearRun(ctx.countdownIntervalId);

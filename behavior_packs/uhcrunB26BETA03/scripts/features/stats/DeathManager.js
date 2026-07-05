@@ -1,5 +1,5 @@
-//จัดการการตายของผู้เล่น ทั้ง victim และ killer
 import { ItemStack, system } from '@minecraft/server';
+import { deathBatchRunning, deathQueue, enqueueDeath, setDeathBatchRunning } from '../../shared/State_Queue.js';
 import { createItemQueryOptions, createLoc, freeLoc, logError, setSpectator } from '../../shared/Util.js';
 import { removePlayerFromAliveRuntimeState } from '../cache/CacheManager.js';
 import { enqueueItemVacuum } from '../cache/ItemVacuum.js';
@@ -9,7 +9,6 @@ import { mergePlayerStats, recordSurvivedLast } from '../rank/RankData.js';
 import { cancelReviveForPlayer } from '../revive/ReviveManager.js';
 import { REVIVE_ITEM_ID } from '../revive/State_Revive.js';
 import { playerStats, setDeathLocation, setPlayerStats, TEAM_LOOKUP, teamPlayerIndex, teamStats } from '../team/State_Team.js';
-import { deathBatchRunning, deathQueue, setDeathBatchRunning } from './State_Queue.js';
 import {
    getDeathDisplayInfo,
    handleFirstBlood,
@@ -24,14 +23,65 @@ import {
    trackHit,
 } from './StatsManager.js';
 
-//จำกัดจำนวน queue death ที่ประมวลผลต่อรอบ (burst เมื่อค้างเยอะ)
+const PLAYER_TYPE = 'minecraft:player';
+
+// burst processing when queue is backed up
 const DEATH_BATCH_SIZE = Object.freeze({
    NORMAL: 5,
    BURST: 10,
    BURST_THRESHOLD: 20,
 });
 
-//ประมวลผล death queue เป็นชุดๆ ผ่าน system.runTimeout
+// Extracted deferred cleanup to reduce nesting in processVictimDeath
+function deferredDeathCleanup(player, snapX, snapY, snapZ) {
+   try {
+      if (!player || !player.isValid) return;
+
+      enqueueItemVacuum(() => {
+         try {
+            if (!player || !player.isValid) return;
+            const activeDim = player.dimension;
+            if (!activeDim) return;
+
+            const spawnLoc = createLoc(snapX, snapY + 1.5, snapZ);
+
+            try {
+               activeDim.spawnItem(new ItemStack(REVIVE_ITEM_ID, 1), spawnLoc);
+            } catch (error) {
+               logError('DeathManager', 'Failed to spawn player head', error);
+            }
+
+            let cart = null;
+            try {
+               cart = activeDim.spawnEntity('minecraft:hopper_minecart', spawnLoc);
+            } catch (error) {
+               logError('DeathManager', 'Failed to spawn hopper minecart', error);
+            } finally {
+               freeLoc(spawnLoc);
+            }
+
+            if (!cart || !cart.isValid) return;
+            const cartLoc = cart.location;
+
+            const items = activeDim.getEntities(createItemQueryOptions(snapX, snapY, snapZ));
+            for (let ii = 0, iLen = items.length; ii < iLen; ii++) {
+               const item = items[ii];
+               if (!item || !item.isValid) continue;
+               try {
+                  item.teleport(cartLoc, { dimension: activeDim });
+               } catch (error) {
+                  logError('DeathManager', 'Failed to teleport item to vacuum cart', error);
+               }
+            }
+         } catch (error) {
+            logError('DeathManager', 'Item vacuum execution failed', error);
+         }
+      });
+   } catch (error) {
+      logError('DeathManager', 'Deferred spectator transition failed', error);
+   }
+}
+
 function processDeathBatch() {
    let count = 0;
    const dynamicBatch = deathQueue.length > DEATH_BATCH_SIZE.BURST_THRESHOLD ? DEATH_BATCH_SIZE.BURST : DEATH_BATCH_SIZE.NORMAL;
@@ -58,7 +108,7 @@ function processDeathBatch() {
 export function showDeathScreenshot(player) {
    if (!player?.isValid) return;
 
-   deathQueue.push({ player });
+   enqueueDeath({ player });
 
    if (deathBatchRunning) return;
 
@@ -66,17 +116,16 @@ export function showDeathScreenshot(player) {
    system.run(processDeathBatch);
 }
 
-//ประมวลผลผู้เล่นที่ตาย: ลบ alive state, สร้าง particles, เปลี่ยนเป็น spectator, ดูดไอเทม, อัปเดต stats
 function processVictimDeath(player, victimTeamId, loc) {
    const id = player.id;
 
    removePlayerFromAliveRuntimeState(id, victimTeamId);
 
-   // ตรวจสอบว่าทีมมีคนรอดเหลือ 0 = ผู้เล่นนี้คือคนสุดท้ายของทีม
+   // if team has 0 remaining, this player was the last survivor
    if (victimTeamId) {
       const teamMembers = teamPlayerIndex.get(victimTeamId);
       if (teamMembers && teamMembers.size === 0) {
-         recordSurvivedLast(id);
+         recordSurvivedLast(player.name);
       }
    }
 
@@ -105,75 +154,20 @@ function processVictimDeath(player, victimTeamId, loc) {
    const snapY = loc.y;
    const snapZ = loc.z;
 
+   try {
+      player.removeTag('uhc');
+   } catch (error) {
+      logError('DeathManager', 'Failed to remove UHC tag', error);
+   }
+
+   try {
+      setSpectator(player);
+   } catch (error) {
+      logError('DeathManager', 'Failed to set game mode to Spectator', error);
+   }
+
    system.runTimeout(() => {
-      try {
-         if (!player || !player.isValid) return;
-
-         try {
-            player.removeTag('uhc');
-         } catch (error) {
-            logError('DeathManager', 'Failed to remove UHC tag', error);
-         }
-
-         try {
-            setSpectator(player);
-         } catch (error) {
-            logError('DeathManager', 'Failed to set game mode to Spectator', error);
-         }
-
-         enqueueItemVacuum(() => {
-            try {
-               if (!player || !player.isValid) return;
-               const activeDim = player.dimension;
-               if (!activeDim) return;
-
-               const spawnLoc = createLoc(snapX, snapY + 1.5, snapZ);
-
-               try {
-                  activeDim.spawnItem(new ItemStack(REVIVE_ITEM_ID, 1), spawnLoc);
-               } catch (error) {
-                  logError('DeathManager', 'Failed to spawn player head', error);
-               }
-
-               let cart = null;
-               try {
-                  cart = activeDim.spawnEntity('minecraft:hopper_minecart', spawnLoc);
-               } catch (error) {
-                  logError('DeathManager', 'Failed to spawn hopper minecart', error);
-               } finally {
-                  freeLoc(spawnLoc);
-               }
-
-               if (!cart || !cart.isValid) return;
-               const cartLoc = cart.location;
-
-               const items = activeDim.getEntities(createItemQueryOptions(snapX, snapY, snapZ));
-               for (let ii = 0, iLen = items.length; ii < iLen; ii++) {
-                  const item = items[ii];
-                  if (!item || !item.isValid) continue;
-                  try {
-                     item.teleport(cartLoc, { dimension: activeDim });
-                  } catch (error) {
-                     logError('DeathManager', 'Failed to teleport item to vacuum cart', error);
-                  }
-               }
-
-               system.runTimeout(() => {
-                  try {
-                     if (cart && cart.isValid) {
-                        cart.remove();
-                     }
-                  } catch (error) {
-                     logError('DeathManager', 'Failed to remove vacuum cart', error);
-                  }
-               }, 30);
-            } catch (error) {
-               logError('DeathManager', 'Item vacuum execution failed', error);
-            }
-         });
-      } catch (error) {
-         logError('DeathManager', 'Deferred spectator transition failed', error);
-      }
+      deferredDeathCleanup(player, snapX, snapY, snapZ);
    }, 1);
 
    const victimPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
@@ -185,7 +179,7 @@ function processVictimDeath(player, victimTeamId, loc) {
    }
 
    setPlayerStats(id, victimPs);
-   if (uhcDeathsObj) uhcDeathsObj.setScore(id, victimPs.deaths);
+   if (uhcDeathsObj) uhcDeathsObj.setScore(player.name, victimPs.deaths);
 
    const teamEntry = teamStats.get(victimTeamId);
    if (teamEntry) {
@@ -195,7 +189,6 @@ function processVictimDeath(player, victimTeamId, loc) {
    scheduleSaveStats();
 }
 
-//ให้คะแนน killer และประกาศ multi kill / first blood
 function processKillerRewards(killer, victimPlayer, victimTeamId) {
    const killerId = killer.id;
    const killerTeamId = playerTeamCache.get(killerId);
@@ -216,9 +209,9 @@ function processKillerRewards(killer, victimPlayer, victimTeamId) {
    }
 
    setPlayerStats(killerId, killerPs);
-   if (uhcKillsObj) uhcKillsObj.setScore(killerId, killerPs.kills);
+   if (uhcKillsObj) uhcKillsObj.setScore(killer.name, killerPs.kills);
 
-   mergePlayerStats(killerId, killer.name, { kills: 1, teamId: killerTeamId });
+   mergePlayerStats(killer.name, { kills: 1, teamId: killerTeamId });
 
    const teamEntry = teamStats.get(killerTeamId);
 
@@ -241,7 +234,6 @@ function processKillerRewards(killer, victimPlayer, victimTeamId) {
    handleKillStreak(killer);
 }
 
-//จุดเริ่มต้นจัดการ death: ยกเลิก revive, ประมวลผล victim และ killer
 export function handleDeath(player) {
    if (!player || !player.isValid) return;
    const id = player.id;
@@ -254,7 +246,7 @@ export function handleDeath(player) {
 
    if (isUHC(player)) {
       processVictimDeath(player, victimTeamId, player.location);
-      mergePlayerStats(id, player.name, { deaths: 1, teamId: victimTeamId });
+      mergePlayerStats(player.name, { deaths: 1, teamId: victimTeamId });
       killStreak.set(id, 0);
       multiKill.delete(id);
       showDeathScreenshot(player);
@@ -267,17 +259,16 @@ export function handleDeath(player) {
    hitRegistry.delete(id);
 }
 
-//บันทึกการโจมตีล่าสุดลง hitRegistry (ใครตีใคร)
 export function HandlerOnHurt(ev) {
    const hurt = ev.hurtEntity;
    if (!hurt) return;
-   if (hurt.typeId !== 'minecraft:player') return;
+   if (hurt.typeId !== PLAYER_TYPE) return;
 
    const source = ev.damageSource;
    const attacker = source?.damagingEntity;
    const cause = source?.cause;
 
-   if (!attacker || attacker.typeId !== 'minecraft:player') {
+   if (!attacker || attacker.typeId !== PLAYER_TYPE) {
       trackHit(null, hurt, cause);
       return;
    }

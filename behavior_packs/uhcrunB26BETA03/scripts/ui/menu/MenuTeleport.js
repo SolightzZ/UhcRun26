@@ -1,13 +1,11 @@
-//ระบบ teleport UI: เลือกทีม, เลือกผู้เล่น (server-ui only)
 import { ActionFormData } from '@minecraft/server-ui';
-import { CONFIG, MENU_MSG, TEAMS } from '../../constants/game.js';
+import { MENU_MSG, TEAMS } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
 import { playerCache, playerTeamCache } from '../../features/cache/State_Cache.js';
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { AdminTeleport, getOtherUhcPlayers, playerTeleport, teleportGetAllPlayers } from '../../features/team/TeleportManager.js';
 import { logError } from '../../shared/Util.js';
 
-//แสดง GUI เลือกผู้เล่น / ทีมสำหรับ teleport
 export function showTeleportForm(player, isAdmin) {
    if (!player) return;
    if (!player.isValid) return;
@@ -77,7 +75,6 @@ export function showTeleportForm(player, isAdmin) {
       });
 }
 
-//สุ่ม teleport ไปหาผู้เล่น UHC คนอื่น
 function teleportRandom(player, isAdmin) {
    const candidates = getOtherUhcPlayers(player.id);
 
@@ -99,7 +96,6 @@ function teleportRandom(player, isAdmin) {
    }
 }
 
-//แสดงรายชื่อผู้เล่นทั้งหมดให้เลือก teleport
 function teleportShowAllPlayers(player, mode) {
    const others = teleportGetAllPlayers(player);
    const targetIds = [];
@@ -152,7 +148,6 @@ function teleportShowAllPlayers(player, mode) {
       });
 }
 
-//แสดงผู้เล่นในทีมที่เลือกให้ teleport
 function teleportShowTeamPlayers(player, teamId, mode) {
    const team = TEAM_LOOKUP.get(teamId);
    if (!team) return showTeleportForm(player, mode.isAdmin);

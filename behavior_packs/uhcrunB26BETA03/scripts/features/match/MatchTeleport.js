@@ -1,8 +1,8 @@
 import { system, world } from '@minecraft/server';
-import { allPlayersCache } from '../cache/State_Cache.js';
-import { getPlayerTeam } from '../team/TeamActions.js';
-import { isValidAndUhc, logError } from '../../shared/Util.js';
+import { logError } from '../../shared/Util.js';
 import { center, ctx, MinecraftColor } from '../border/BorderManager.js';
+import { allPlayersCache, uhcPlayerIds } from '../cache/State_Cache.js';
+import { getPlayerTeam } from '../team/TeamActions.js';
 
 const TELEPORT_CONFIG = Object.freeze({
    PRELOAD_Y: 200,
@@ -16,12 +16,10 @@ const TELEPORT_CONFIG = Object.freeze({
    MAX_SPAWN_RADIUS: 490,
 });
 
-//จัดการ scatter ผู้เล่น: เทเลพอร์ตทีมไปตำแหน่งรอบ map พร้อม queue + retry
 class UhcMatchManagerTeleport {
    safeYCache = new Map();
    teleportQueueAbortHandlers = [];
 
-   // หา Y ที่ปลอดภัยสำหรับเทเลพอร์ต (cache ผลลัพธ์)
    teleportManagerGetSafeY(dimension, x, z) {
       if (!Number.isFinite(x) || !Number.isFinite(z)) return TELEPORT_CONFIG.DEFAULT_Y;
 
@@ -29,50 +27,52 @@ class UhcMatchManagerTeleport {
       if (this.safeYCache.has(key)) return this.safeYCache.get(key);
 
       try {
-         // getTopmostBlock โยน LocationInUnloadedChunkError ถ้า chunk ยังไม่โหลด
-         let block;
-
+         // getTopmostBlock + block property access all in one try to guard against
+         // LocationInUnloadedChunkError when block.typeId / block.y fails
+         // despite getTopmostBlock succeeding (chunk partially loaded)
          try {
-            block = dimension.getTopmostBlock({ x, z });
-         } catch (error) {
-            // chunk ยังไม่โหลด เก็บ default Y ไว้ใน cache ป้องกันเรียกซ้ำ
+            const block = dimension.getTopmostBlock({ x, z });
+            if (!block) {
+               if (this.safeYCache.size >= 256) {
+                  this.safeYCache.delete(this.safeYCache.keys().next().value);
+               }
+               this.safeYCache.set(key, TELEPORT_CONFIG.DEFAULT_Y);
+               return TELEPORT_CONFIG.DEFAULT_Y;
+            }
+
+            const typeId = block.typeId ?? '';
+            const isLiquid = typeId.includes('lava') || typeId.includes('water');
+
+            if (isLiquid) {
+               try {
+                  dimension.runCommand(`setblock ${x | 0} ${block.y} ${z | 0} glass`);
+               } catch (error) {
+                  logError('UHC', 'Failed to place safety platform block', error);
+               }
+            }
+
+            const y = Math.max(TELEPORT_CONFIG.MIN_Y, Math.min(TELEPORT_CONFIG.MAX_Y, block.y + 1));
 
             if (this.safeYCache.size >= 256) {
                this.safeYCache.delete(this.safeYCache.keys().next().value);
             }
 
+            this.safeYCache.set(key, y);
+            return y;
+         } catch (error) {
+            // chunk not loaded or block property access failed; cache default Y to prevent retry spam
+            if (this.safeYCache.size >= 256) {
+               this.safeYCache.delete(this.safeYCache.keys().next().value);
+            }
             this.safeYCache.set(key, TELEPORT_CONFIG.DEFAULT_Y);
             return TELEPORT_CONFIG.DEFAULT_Y;
          }
-         if (!block) return TELEPORT_CONFIG.DEFAULT_Y;
-
-         const typeId = block.typeId ?? '';
-         const isLiquid = typeId.includes('lava') || typeId.includes('water');
-
-         if (isLiquid) {
-            try {
-               dimension.runCommand(`setblock ${x | 0} ${block.y} ${z | 0} glass`);
-            } catch (error) {
-               logError('UHC', 'Failed to place safety platform block', error);
-            }
-         }
-
-         const y = Math.max(TELEPORT_CONFIG.MIN_Y, Math.min(TELEPORT_CONFIG.MAX_Y, block.y + 1));
-
-         if (this.safeYCache.size >= 256) {
-            this.safeYCache.delete(this.safeYCache.keys().next().value);
-         }
-
-         this.safeYCache.set(key, y);
-
-         return y;
       } catch (error) {
          logError('UHC', 'Failed to get safe Y at ' + x + ' ' + z, error);
          return TELEPORT_CONFIG.DEFAULT_Y;
       }
    }
 
-   // จับกลุ่มผู้เล่นตามทีม
    teleportManagerGroupByTeam() {
       const teamMap = new Map();
       const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
@@ -81,7 +81,7 @@ class UhcMatchManagerTeleport {
          const player = players[i];
 
          if (!player?.isValid) continue;
-         if (!player.hasTag('uhc')) continue;
+         if (!uhcPlayerIds.has(player.id)) continue;
 
          const tag = getPlayerTeam(player);
          if (!tag) continue;
@@ -95,7 +95,6 @@ class UhcMatchManagerTeleport {
       return teamMap;
    }
 
-   // สร้างตำแหน่ง XZ รอบศูนย์กลาง map
    teleportManagerGenerateXZ(teamCount, radius) {
       const effectiveRadius = Math.min(radius, TELEPORT_CONFIG.MAX_SPAWN_RADIUS);
       const angleStep = (Math.PI * 2) / teamCount;
@@ -112,14 +111,13 @@ class UhcMatchManagerTeleport {
       return positions;
    }
 
-   // ตรวจสอบทีมว่ายังมีผู้เล่นที่เล่นอยู่
    createValidTeam(teamData, targetPos) {
       if (!teamData || !targetPos) return null;
 
       const members = teamData[1];
       if (!members?.length) return null;
 
-      const snapshot = members.filter(isValidAndUhc);
+      const snapshot = members.filter((p) => p?.isValid && uhcPlayerIds.has(p.id));
       if (!snapshot.length) return null;
 
       return {
@@ -130,7 +128,6 @@ class UhcMatchManagerTeleport {
       };
    }
 
-   // หัวหน้าทีมเทเลพอร์ตไปรอที่ Y สูงก่อน (preload chunks)
    teleportLeaderToPreload(leader, x, z, dimension, teamTag) {
       try {
          leader.teleport({ x, y: TELEPORT_CONFIG.PRELOAD_Y, z }, { dimension });
@@ -141,7 +138,6 @@ class UhcMatchManagerTeleport {
       }
    }
 
-   // สร้าง entry สำหรับ queue
    createMemberQueueEntry(player, loc) {
       return {
          player,
@@ -151,11 +147,10 @@ class UhcMatchManagerTeleport {
       };
    }
 
-   // เทเลพอร์ตผู้เล่น พร้อม retry ถ้าล้มเหลว
    teleportPlayer(entry, dimension) {
       const { player, loc, retryCount } = entry;
 
-      if (!player?.isValid || !player.hasTag('uhc')) {
+      if (!player?.isValid || !uhcPlayerIds.has(player.id)) {
          return { success: false, shouldRetry: false };
       }
 
@@ -173,7 +168,6 @@ class UhcMatchManagerTeleport {
       }
    }
 
-   // รัน queue scatter: รอบ leader ก่อน แล้วค่อยตามด้วย member
    teleportManagerRunQueue(teamsData, positions, dimension, onComplete) {
       let totalOk = 0;
       let totalFail = 0;
@@ -246,7 +240,6 @@ class UhcMatchManagerTeleport {
       processNextLeader();
    }
 
-   // เทเลพอร์ตสมาชิกทีละคน (3 ticks/คน)
    processMemberQueue(validTeams, dimension, finishCallback, onSuccess, onFail, isAborted) {
       const memberQueue = [];
       const retryQueue = [];
@@ -258,7 +251,7 @@ class UhcMatchManagerTeleport {
 
          for (let m = 0; m < snapshot.length; m++) {
             const player = snapshot[m];
-            if (isValidAndUhc(player)) {
+            if (player?.isValid && uhcPlayerIds.has(player.id)) {
                memberQueue.push(this.createMemberQueueEntry(player, loc));
             }
          }
@@ -309,7 +302,6 @@ class UhcMatchManagerTeleport {
       processNextMember();
    }
 
-   // เริ่มกระจายทีมไปบน map
    teleportManagerTeleportTeam(radius, onComplete) {
       if (radius === undefined) radius = ctx.borderRadius;
       if (!Number.isFinite(radius)) radius = ctx.borderRadius;
@@ -335,7 +327,6 @@ class UhcMatchManagerTeleport {
       this.teleportManagerRunQueue(teamsData, positions, ctx.cachedDimension, onComplete);
    }
 
-   // ยกเลิก queue ทั้งหมด
    abortAllTeleportQueues() {
       for (let i = 0; i < this.teleportQueueAbortHandlers.length; i++) {
          this.teleportQueueAbortHandlers[i]();

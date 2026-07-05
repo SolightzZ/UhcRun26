@@ -1,12 +1,11 @@
+import { logError } from '../../shared/Util.js';
 import { MODE } from './BlockFillerConstants.js';
 import endSequence from './BlockFillerEndSequence.js';
 import fillQueue from './BlockFillerFillQueue.js';
 import patternEnqueue from './BlockFillerPatternEnqueue.js';
 import taskBuilder from './BlockFillerTaskBuilder.js';
 import util from './BlockFillerUtil.js';
-import { logError } from '../../shared/Util.js';
 
-//ตัวจัดการหลัก BlockFiller: ประสานงาน fill queue, pattern, end sequence
 class BlockFiller {
    constructor() {
       fillQueue.setMainTickHandler(() => this.mainTick());
@@ -42,7 +41,6 @@ class BlockFiller {
       );
    }
 
-   //main tick: process queues + layered tasks
    mainTick() {
       taskBuilder.resetChunkCache();
 
@@ -63,7 +61,6 @@ class BlockFiller {
       }
    }
 
-   //รีเซ็ตทุก queue + pattern
    fillReset() {
       fillQueue.resetQueue();
       patternEnqueue.resetActiveTasks();

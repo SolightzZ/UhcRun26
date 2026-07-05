@@ -4,8 +4,7 @@ import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-   // ลดความทนทานเบ็ดตกปลา 2 ขีดทุกครั้งที่ดีด PvP
-   applyRodDurabilityWear = (source) => {
+    applyRodDurabilityWear = (source) => {
       const inv = getPlayerInventoryContainer(source);
 
       if (!inv) return;
@@ -21,7 +20,6 @@ class Controller {
       if (!dur) return;
 
       const prev = dur.damage;
-      // ลดความทนทาน 2 เมื่อดีด PvP
       dur.damage = Math.min(dur.damage + 2, dur.maxDurability);
 
       if (dur.damage >= dur.maxDurability) {
@@ -33,8 +31,7 @@ class Controller {
       }
    };
 
-   // เมื่อเบ็ดตกปลาตีผู้เล่น ให้กระเด้ง + ลดความทนทาน
-   onProjectileHitEntity = (ev) => {
+    onProjectileHitEntity = (ev) => {
       const { projectile: proj, source } = ev;
       if (proj?.typeId !== model.HOOK_ID) return;
       if (!source?.isValid) return;

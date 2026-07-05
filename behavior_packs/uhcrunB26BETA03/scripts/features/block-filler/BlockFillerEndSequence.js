@@ -1,10 +1,17 @@
-import { system } from '@minecraft/server';
-import { getOverworld, TEX_BARRIER } from '../../shared/Util.js';
+import { BlockVolume, system } from '@minecraft/server';
+import { getOverworld, logError, TEX_BARRIER } from '../../shared/Util.js';
 import { END_SEQUENCE_STATE } from './BlockFillerConstants.js';
 import patternEnqueue from './BlockFillerPatternEnqueue.js';
 import util from './BlockFillerUtil.js';
 
-//จัดการ end sequence ของ border: pattern เคลียร์วงแหวนรอบนอก/ชั้นใน และวางกำแพง Nether
+const END_SEQUENCE_STEPS = Object.freeze([
+   { nextState: END_SEQUENCE_STATE.PATTERN3, labelKey: 'pattern3', message: 'Nether wall border', icon: 'textures/blocks/nether_brick', runKey: 'runEndPattern3' },
+   { nextState: END_SEQUENCE_STATE.PATTERN1, labelKey: 'pattern1', message: 'Outer ring clear', icon: TEX_BARRIER, runKey: 'runEndPattern1' },
+   { nextState: END_SEQUENCE_STATE.COOLDOWN, labelKey: 'cooldown', message: 'Waiting to continue', icon: 'textures/blocks/glass_blue', runKey: null },
+   { nextState: END_SEQUENCE_STATE.PATTERN2, labelKey: 'pattern2', message: 'Inner ring clear', icon: 'textures/blocks/diamond_ore', runKey: 'runEndPattern2' },
+   { nextState: END_SEQUENCE_STATE.COMPLETED, labelKey: 'completed', message: 'Finished', icon: 'textures/blocks/emerald_block', runKey: null },
+]);
+
 class BlockFillerEndSequence {
    PATTERN_1_TASK;
    PATTERN_2_TASK;
@@ -19,7 +26,6 @@ class BlockFillerEndSequence {
       this.PATTERN_3_TASK = p3;
    }
 
-   // เช็คว่าถึงเวลาขึ้นสถานะถัดไปของ end sequence หรือยัง
    shouldAdvanceEndSequence(uhcTick, state, startTick, hasPendingWork) {
       if (startTick === -1) return false;
       const elapsed = uhcTick - startTick;
@@ -39,44 +45,12 @@ class BlockFillerEndSequence {
    }
 
    getEndSequenceStep(state) {
-      const END_SEQUENCE_STEPS = [
-         {
-            nextState: END_SEQUENCE_STATE.PATTERN3,
-            labelKey: 'pattern3',
-            message: 'Nether wall border',
-            icon: 'textures/blocks/nether_brick',
-            run: (player) => this.runEndPattern3(player),
-         },
-         {
-            nextState: END_SEQUENCE_STATE.PATTERN1,
-            labelKey: 'pattern1',
-            message: 'Outer ring clear',
-            icon: TEX_BARRIER,
-            run: (player) => this.runEndPattern1(player),
-         },
-         {
-            nextState: END_SEQUENCE_STATE.COOLDOWN,
-            labelKey: 'cooldown',
-            message: 'Waiting to continue',
-            icon: 'textures/blocks/glass_blue',
-            run: () => {},
-         },
-         {
-            nextState: END_SEQUENCE_STATE.PATTERN2,
-            labelKey: 'pattern2',
-            message: 'Inner ring clear',
-            icon: 'textures/blocks/diamond_ore',
-            run: (player) => this.runEndPattern2(player),
-         },
-         {
-            nextState: END_SEQUENCE_STATE.COMPLETED,
-            labelKey: 'completed',
-            message: 'Finished',
-            icon: 'textures/blocks/emerald_block',
-            run: () => {},
-         },
-      ];
-      return END_SEQUENCE_STEPS[state] ?? null;
+      const step = END_SEQUENCE_STEPS[state];
+      if (!step) return null;
+      return {
+         ...step,
+         run: step.runKey ? (player) => this[step.runKey](player) : () => {},
+      };
    }
 
    getEndSequenceLabel(uhcTick, state, startTick, hasPendingWork) {
@@ -101,7 +75,6 @@ class BlockFillerEndSequence {
       }
    }
 
-   // วางกำแพง Nether brick (pattern 3)
    runEndPattern3(player) {
       if (this.pattern3Queued) return;
       if (!player?.isValid) return;
@@ -125,19 +98,11 @@ class BlockFillerEndSequence {
 
          while (y >= util.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
             for (let i = 0; i < pattern.segments.length; i++) {
-               patternEnqueue.enqueuePatternSegment(
-                  dim,
-                  pattern.segments[i],
-                  y,
-                  y,
-                  pattern.mode,
-                  util.DOWNWARD_Y,
-                  {},
-               );
+               patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, {});
             }
 
             y--;
-            
+
             layersFed++;
          }
          if (y >= util.WORLD_MIN_Y) {
@@ -148,14 +113,14 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // เคลียร์วงแหวนรอบนอก (pattern 1 จากบนลงล่าง)
+   // uses fillBlocks directly (not queue) for performance
    runEndPattern1(player) {
       if (this.pattern1Queued) return;
       if (!player?.isValid) return;
       this.pattern1Queued = true;
 
       const dim = player.dimension;
-      const pattern = this.PATTERN_1_TASK;
+      const segments = this.PATTERN_1_TASK.segments;
       let y = util.WORLD_MAX_Y;
       let stopped = false;
       const LAYERS_PER_TICK = 5;
@@ -165,21 +130,19 @@ class BlockFillerEndSequence {
             stopped = true;
             return;
          }
-         let layersFed = 0;
-         while (y >= util.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
-            for (let i = 0; i < pattern.segments.length; i++) {
-               patternEnqueue.enqueuePatternSegment(
-                  dim,
-                  pattern.segments[i],
-                  y,
-                  y,
-                  pattern.mode,
-                  util.DOWNWARD_Y,
-                  pattern.fillOptions,
-               );
+         try {
+            let layersFed = 0;
+            while (y >= util.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
+               for (let i = 0; i < segments.length; i++) {
+                  const s = segments[i];
+                  dim.fillBlocks(new BlockVolume({ x: s.x1, y, z: s.z1 }, { x: s.x2, y, z: s.z2 }), 'minecraft:air');
+               }
+               y--;
+               layersFed++;
             }
-            y--;
-            layersFed++;
+         } catch (error) {
+            logError('BlockFillerEndSequence', 'runEndPattern1 fillBlocks failed', error);
+            stopped = true;
          }
          if (y >= util.WORLD_MIN_Y) {
             system.runTimeout(feedFn, 1);
@@ -189,14 +152,14 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // เคลียร์วงแหวนชั้นใน (pattern 2 จากล่างขึ้นบน)
+   // uses fillBlocks directly (not queue), bottom-up
    runEndPattern2(player) {
       if (this.pattern2Queued) return;
       if (!player?.isValid) return;
       this.pattern2Queued = true;
 
       const dim = player.dimension;
-      const pattern = this.PATTERN_2_TASK;
+      const segments = this.PATTERN_2_TASK.segments;
       let y = util.WORLD_MIN_Y;
       let stopped = false;
       const LAYERS_PER_TICK = 10;
@@ -206,21 +169,19 @@ class BlockFillerEndSequence {
             stopped = true;
             return;
          }
-         let layersFed = 0;
-         while (y <= util.WORLD_MAX_Y && layersFed < LAYERS_PER_TICK) {
-            for (let i = 0; i < pattern.segments.length; i++) {
-               patternEnqueue.enqueuePatternSegment(
-                  dim,
-                  pattern.segments[i],
-                  y,
-                  y,
-                  pattern.mode,
-                  util.UPWARD_Y,
-                  pattern.fillOptions,
-               );
+         try {
+            let layersFed = 0;
+            while (y <= util.WORLD_MAX_Y && layersFed < LAYERS_PER_TICK) {
+               for (let i = 0; i < segments.length; i++) {
+                  const s = segments[i];
+                  dim.fillBlocks(new BlockVolume({ x: s.x1, y, z: s.z1 }, { x: s.x2, y, z: s.z2 }), 'minecraft:air');
+               }
+               y++;
+               layersFed++;
             }
-            y++;
-            layersFed++;
+         } catch (error) {
+            logError('BlockFillerEndSequence', 'runEndPattern2 fillBlocks failed', error);
+            stopped = true;
          }
          if (y <= util.WORLD_MAX_Y) {
             system.runTimeout(feedFn, 1);

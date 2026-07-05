@@ -1,6 +1,6 @@
 import { world } from '@minecraft/server';
+import border from '../features/border/BorderManager.js';
 import { runEventHandlers } from '../shared/Util.js';
-import border from '../features/border/BorderGuard.js';
 
 const beforeEvents = [(ev) => border.handlePlayerPlaceBlock(ev)];
 

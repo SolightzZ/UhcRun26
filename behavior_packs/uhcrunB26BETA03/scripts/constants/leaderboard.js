@@ -1,4 +1,3 @@
-//จำกัดจำนวนสูงสุดที่แสดงใน leaderboard
 export const MAX_PLAYERS = 10;
 export const MAX_TEAMS = 10;
 
@@ -42,12 +41,10 @@ export function resetCache() {
    lbCache.cachedDeathsText = '';
 }
 
-//สีตามอันดับ (Gold, Silver, Bronze, White)
 export function getRankColor(index) {
    return index < UI.RANKS.length ? UI.RANKS[index] : UI.RANKS[3];
 }
 
-//สร้าง hash string สำหรับตรวจสอบการเปลี่ยนแปลง
 export function generateStatsHash(statsMap) {
    let hashString = '';
    for (const [name, stats] of statsMap) {

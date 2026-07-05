@@ -4,7 +4,7 @@ import { LRUMap } from '../../shared/LRUMap.js';
 class Model {
    CONFIG = Object.freeze({
       MAX_LOGS: 16,
-      MAX_LEAVES: 64,
+      MAX_LEAVES: 67,
       CANOPY_RADIUS: 3,
       LEAF_SCAN_PAD: 4,
       APPLE_CHANCE: 0.02,
@@ -15,7 +15,7 @@ class Model {
       MAX_CONCURRENT_JOBS: 4,
       MAX_QUEUE_SIZE: 50,
       MAX_JOBS_PER_PLAYER: 3,
-      MAX_APPLES: 3,
+      MAX_APPLES: 2,
    });
 
    WOOD_MAP = Object.freeze({
@@ -31,14 +31,7 @@ class Model {
    });
 
    LOG_SET = new Set(Object.keys(this.WOOD_MAP));
-   AXE_SET = new Set([
-      'minecraft:wooden_axe',
-      'minecraft:stone_axe',
-      'minecraft:iron_axe',
-      'minecraft:golden_axe',
-      'minecraft:diamond_axe',
-      'minecraft:netherite_axe',
-   ]);
+   AXE_SET = new Set(['minecraft:wooden_axe', 'minecraft:stone_axe', 'minecraft:iron_axe', 'minecraft:golden_axe', 'minecraft:diamond_axe', 'minecraft:netherite_axe']);
 
    NEIGHBOUR_OFFSETS = Object.freeze([1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1]);
    LEAF_SCAN_BATCH_SIZE = 50;

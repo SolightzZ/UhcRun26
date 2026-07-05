@@ -1,5 +1,5 @@
 import { world } from '@minecraft/server';
-import border from '../features/border/BorderGuard.js';
+import border from '../features/border/BorderManager.js';
 import { HandlerCancelNPC } from '../features/leaderboard/LeaderboardManager.js';
 import { runEventHandlers } from '../shared/Util.js';
 

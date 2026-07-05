@@ -1,12 +1,11 @@
-//จัดการ NPC leaderboard: render, spawn, update
 import { system } from '@minecraft/server';
 import { NPCS, NPC_QUERY_OPTIONS, UI, resetCache } from '../../constants/leaderboard.js';
 import { getOverworld, logError } from '../../shared/Util.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
+
 import { getStats, getTeamText } from './LeaderboardData.js';
 import { getDeathsText, getPlayerText } from './LeaderboardFormat.js';
 
-//แยก NPC ตาม tag (teams, players, deaths)
 function collectNpcsByTag(allNpcs) {
    const teamNpcs = [];
    const playerNpcs = [];
@@ -22,7 +21,6 @@ function collectNpcsByTag(allNpcs) {
    return { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs };
 }
 
-//อัปเดตข้อความบน NPC leaderboard ทั้ง 3 ตัว
 export function renderBoard() {
    const overworldDimension = getOverworld();
    let allNpcs = [];
@@ -67,7 +65,6 @@ function updateNpcText(npcList, displayText) {
    }
 }
 
-//สร้าง NPC 3 ตัวที่ตำแหน่งกำหนด พร้อม tag
 function spawnLeaderboardNPCNow() {
    try {
       const overworldDimension = getOverworld();
@@ -81,7 +78,8 @@ function spawnLeaderboardNPCNow() {
          }
       }
 
-      NPCS.forEach((npcConfig, ni) => {
+      for (let ni = 0; ni < NPCS.length; ni++) {
+         const npcConfig = NPCS[ni];
          try {
             const newNpcEntity = overworldDimension.spawnEntity('minecraft:npc', {
                x: npcConfig.x,
@@ -100,9 +98,9 @@ function spawnLeaderboardNPCNow() {
                newNpcEntity.addTag('lb:deaths');
             }
          } catch (error) {
-            logError('LeaderboardNPC', 'Failed to spawn NPC', error);
+            // ignore
          }
-      });
+      }
 
       updateLeaderboard();
    } catch (error) {
@@ -110,7 +108,6 @@ function spawnLeaderboardNPCNow() {
    }
 }
 
-//รีเซ็ต cache และ render board ใหม่
 export function updateLeaderboard() {
    system.runTimeout(() => {
       resetCache();
@@ -119,11 +116,17 @@ export function updateLeaderboard() {
    }, 40);
 }
 
+export function refreshLeaderboard() {
+   system.runTimeout(() => {
+      resetCache();
+      renderBoard();
+   }, 20);
+}
+
 export function spawnLeaderboardNPC() {
    system.runTimeout(spawnLeaderboardNPCNow, 20);
 }
 
-//ป้องกันไม่ให้ผู้เล่นโต้ตอบกับ NPC
 export function HandlerCancelNPC(eventData) {
    try {
       const { target } = eventData;

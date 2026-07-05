@@ -1,7 +1,7 @@
 import { DisplaySlotId, ObjectiveSortOrder, world } from '@minecraft/server';
-import { getPlayerTeam } from '../team/TeamActions.js';
 import bf from '../block-filler/BlockFiller.js';
-import bm, { borderEnd, CHECKPOINTS, ctx, icons, MinecraftColor } from './BorderManager.js';
+import { getPlayerTeam } from '../team/TeamActions.js';
+import bm, { borderEnd, CHECKPOINTS, ctx, icons, MinecraftColor, renderCache } from './BorderManager.js';
 
 const uhc = 'uhc';
 const uhcName = '§h§nUhcRun26';
@@ -9,7 +9,6 @@ const uhcName = '§h§nUhcRun26';
 const LINE_ID_SUFFIX = Array.from({ length: 10 }, (_, i) => '§r'.repeat(i + 1));
 const _aliveTeams = new Set();
 
-//จัดการ scoreboard sidebar: แสดง border radius, เวลา, จำนวนผู้เล่น, ทีมที่รอด
 class BorderManagerScoreboard {
    scoreCache = new Map();
 
@@ -17,7 +16,6 @@ class BorderManagerScoreboard {
       this.scoreCache.clear();
    }
 
-   // สร้าง scoreboard sidebar
    scoreboardInit() {
       const score = world.scoreboard;
       const old = score.getObjective(uhc);
@@ -35,7 +33,6 @@ class BorderManagerScoreboard {
       this.scoreCache.clear();
    }
 
-   // ลบ scoreboard
    scoreboardClear() {
       const sb = world.scoreboard;
 
@@ -54,7 +51,6 @@ class BorderManagerScoreboard {
       return `${text}${LINE_ID_SUFFIX[index] ?? '§r'.repeat(index + 1)}`;
    }
 
-   // อัปเดตข้อความในบรรทัด ถ้าต่างจาก cache
    scoreboardUpdateLine(obj, index, text) {
       const cache = this.scoreCache;
       const old = cache.get(index);
@@ -67,7 +63,6 @@ class BorderManagerScoreboard {
       cache.set(index, text);
    }
 
-   // คำนวณ label ถัดไป (เวลาที่เหลือ / สถานะ)
    scoreboardComputeNextLabel() {
       const tick = ctx.uhcTick;
 
@@ -84,14 +79,12 @@ class BorderManagerScoreboard {
       return remaining > 0 ? `${remaining}s` : `${MinecraftColor.darkBlue}NOW`;
    }
 
-   // คำนวณ border ถัดไป
    scoreboardComputeNextBorder() {
       if (ctx.targetRadius != null) return ctx.targetRadius;
       if (ctx.nextShrinkIndex >= CHECKPOINTS.length) return borderEnd;
       return CHECKPOINTS[ctx.nextShrinkIndex];
    }
 
-   // เก็บทีมที่ยังมีผู้เล่นรอด
    scoreboardCollectAliveTeams(players) {
       _aliveTeams.clear();
 
@@ -105,9 +98,8 @@ class BorderManagerScoreboard {
       return _aliveTeams;
    }
 
-   // สร้างแถบสีแสดงทีมที่รอด
    scoreboardGetAliveTeamBar(players) {
-      if (ctx.aliveTeamDirty) {
+      if (renderCache.aliveTeamDirty) {
          const aliveTeams = this.scoreboardCollectAliveTeams(players);
 
          if (aliveTeams.size) {
@@ -122,42 +114,36 @@ class BorderManagerScoreboard {
                }
             }
 
-            ctx.aliveTeamBarCache = result;
+            renderCache.aliveTeamBarCache = result;
          } else {
-            ctx.aliveTeamBarCache = MinecraftColor.gray + '-';
+            renderCache.aliveTeamBarCache = MinecraftColor.gray + '-';
          }
 
-         ctx.aliveTeamDirty = false;
+         renderCache.aliveTeamDirty = false;
       }
 
-      return ctx.aliveTeamBarCache;
+      return renderCache.aliveTeamBarCache;
    }
 
-   // สถานะเกม (ไอคอน)
    scoreboardGetGameState() {
-      if (!ctx.isRunning) return `${icons.Hourglass}`;
-      if (ctx.uhcTick < 30) return `?`;
-      if (!world.gameRules.pvp) return `${icons.shield}`;
-      if (ctx.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
-      return `?`;
+      return bm.getGameState();
    }
 
-   // อัปเดต scoreboard ทั้งหมด
    scoreboardUpdate(obj, uhcPlayers) {
       const color = ctx.targetRadius !== null ? MinecraftColor.red : MinecraftColor.white,
          pCount = uhcPlayers.length;
 
-      if (ctx.borderRadius !== ctx.lastBorderRadius || ctx.targetRadius !== ctx.lastTargetRadius) {
+      if (ctx.borderRadius !== renderCache.lastBorderRadius || ctx.targetRadius !== renderCache.lastTargetRadius) {
          this.scoreboardUpdateLine(obj, 0, `${color}${icons.Border} ${ctx.borderRadius}${MinecraftColor.gray}/${this.scoreboardComputeNextBorder()}`);
-         ctx.lastBorderRadius = ctx.borderRadius;
-         ctx.lastTargetRadius = ctx.targetRadius;
+         renderCache.lastBorderRadius = ctx.borderRadius;
+         renderCache.lastTargetRadius = ctx.targetRadius;
       }
 
       this.scoreboardUpdateLine(obj, 1, `${color}${this.scoreboardComputeNextLabel()}`);
 
-      if (pCount !== ctx.lastPlayerCount) {
+      if (pCount !== renderCache.lastPlayerCount) {
          this.scoreboardUpdateLine(obj, 2, `${color}${icons.Bot} ${MinecraftColor.white}${pCount}`);
-         ctx.lastPlayerCount = pCount;
+         renderCache.lastPlayerCount = pCount;
       }
 
       this.scoreboardUpdateLine(obj, 3, this.scoreboardGetAliveTeamBar(uhcPlayers));

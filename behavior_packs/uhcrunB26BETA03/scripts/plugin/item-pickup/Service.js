@@ -12,8 +12,7 @@ class Service {
       return null;
    };
 
-   // Called next tick: scan full inventory for any raw types queued for this player.
-   smeltPlayer = (entry) => {
+    smeltPlayer = (entry) => {
       const { player, types } = entry;
       if (!player?.isValid) return;
       const container = this.getContainer(player);
@@ -34,7 +33,7 @@ class Service {
          container.setItem(i, undefined);
 
          const leftover = container.addItem(new ItemStack(result, amount));
-         if (leftover) player.dimension.spawnItem(leftover, player.location);
+         if (leftover && player?.isValid) player.dimension.spawnItem(leftover, player.location);
 
          player.addExperience(amount * 2);
          smeltedAny = true;
@@ -66,34 +65,26 @@ class Service {
       const items = Array.from(ev.items ?? []);
       if (!items.length) return;
 
+      let entry = null;
       let hasSmeltable = false;
-      for (let si = 0, sLen = items.length; si < sLen; si++) {
-         const item = items[si];
-         if (!item || !item.typeId) continue;
-         if (model.SMELT_TYPES.has(item.typeId)) {
-            hasSmeltable = true;
-            break;
-         }
-      }
-      if (!hasSmeltable) return;
-
-      let entry = this.findEntry(player.id);
-      if (!entry) {
-         if (model.pendingList.length >= model.PENDING_MAX) {
-            model.pendingList.shift();
-         }
-         entry = { id: player.id, player, types: new Set() };
-         model.pendingList.push(entry);
-      }
 
       for (let si = 0, sLen = items.length; si < sLen; si++) {
          const item = items[si];
          if (!item || !item.typeId) continue;
-         if (model.SMELT_TYPES.has(item.typeId)) {
-            entry.types.add(item.typeId);
+         if (!model.SMELT_TYPES.has(item.typeId)) continue;
+         hasSmeltable = true;
+         if (!entry) {
+            entry = this.findEntry(player.id);
+            if (!entry) {
+               if (model.pendingList.length >= model.PENDING_MAX) model.pendingList.shift();
+               entry = { id: player.id, player, types: new Set() };
+               model.pendingList.push(entry);
+            }
          }
+         entry.types.add(item.typeId);
       }
-      this.scheduleFlushed();
+
+      if (hasSmeltable) this.scheduleFlushed();
    };
 }
 

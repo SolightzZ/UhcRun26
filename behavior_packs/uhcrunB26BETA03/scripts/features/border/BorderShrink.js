@@ -1,6 +1,6 @@
 import { TEAMS } from '../../constants/game.js';
-import { uhcPlayersCache } from '../cache/State_Cache.js';
 import { dynamicToast, TEX_BARRIER } from '../../shared/Util.js';
+import { uhcPlayersCache } from '../cache/State_Cache.js';
 import bm, { borderColors, borderEnd, center, CHECKPOINTS, ctx } from './BorderManager.js';
 
 const SHRINK_CONFIG = [
@@ -12,7 +12,6 @@ const SHRINK_CONFIG = [
    [0, 20, 15],
 ];
 
-//จัดการ shrink border: animate ลดขนาดตาม checkpoint พร้อม broadcast เตือน
 class BorderManagerShrink {
    TEAMS = [];
 
@@ -21,8 +20,14 @@ class BorderManagerShrink {
       return this.TEAMS;
    }
 
+   #cachedConfig = null;
+   #cachedConfigTarget = null;
+
    lookupShrinkConfig(target) {
-      return SHRINK_CONFIG.find((c) => target >= c[0]) || SHRINK_CONFIG[SHRINK_CONFIG.length - 1];
+      if (this.#cachedConfigTarget === target) return this.#cachedConfig;
+      this.#cachedConfigTarget = target;
+      this.#cachedConfig = SHRINK_CONFIG.find((c) => target >= c[0]) || SHRINK_CONFIG[SHRINK_CONFIG.length - 1];
+      return this.#cachedConfig;
    }
 
    borderManagerGetShrinkDuration(target) {
@@ -33,7 +38,6 @@ class BorderManagerShrink {
       return this.lookupShrinkConfig(target)[2];
    }
 
-   // sync ขอบเขต world border กับ radius ปัจจุบัน
    borderManagerSyncGeometry() {
       const radius = ctx.borderRadius;
       const cx = center.x;
@@ -41,7 +45,6 @@ class BorderManagerShrink {
       ctx.wbBounds = [cx + radius, cx - radius, cz - radius, cz + radius];
    }
 
-   // เปลี่ยน radius border
    borderManagerSetRadius(newRadius) {
       const clamped = Math.max(newRadius, borderEnd);
 
@@ -51,7 +54,6 @@ class BorderManagerShrink {
       this.borderManagerSyncGeometry();
    }
 
-   // เช็คว่าผู้เล่นอยู่นอก border หรือไม่
    borderManagerIsOutside(x, z) {
       const bounds = ctx.wbBounds;
 
@@ -59,7 +61,6 @@ class BorderManagerShrink {
       return x < bounds[1] || x > bounds[0] || z < bounds[2] || z > bounds[3];
    }
 
-   // animate border ขยับทุก tick
    borderManagerTickShrink() {
       if (ctx.targetRadius === null || ctx.shrinkDuration <= 0) return;
 
@@ -79,7 +80,6 @@ class BorderManagerShrink {
       }
    }
 
-   // เริ่มลด border สู่ checkpoint ถัดไป
    borderManagerApplyShrink() {
       if (ctx.targetRadius !== null) return;
 
@@ -107,7 +107,6 @@ class BorderManagerShrink {
       });
    }
 
-   // เตือนก่อน border ลด 30 วินาที
    borderManagerBroadcastWarning() {
       const players = uhcPlayersCache;
 

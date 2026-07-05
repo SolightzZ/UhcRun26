@@ -1,9 +1,8 @@
-//จัดการทีม: join, leave, set, clear และ nametag (backend only)
 import { system, world } from '@minecraft/server';
 import { CONFIG, TEAM_MENU, TEAMS } from '../../constants/game.js';
 import { dynamicToast, logError, logWarn, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { clearTeamRuntimeState, refreshPlayerCaches, removePlayerFromRuntimeState } from '../cache/CacheManager.js';
-import { allPlayersCache, allPlayersCacheIds, hitRegistry, playerCache, playerTeamCache, uhcPlayersCache } from '../cache/State_Cache.js';
+import { allPlayersCache, allPlayersCacheIds, hitRegistry, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
 import { isGameRunning, teamKillObj } from '../match/State_Game.js';
 import { clearAllReviveRuntime } from '../revive/State_Revive.js';
 import { resetAllStats, resetAnnouncer, scheduleSaveStats } from '../stats/StatsManager.js';
@@ -24,7 +23,6 @@ import {
 const dirtyNametagIds = new Set();
 let nametagFlushTask = null;
 
-// อัปเดตบางฟิลด์ของ playerStats โดยไม่ลบของเก่า
 function patchPlayerStats(playerId, patch) {
    const ps = playerStats.get(playerId) ?? { kills: 0, deaths: 0 };
    if (patch.name !== undefined) ps.name = patch.name;
@@ -33,16 +31,14 @@ function patchPlayerStats(playerId, patch) {
    return ps;
 }
 
-//สราง nametag แบบมี index สีทีม
-function formatTeamNametag(player, teamId) {
+export function formatTeamNametag(player, teamId) {
    const teamInfo = TEAM_LOOKUP.get(teamId);
    if (!teamInfo) return player.name;
    const teamIndex = (TEAM_INDEX_MAP.get(teamId) ?? -1) + 1;
-   return `[${teamIndex}] ${teamInfo.color}${player.name}`;
+   return `${teamInfo.color}[${teamIndex}]${player.name}`;
 }
 
-//อัปเดต nametag ของผู้เล่นที่ต้องเปลี่ยน
-function flushNametagUpdates() {
+export function flushNametagUpdates() {
    const dirtyArr = Array.from(dirtyNametagIds);
    for (let di = 0, dLen = dirtyArr.length; di < dLen; di++) {
       const id = dirtyArr[di];
@@ -54,8 +50,7 @@ function flushNametagUpdates() {
    dirtyNametagIds.clear();
 }
 
-//ทำเครื่องหมายว่าต้องอัปเดต nametag (flush 1 tick ถัดไป)
-function markNametagDirty(playerId) {
+export function markNametagDirty(playerId) {
    if (!playerId) return;
    dirtyNametagIds.add(playerId);
    if (nametagFlushTask !== null) return;
@@ -65,7 +60,6 @@ function markNametagDirty(playerId) {
    }, 1);
 }
 
-// นับผู้เล่นทั้งหมดทุกทีม
 export function getTotalTeamPlayers() {
    let total = 0;
    for (const count of teamCounts.values()) {
@@ -74,13 +68,11 @@ export function getTotalTeamPlayers() {
    return total;
 }
 
-// ตรวจสอบว่ายังมีที่ว่างให้เข้าร่วมทีมไหม
 function canJoinTeam(newTeamId) {
    const totalBefore = getTotalTeamPlayers();
    return totalBefore < CONFIG.maxTotalPlayers;
 }
 
-// จำนวนผู้เล่นในทีม
 export function getTeamPlayerCount(teamId) {
    return teamCounts.get(teamId) ?? 0;
 }
@@ -89,7 +81,7 @@ export function getCachedPlayers() {
    return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
 }
 
-// อ่านทีมปัจจุบันของผู้เล่น (cache ก่อน, แล้วค่อย dynamic property)
+// cache first, then dynamic property
 export function getPlayerTeam(player) {
    if (!player?.isValid) return null;
    const cachedTeamId = playerTeamCache.get(player.id);
@@ -105,7 +97,6 @@ export function getPlayerTeam(player) {
    return null;
 }
 
-// sync tag กับทีมเก่า/ใหม่
 function syncTag(player, oldTeamId, newTeamId) {
    if (oldTeamId === newTeamId) return;
 
@@ -120,13 +111,12 @@ function syncTag(player, oldTeamId, newTeamId) {
    }
 }
 
-// กำหนดทีมให้ผู้เล่น
 export function setTeam(player, teamId, options = {}) {
    if (!player?.id) return;
    const scheduleSave = options.scheduleSave !== false;
    const oldTeamId = playerTeamCache.get(player.id) ?? null;
    if (oldTeamId === teamId) return;
-   const shouldTrack = !isGameRunning || player?.hasTag('uhc');
+   const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
 
    if (oldTeamId && shouldTrack) {
       removeFromTeamIndex(oldTeamId, player.id);
@@ -152,14 +142,13 @@ export function setTeam(player, teamId, options = {}) {
    aliveTeamDirtyHandler();
 }
 
-// ให้ผู้เล่นเข้าร่วมทีม
 export function joinTeam(player, newTeamId) {
    if (!TEAM_LOOKUP.has(newTeamId)) return;
 
    const oldTeam = getPlayerTeam(player);
    if (oldTeam === newTeamId) return;
 
-   const shouldTrack = !isGameRunning || player?.hasTag('uhc');
+   const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
 
    if (shouldTrack && !oldTeam && !canJoinTeam(newTeamId)) {
       player.sendMessage(dynamicToast(TEAM_MENU.serverFull(CONFIG.maxTotalPlayers), TEX_CANCEL));
@@ -180,12 +169,11 @@ export function joinTeam(player, newTeamId) {
    setTeam(player, newTeamId);
 }
 
-// ให้ผู้เล่นออกจากทีม
 export function leaveTeam(player) {
    const oldTeam = getPlayerTeam(player);
    if (!oldTeam) return;
 
-   const shouldTrack = !isGameRunning || player?.hasTag('uhc');
+   const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
 
    if (shouldTrack) {
       const current = teamCounts.get(oldTeam) ?? 0;
@@ -194,7 +182,7 @@ export function leaveTeam(player) {
    setTeam(player, null);
 }
 
-// ลบทีมและคืนค่าผู้เล่นทุกคน (ไม่ลบ uhc tag)
+// clear teams, keep uhc tags
 export function clearAllTeams(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
    refreshPlayerCaches();
@@ -213,7 +201,7 @@ export function clearAllTeams(executor) {
       if (cachedTeam) player.removeTag(cachedTeam);
 
       player.setDynamicProperty(CONFIG.key, undefined);
-      removePlayerFromRuntimeState(player.id, cachedTeam, false);
+      removePlayerFromRuntimeState(player.id, cachedTeam);
       player.nameTag = player.name;
    }
 
@@ -229,28 +217,42 @@ export function clearAllTeams(executor) {
    }
 }
 
-// ลบทุกอย่าง: ทีม tag uhc dynamic property cache stats
+// clear runtime AND strip player entity tags, nametags, and dynamic properties
 export function clearAllTaguhcAndDynamicProperty(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
 
-   refreshPlayerCaches();
-   clearAllReviveRuntime();
+   const freshPlayers = world.getPlayers();
 
-   const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+   // Strip entity tags: iterate freshPlayers so we don't depend on cache
+   for (let pi = 0, pLen = freshPlayers.length; pi < pLen; pi++) {
+      const p = freshPlayers[pi];
+      if (!p?.isValid) continue;
+      // Check if player has team data before stripping
+      let hasTeam = false;
+      for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
+         const tid = TEAMS[ti].id;
+         if (p.hasTag(tid)) {
+            hasTeam = true;
+            p.removeTag(tid);
+         }
+      }
+      if (p.getDynamicProperty(CONFIG.key)) hasTeam = true;
+      p.setDynamicProperty(CONFIG.key, undefined);
+      // Only reset nametag if player had no team data — keep formatted nametag otherwise
+      if (!hasTeam) p.nameTag = p.name;
+   }
+
+   // Cancel any pending nametag flush BEFORE clearing caches
+   if (nametagFlushTask !== null) {
+      system.clearRun(nametagFlushTask);
+      nametagFlushTask = null;
+   }
+   dirtyNametagIds.clear();
+
+   clearAllReviveRuntime();
+   refreshPlayerCaches();
 
    clearTeamRuntimeState();
-
-   for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
-      const player = players[pi];
-      if (!player?.isValid) continue;
-
-      const teamId = playerTeamCache.get(player.id);
-      if (teamId) player.removeTag(teamId);
-      if (player.hasTag('uhc')) player.removeTag('uhc');
-
-      player.setDynamicProperty(CONFIG.key, undefined);
-      removePlayerFromRuntimeState(player.id, teamId, true);
-   }
 
    hitRegistry.clear();
    clearDeathLocations();
@@ -273,10 +275,9 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
       }
    }
 
-   logWarn('UHC', 'All tags, dynamic properties, and runtime states cleared.');
+   logWarn('UHC', 'Runtime state cleared (player teams preserved).');
 }
 
-// ดึงผู้เล่นในทีม (จาก teamPlayerIndex + playerCache)
 export function getPlayersByTeam(teamId) {
    if (!TEAM_LOOKUP.has(teamId)) return [];
 

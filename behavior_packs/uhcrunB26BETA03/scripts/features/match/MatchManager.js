@@ -1,26 +1,23 @@
 import { Difficulty, InputPermissionCategory, system, world } from '@minecraft/server';
 import { spawnLeaderboardNPC } from '../../features/leaderboard/LeaderboardManager.js';
+import { wrapTick } from '../../shared/profiler/index.js';
 import { dynamicToast, getOverworld, logError, setAdventure, setSurvival, SND_PLING } from '../../shared/Util.js';
+import { PVP_DELAY, PVP_TICK_BASE } from '../../constants/game.js';
 import BlockFiller from '../block-filler/BlockFiller.js';
-import BorderManager, { ctx, icons, MinecraftColor, ticks } from '../border/BorderManager.js';
-import { allPlayersCache } from '../cache/State_Cache.js';
-import { flushIfDirty } from '../rank/RankData.js';
-import {
-   clearAllPlayerNametags,
-} from '../team/TeamManager.js';
-import { clearAllTaguhcAndDynamicProperty, getPlayerTeam } from '../team/TeamActions.js';
+import BorderManager, { ctx, icons, MinecraftColor, renderCache, ticks } from '../border/BorderManager.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
+import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
+import { flushIfDirty } from '../rank/RankData.js';
 import { refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { resetAnnouncer } from '../stats/StatsManager.js';
 import { setAliveTeamDirtyHandler } from '../team/State_Team.js';
-import { setGameRunningState } from './State_Game.js';
-import { uhcPlayersCache } from '../cache/State_Cache.js';
+import { clearAllTaguhcAndDynamicProperty, getPlayerTeam } from '../team/TeamActions.js';
 import tlm from './MatchTeleport.js';
 import utilUmm from './MatchUtil.js';
 import vic from './MatchVictory.js';
+import { setGameRunningState } from './State_Game.js';
 
-const PVP_DELAY = 20;
-const PVP_TICK = 700 + PVP_DELAY;
+const PVP_TICK = PVP_TICK_BASE + PVP_DELAY;
 const PVP_WARN = PVP_TICK - 20;
 const PVP_CD3 = PVP_TICK - 3;
 const PVP_CD2 = PVP_TICK - 2;
@@ -33,7 +30,10 @@ const soundOptionsStart = { volume: 0.8, pitch: 1 };
 const soundOptionsPlayers = { volume: 1, pitch: 1 };
 const soundOptionsExplode = { volume: 0.7, pitch: 0.9 };
 
-//ตัวจัดการหลักของ UHC Match: game loop, start/end/reset, PVP countdown, scatter
+function getAllPlayers() {
+   return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+}
+
 class UhcMatchManager {
    startBars;
 
@@ -51,7 +51,7 @@ class UhcMatchManager {
       setAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
    }
 
-   // หยุดเกมถ้าเซิร์ฟเวอร์ว่าง
+   // stop game if server empty
    handlePlayerLeave() {
       system.run(() => {
          if (ctx.isDestroyed) return;
@@ -61,7 +61,7 @@ class UhcMatchManager {
       });
    }
 
-   // เริ่มเกมใหม่ถ้ามีผู้เล่นกลับมา
+   // restart game loop if players return
    handlePlayerSpawn(event) {
       if (ctx.isDestroyed) return;
       if (ctx.isRunning && ctx.checkInterval === null) {
@@ -69,7 +69,6 @@ class UhcMatchManager {
       }
    }
 
-   // ดึงผู้เล่น UHC จาก cache ถ้าว่างให้รีเฟรช
    getUhcPlayersCached() {
       const players = uhcPlayersCache;
       if (players.length > 0) {
@@ -84,7 +83,6 @@ class UhcMatchManager {
       return uhcPlayersCache;
    }
 
-   // spawn อนุภาคระเบิดที่ตำแหน่งผู้เล่น
    playerSetupSpawnParticles(player) {
       if (!player?.isValid || !getPlayerTeam(player)) return;
       const { x, y, z } = player.location;
@@ -101,7 +99,6 @@ class UhcMatchManager {
       }
    }
 
-   // จัดการสถานะผู้เล่น Adventure → Survival
    playerSetupHandleGameStart(player, tick) {
       if (tick > 26) return;
 
@@ -136,7 +133,6 @@ class UhcMatchManager {
       }
    }
 
-   // แสดง action bar countdown
    playerSetupDisplayGameStart(player) {
       const tick = ctx.countdownTicks;
       if (tick < 0 || tick > actionBar) return;
@@ -147,7 +143,6 @@ class UhcMatchManager {
       if (playSound) player.playSound(SND_PLING, { volume: 1, pitch: 1 });
    }
 
-   // หยุด game loop
    stopGameLoop() {
       if (ctx.checkInterval === null) return;
       system.clearRun(ctx.checkInterval);
@@ -155,7 +150,6 @@ class UhcMatchManager {
       ctx.isDestroyed = true;
    }
 
-   // event โลก: scatter + PVP countdown
    gameLoopHandleWorldStart(tick, players) {
       if (tick > PVP_TICK + 1 || !players.length) return;
 
@@ -199,7 +193,6 @@ class UhcMatchManager {
       }
    }
 
-   // วนผู้เล่น: setup + display (หลัง scatter เสร็จ)
    gameLoopPlayersTick(players) {
       if (!ctx.teleportComplete || !players.length || ctx.countdownTicks > 26) return;
 
@@ -221,26 +214,35 @@ class UhcMatchManager {
       }
    }
 
-   // border + scoreboard + damage
    gameLoopWorld(uhcPlayers) {
-      BorderManager.borderManagerTick();
+      wrapTick('borderTick', () => {
+         BorderManager.borderManagerTick();
+      })();
 
-      BorderManager.borderManagerTickShrink();
+      wrapTick('borderShrink', () => {
+         BorderManager.borderManagerTickShrink();
+      })();
 
       if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) {
          this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
       }
 
-      if (ctx.objective && ctx.uhcTick) {
-         BorderManager.scoreboardUpdate(ctx.objective, uhcPlayers);
+      renderCache.scoreboardUpdateThrottle++;
+      if (ctx.objective && ctx.uhcTick && renderCache.scoreboardUpdateThrottle % 2 === 0) {
+         wrapTick('scoreboardUpdate', () => {
+            BorderManager.scoreboardUpdate(ctx.objective, uhcPlayers);
+         })();
       }
 
       if (uhcPlayers.length > 0) {
          const DAMAGE_BATCH = Math.max(1, Math.ceil(uhcPlayers.length / 5));
+         const _applyDamage = wrapTick('borderDamage', (player) => {
+            BorderManager.borderManagerApplyDamage(player);
+         });
 
          for (let i = 0; i < DAMAGE_BATCH; i++) {
             if (ctx.borderDamageIndex >= uhcPlayers.length) ctx.borderDamageIndex = 0;
-            BorderManager.borderManagerApplyDamage(uhcPlayers[ctx.borderDamageIndex]);
+            _applyDamage(uhcPlayers[ctx.borderDamageIndex]);
             ctx.borderDamageIndex++;
          }
       }
@@ -248,41 +250,39 @@ class UhcMatchManager {
       BorderManager.particleRendererTick(uhcPlayers);
    }
 
-   // เริ่ม game loop
    gameLoopRun() {
-      ctx.checkInterval = system.runInterval(() => {
-         try {
-            if (!ctx.isRunning || ctx.isDestroyed) return;
-            ctx.uhcTick++;
+      ctx.checkInterval = system.runInterval(
+         wrapTick('gameLoop', () => {
+            try {
+               if (!ctx.isRunning || ctx.isDestroyed) return;
+               ctx.uhcTick++;
 
-            if (ctx.teleportComplete) {
-               ctx.countdownTicks++;
+               if (ctx.teleportComplete) {
+                  ctx.countdownTicks++;
+               }
+
+               const uhcPlayers = uhcPlayersCache;
+               wrapTick('gameLoopWorld', () => {
+                  this.gameLoopWorld(uhcPlayers);
+               })();
+
+               if (ctx.countdownTicks <= 26) {
+                  wrapTick('playersTick', () => {
+                     this.gameLoopPlayersTick(uhcPlayers);
+                  })();
+               }
+            } catch (error) {
+               logError('UHC', 'Game loop error at tick ' + ctx.uhcTick, error);
             }
-
-            // if (ctx.uhcTick % 60 === 0) {
-            //    vic.victoryManagerCheck();
-            // }
-
-            const uhcPlayers = uhcPlayersCache;
-            this.gameLoopWorld(uhcPlayers);
-
-            if (ctx.countdownTicks <= 26) {
-               this.gameLoopPlayersTick(uhcPlayers);
-            }
-         } catch (error) {
-            logError('UHC', 'Game loop error at tick ' + ctx.uhcTick, error);
-         }
-      }, ticks);
+         }),
+         ticks,
+      );
    }
 
-   // สั่งให้ sidebar re-render
    markAliveTeamDirty() {
       ctx.aliveTeamDirty = true;
    }
 
-   // START / END / RESET
-
-   // เริ่ม UHC
    startGameUhc() {
       if (ctx.isRunning) return;
 
@@ -293,7 +293,6 @@ class UhcMatchManager {
       this.gameLoopRun();
    }
 
-   // เตรียม state ก่อนเริ่ม
    initializeGameState() {
       ctx.isDestroyed = false;
       ctx.isRunning = true;
@@ -318,9 +317,8 @@ class UhcMatchManager {
       BorderManager.scoreboardInit();
    }
 
-   // batch ล้างของ + ตั้งค่าผู้เล่น
    setupPlayers() {
-      const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = getAllPlayers();
       if (!players.length) return;
       this._batchSetupPlayers(players, 0, 6);
    }
@@ -339,7 +337,6 @@ class UhcMatchManager {
       }
    }
 
-   // จบเกม
    endGameUhc() {
       world.setDifficulty(Difficulty.Peaceful);
       const prevShowCoordinates = ctx.prevShowCoordinates;
@@ -347,7 +344,7 @@ class UhcMatchManager {
       this.stopGameLoop();
       vic.resetCountdownRunning();
 
-      // บันทึกข้อมูล Rank ก่อน cleanup
+      // flush rank data before cleanup
       flushIfDirty();
 
       this.cleanupGameState();
@@ -366,7 +363,6 @@ class UhcMatchManager {
       BorderManager.resetContext(ctx);
    }
 
-   // batch reset ผู้เล่น UHC
    resetPlayerStates() {
       const players = uhcPlayersCache;
       if (!players.length) return;
@@ -387,7 +383,6 @@ class UhcMatchManager {
       BorderManager.borderManagerSyncGeometry();
    }
 
-   // hard reset
    resetGameUhc() {
       world.setDifficulty(Difficulty.Peaceful);
       const prevShowCoordinates = ctx.prevShowCoordinates;
@@ -407,16 +402,14 @@ class UhcMatchManager {
       BorderManager.endSequenceReset();
       tlm.abortAllTeleportQueues();
 
-      clearAllPlayerNametags();
       setGameRunningState(false);
       BorderManager.scoreboardClear();
       clearAllTaguhcAndDynamicProperty();
       refreshScoreboardUI();
    }
 
-   // batch reset ผู้เล่นทั้งหมดในโลก
    resetAllPlayers() {
-      const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = getAllPlayers();
       if (!players.length) return;
       this._batchResetAllPlayers(players, 0, 6);
    }

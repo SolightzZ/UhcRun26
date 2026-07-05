@@ -3,7 +3,6 @@ import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-   // ล้าง state ผู้เล่นเมื่อออก
    onPlayerLeave = ({ playerId }) => {
       model.playerState.delete(playerId);
       model.adminPlayers.delete(playerId);
@@ -17,10 +16,9 @@ class Controller {
       }
    };
 
-   // ตรวจจับ CPS เมื่อผู้เล่นตี entity
    onEntityHitEntity = (event) => {
       const attacker = event.damagingEntity;
-      if (!attacker || attacker.typeId !== 'minecraft:player') return;
+      if (!attacker?.isValid || attacker.typeId !== 'minecraft:player') return;
 
       const currentTick = system.currentTick;
       const playerId = attacker.id;
@@ -31,13 +29,12 @@ class Controller {
          model.playerState.set(playerId, data);
       }
 
-      data.buf[data.head] = currentTick;
+      data.buf[data.head] = currentTick & 0xff;
       data.head = (data.head + 1) % model.BUF_SIZE;
       if (data.count < model.BUF_SIZE) data.count++;
 
       const cps = service.countRecentHits(data, currentTick);
 
-      // ถ้าเกิน HARD_LIMIT -> kick
       if (cps >= model.HARD_LIMIT) {
          service.kickPlayer(attacker, cps);
          data.buf.fill(0);
@@ -46,7 +43,6 @@ class Controller {
          return;
       }
 
-      // ถ้าเกิน MAX_CPS -> เตือน debounce 1 วิ
       if (cps >= model.MAX_CPS) {
          if (currentTick - data.lastWarnTick >= 20) {
             data.lastWarnTick = currentTick;

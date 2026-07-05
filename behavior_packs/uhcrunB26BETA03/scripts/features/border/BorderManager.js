@@ -1,8 +1,10 @@
-import { getCachedPlayers } from '../team/TeamActions.js';
-import { uhcPlayersCache } from '../cache/State_Cache.js';
+import { world } from '@minecraft/server';
 import { dynamicToast, TEX_BARRIER } from '../../shared/Util.js';
 import bf from '../block-filler/BlockFiller.js';
 import { END_SEQUENCE_STATE } from '../block-filler/BlockFillerConstants.js';
+import { uhcPlayersCache } from '../cache/State_Cache.js';
+import { getCachedPlayers } from '../team/TeamActions.js';
+import borderEvents from './BorderGuard.js';
 import particleInstance from './BorderParticle.js';
 import scoreboardInstance from './BorderScoreboard.js';
 import shrinkInstance from './BorderShrink.js';
@@ -39,6 +41,7 @@ export const borderColors = {
 export const ticks = 20;
 export const center = { x: 0, z: 0 };
 
+// Game state — mutated by BorderManager and sub-systems
 function GameContext() {
    return {
       isRunning: false,
@@ -60,12 +63,6 @@ function GameContext() {
       endSeqState: 0,
       endSeqStartTick: -1,
       objective: null,
-      aliveTeamBarCache: MinecraftColor.gray + '-',
-      aliveTeamDirty: true,
-      lastBorderRadius: -1,
-      lastPlayerCount: -1,
-      lastTargetRadius: null,
-      borderMolang: null,
       borderDamageIndex: 0,
       cacheRetryTick: 0,
       countdownIntervalId: null,
@@ -74,17 +71,25 @@ function GameContext() {
 
 export const ctx = GameContext();
 
+// Change-detection caches — only read/written by renderers (Scoreboard, Particle)
+export const renderCache = {
+   aliveTeamBarCache: MinecraftColor.gray + '-',
+   aliveTeamDirty: true,
+   lastBorderRadius: -1,
+   lastPlayerCount: -1,
+   lastTargetRadius: null,
+   borderMolang: null,
+   scoreboardUpdateThrottle: 0,
+};
+
 const titleConfig = Object.freeze({ stayDuration: 200, fadeInDuration: 10, fadeOutDuration: 20 });
 const soundConfig = Object.freeze({ volume: 0.8, pitch: 1 });
 
-//ตัวจัดการ Border หลัก: shrink, scoreboard, particles, end sequence
 class BorderManager {
-   //ตั้งค่า endgame handler ให้ BlockFiller
    init() {
       bf.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
    }
 
-   //รีเซ็ตขอบเขต border + shrink กลับไปจุดเริ่มต้น
    resetBorderState() {
       ctx.nextShrinkIndex = 1;
       ctx.nextShrinkTick = 300;
@@ -101,18 +106,16 @@ class BorderManager {
       shrinkInstance.borderManagerSyncGeometry();
    }
 
-   //รีเซ็ต cache UI (sidebar, warning damage)
    resetUiState() {
-      ctx.aliveTeamDirty = true;
-      ctx.aliveTeamBarCache = MinecraftColor.gray + '-';
-      ctx.lastBorderRadius = -1;
-      ctx.lastPlayerCount = -1;
-      ctx.lastTargetRadius = null;
+      renderCache.aliveTeamDirty = true;
+      renderCache.aliveTeamBarCache = MinecraftColor.gray + '-';
+      renderCache.lastBorderRadius = -1;
+      renderCache.lastPlayerCount = -1;
+      renderCache.lastTargetRadius = null;
       scoreboardInstance.clearCache();
       warningDamageInstance.clearCache();
    }
 
-   //ขยับ border ทุก tick
    borderManagerTick() {
       if (ctx.nextShrinkIndex >= CHECKPOINTS.length) {
          this.endSequenceTick();
@@ -123,19 +126,18 @@ class BorderManager {
       if (ctx.uhcTick >= ctx.nextShrinkTick) shrinkInstance.borderManagerApplyShrink();
    }
 
-   //รีเซ็ต end sequence state
    endSequenceReset() {
       ctx.endSeqState = 0;
       ctx.endSeqStartTick = -1;
    }
 
-   //จัดการ end sequence (border วงสุดท้าย)
    endSequenceTick() {
       if (ctx.endSeqState === END_SEQUENCE_STATE.COMPLETED) return;
       if (ctx.targetRadius !== null) return;
 
       if (ctx.endSeqStartTick === -1) {
-         ctx.endSeqStartTick = ctx.uhcTick;            this.broadcast(uhcPlayersCache, {
+         ctx.endSeqStartTick = ctx.uhcTick;
+         this.broadcast(uhcPlayersCache, {
             message: dynamicToast('Border ถึงวงสุดท้ายแล้ว!', TEX_BARRIER),
             sound: 'world_noti',
          });
@@ -164,7 +166,6 @@ class BorderManager {
       }
    }
 
-   //ส่งข้อความ / title / เสียงให้ผู้เล่น
    broadcast(targetOrPayload, maybePayload) {
       let targets, payload;
 
@@ -215,7 +216,6 @@ class BorderManager {
       return particleInstance.particleRendererTick(players);
    }
 
-   //รีเซ็ต properties ของ context object
    resetContext(target) {
       if (!target) return;
 
@@ -225,6 +225,14 @@ class BorderManager {
       for (let i = 0; i < keys.length; i++) {
          target[keys[i]] = fresh[keys[i]];
       }
+
+      renderCache.aliveTeamBarCache = MinecraftColor.gray + '-';
+      renderCache.aliveTeamDirty = true;
+      renderCache.lastBorderRadius = -1;
+      renderCache.lastPlayerCount = -1;
+      renderCache.lastTargetRadius = null;
+      renderCache.borderMolang = null;
+      renderCache.scoreboardUpdateThrottle = 0;
    }
 
    scoreboardInit() {
@@ -250,6 +258,32 @@ class BorderManager {
    }
    borderManagerTickShrink() {
       return shrinkInstance.borderManagerTickShrink();
+   }
+
+   handlePlayerBreakBlock(ev) {
+      return borderEvents.handlePlayerBreakBlock(ev);
+   }
+   handlePlayerInteractWithEntity(ev) {
+      return borderEvents.handlePlayerInteractWithEntity(ev);
+   }
+   handlePlayerInteractWithBlock(ev) {
+      return borderEvents.handlePlayerInteractWithBlock(ev);
+   }
+   handlePlayerPlaceBlock(ev) {
+      return borderEvents.handlePlayerPlaceBlock(ev);
+   }
+   isUhcPlayer(player) {
+      return borderEvents.isUhcPlayer(player);
+   }
+
+   // Return computed game state string so scoreboard doesn't read ctx directly
+   getGameState() {
+      if (!ctx.isRunning) return `${icons.Hourglass}`;
+      if (ctx.uhcTick < 30) return `?`;
+      if (!world.gameRules) return `?`;
+      if (!world.gameRules.pvp) return `${icons.shield}`;
+      if (ctx.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
+      return `?`;
    }
 }
 

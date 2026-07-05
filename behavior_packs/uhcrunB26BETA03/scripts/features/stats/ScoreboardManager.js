@@ -1,8 +1,6 @@
-//นำเข้า API จาก minecraft server
 import { DisplaySlotId, system, world } from '@minecraft/server';
 import { logError } from '../../shared/Util.js';
 
-//ดึงหรือสร้าง scoreboard objective ถ้ายังไม่มี
 export function ensureObjective(id, displayName) {
    try {
       let obj = world.scoreboard.getObjective(id);
@@ -16,7 +14,6 @@ export function ensureObjective(id, displayName) {
 
 let _refreshThrottleTask = null;
 
-//ตั้งค่า scoreboard แสดงผลในช่องต่างๆ ของ UI — throttle 2 ticks
 export function refreshScoreboardUI() {
    if (_refreshThrottleTask !== null) return;
    _refreshThrottleTask = system.runTimeout(() => {
@@ -30,9 +27,7 @@ export function refreshScoreboardUI() {
          world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.BelowName, { objective: deaths });
          world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.List, { objective: kills });
       } catch (error) {
-          logError('Scoreboard', 'Failed to refresh scoreboard UI', error);
+         logError('Scoreboard', 'Failed to refresh scoreboard UI', error);
       }
    }, 2);
 }
-
-

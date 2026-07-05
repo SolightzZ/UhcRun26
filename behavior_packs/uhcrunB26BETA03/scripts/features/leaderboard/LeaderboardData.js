@@ -1,14 +1,13 @@
-//รวบรวมข้อมูล scoreboard จาก objective สำหรับสร้าง leaderboard
 import { world } from '@minecraft/server';
 import { TEAMS } from '../../constants/game.js';
 import { lbCache, MAX_TEAMS } from '../../constants/leaderboard.js';
-import { playerCache } from '../cache/State_Cache.js';
+import { logError } from '../../shared/Util.js';
+import { playerCache, playerTeamCache } from '../cache/State_Cache.js';
+import { resolveParticipantName } from '../stats/StatsManager.js';
 import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { getPlayersByTeam } from '../team/TeamActions.js';
-import { logError } from '../../shared/Util.js';
 import { buildTeamText } from './LeaderboardFormat.js';
 
-//อ่านคะแนนจาก scoreboard objective (kills, deaths, teamkills)
 function buildScoreLookup(obj) {
    const map = new Map();
 
@@ -16,7 +15,8 @@ function buildScoreLookup(obj) {
 
    try {
       for (const p of obj.getParticipants()) {
-         map.set(p.displayName, obj.getScore(p));
+         const name = resolveParticipantName(p);
+         if (name) map.set(name, obj.getScore(p));
       }
    } catch (error) {
       logError('LeaderboardData', 'buildScoreLookup error', error);
@@ -24,42 +24,40 @@ function buildScoreLookup(obj) {
    return map;
 }
 
-let _cachedStats = null;
-let _statsHash = 0;
-
-//รวบรวม kills/deaths ของผู้เล่นจาก scoreboard
 export function getStats() {
    const killsObj = world.scoreboard?.getObjective('uhc_kills');
    const deathsObj = world.scoreboard?.getObjective('uhc_deaths');
-   const hash = (killsObj?.getParticipants().length ?? 0) * 31 + (deathsObj?.getParticipants().length ?? 0);
-   if (_cachedStats && hash === _statsHash) return _cachedStats;
-   _statsHash = hash;
-   _cachedStats = null;
 
    const killsLookup = buildScoreLookup(killsObj);
    const deathsLookup = buildScoreLookup(deathsObj);
 
    if (!killsLookup.size && !deathsLookup.size) {
-      _cachedStats = new Map();
-      return _cachedStats;
+      return new Map();
    }
 
-   const allIds = new Set();
-   for (const k of killsLookup.keys()) allIds.add(k);
-   for (const k of deathsLookup.keys()) allIds.add(k);
+   const allNames = new Set();
+   for (const k of killsLookup.keys()) allNames.add(k);
+   for (const k of deathsLookup.keys()) allNames.add(k);
+
    const playerStatsMap = new Map();
 
-   for (const playerId of allIds) {
-      const killCount = killsLookup.get(playerId) ?? 0;
-      const deathCount = deathsLookup.get(playerId) ?? 0;
+   for (const name of allNames) {
+      const killCount = killsLookup.get(name) ?? 0;
+      const deathCount = deathsLookup.get(name) ?? 0;
       if (!killCount && !deathCount) continue;
 
-      const playerName = playerCache.get(playerId)?.name ?? playerId;
-      const teamId = playerCache.get(playerId)?.teamId ?? null;
+      let teamId = null;
+      for (const [uuid, p] of playerCache) {
+         if (p?.name === name) {
+            teamId = playerTeamCache.get(uuid);
+            break;
+         }
+      }
+
       const teamInfo = teamId ? TEAM_LOOKUP.get(teamId) : null;
       const teamLabel = teamInfo ? teamInfo.color + teamInfo.name : null;
 
-      playerStatsMap.set(playerName, {
+      playerStatsMap.set(name, {
          kills: killCount,
          deaths: deathCount,
          teamId,
@@ -67,7 +65,6 @@ export function getStats() {
       });
    }
 
-   _cachedStats = playerStatsMap;
    return playerStatsMap;
 }
 

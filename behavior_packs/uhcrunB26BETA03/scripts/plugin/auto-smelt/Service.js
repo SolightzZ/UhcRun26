@@ -3,16 +3,16 @@ import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.j
 import { dynamicToast, isValidEntity, logError, randomInt } from '../../shared/Util.js';
 import Model from './Model.js';
 
+const _claimed = new Set();
 const formatHealth = (val) => val.toFixed(1);
 
-// ตรวจสอบว่าเครื่องมือที่ถือตรงกับ action รึเปล่า (shovel สำหรับ gravel, pickaxe สำหรับ smelt ฯลฯ)
 export const isValidTool = (tool, action) => {
    if (action === Model.ACTION.GRAVEL) return Model.SHOVELS.has(tool);
    if (action === Model.ACTION.EFFECT) return true;
    return Model.PICKAXES.has(tool);
 };
 
-// spawn ไอเทมแบบกองซ้อนกัน 64 ชิ้นต่อ stack เผื่อจำนวนเยอะ
+// Spawn items stacked at 64 per stack to handle large quantities
 const spawnStacked = (dimension, typeId, amount, pos, loreFn) => {
    let remaining = Math.max(1, amount);
    while (remaining > 0) {
@@ -33,8 +33,9 @@ const spawnLoc = (loc) => ({
 });
 
 class Service {
-   // อ่านเครื่องมือที่ player ถืออยู่ ใช้ cache 1 tick ป้องกันอ่านซ้ำ
+   // Caches held tool for 1 tick to avoid redundant inventory reads
    getCachedTool = (player) => {
+      if (!player?.isValid) return null;
       const playerId = player.id;
       if (!playerId) return null;
 
@@ -51,12 +52,10 @@ class Service {
       return tool;
    };
 
-   // เพิ่ม XP ให้ player (ถ้า entity ยัง valid)
    addXp = (player, amount) => {
       if (amount > 0 && isValidEntity(player)) player.addExperience(amount);
    };
 
-   // แปลง item entity ที่ตกอยู่ตาม itemData -> smelt / xp / special
    processItem = (entity, action, player, dimension) => {
       if (!isValidEntity(entity)) return { xp: 0, lapis: null };
 
@@ -114,7 +113,6 @@ class Service {
       }
    };
 
-   // อ่านระดับ enchant จากเครื่องมือที่ player ถือ
    getEnchantLevel = (player, enchantId) => {
       if (!player?.isValid) return 0;
       const inv = getPlayerInventoryContainer(player);
@@ -132,7 +130,7 @@ class Service {
       return 0;
    };
 
-   // สุ่ม Haste II 5s เมื่อแตก diamond / obsidian
+   // 30% chance for Haste II 5s when mining diamond / obsidian
    handlePremiumBlockEffect = (player) => {
       if (!isValidEntity(player)) return;
       if (randomInt(0, 99) >= Model.CONFIG.chance.premiumBlock) return;
@@ -142,7 +140,7 @@ class Service {
       player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
    };
 
-   // สุ่ม book เมื่อขุด lapis + fortune, spawn lapis ปกติ 1 ก้อน
+   // Fortune-scaled book chance on lapis; always drops 1 lapis
    spawnLapisRewards = (player, dimension, lapisData) => {
       if (!lapisData.total) return;
 
@@ -162,7 +160,7 @@ class Service {
       spawnStacked(dimension, 'minecraft:lapis_lazuli', 1, pos, (s) => s.setLore(['§7uhc']));
    };
 
-   // รวม job ภายใน dim เดียวกัน รัน flush ทีหลัง 2 ticks ลดภาระ
+   // Batches jobs per dimension then flushes after 2 ticks to reduce overhead
    scheduleBatch = (player, location, action, dimension) => {
       const dimId = dimension.id;
       if (!Model.pendingJobs.has(dimId)) Model.pendingJobs.set(dimId, []);
@@ -179,11 +177,10 @@ class Service {
       }, 2);
    };
 
-   // scan item entities ใกล้เคียงตามตำแหน่งที่ขุด แล้ว processItem
    flushBatch = (jobs) => {
       if (!jobs.length) return;
 
-      const claimed = new Set();
+      _claimed.clear();
       const center = { x: 0, y: 0, z: 0 };
 
       const { dimension } = jobs[0];
@@ -196,24 +193,24 @@ class Service {
          center.z = job.location.z;
          let entities;
          try {
+            const singleRadius = Model.getEffectiveRadius();
             entities = dimension.getEntities({
                type: 'minecraft:item',
                location: center,
-               maxDistance: Model.CONFIG.scan.itemRadius,
+               maxDistance: singleRadius,
             });
          } catch (error) {
             logError('AutoSmelt', 'Failed to get nearby entities', error);
             return;
          }
          if (!entities.length) return;
-         claimed.clear();
          let totalXp = 0,
             lapisTotal = 0,
             lapisPosition = job.location;
          for (let ei = 0, eLen = entities.length; ei < eLen; ei++) {
             const entity = entities[ei];
             if (!isValidEntity(entity)) continue;
-            claimed.add(entity.id);
+            _claimed.add(entity.id);
             const result = this.processItem(entity, job.action, job.player, dimension);
             totalXp += result.xp;
             if (result.lapis) {
@@ -229,7 +226,7 @@ class Service {
          return;
       }
 
-      // หา bounding box จากหลาย job เพื่อ scan ครั้งเดียว
+      // Compute bounding box from multiple jobs for single scan
       let minX = Infinity,
          minY = Infinity,
          minZ = Infinity;
@@ -252,7 +249,8 @@ class Service {
       const hx = (maxX - minX) / 2,
          hy = (maxY - minY) / 2,
          hz = (maxZ - minZ) / 2;
-      const halfDiag = Math.sqrt(hx * hx + hy * hy + hz * hz) + Model.CONFIG.scan.itemRadius;
+      const multiRadius = Model.getEffectiveRadius();
+      const halfDiag = Math.sqrt(hx * hx + hy * hy + hz * hz) + multiRadius;
 
       let allEntities;
       try {
@@ -268,8 +266,6 @@ class Service {
 
       if (!allEntities.length) return;
 
-      claimed.clear();
-
       for (let ji = 0, jLen = jobs.length; ji < jLen; ji++) {
          const job = jobs[ji];
          if (!isValidEntity(job.player)) continue;
@@ -280,16 +276,17 @@ class Service {
 
          for (let ei = 0, eLen = allEntities.length; ei < eLen; ei++) {
             const entity = allEntities[ei];
-            if (claimed.has(entity.id)) continue;
+            if (_claimed.has(entity.id)) continue;
             if (!isValidEntity(entity)) continue;
 
             const el = entity.location;
-            const dx = el.x - job.location.x,
-               dy = el.y - job.location.y,
-               dz = el.z - job.location.z;
-            if (dx * dx + dy * dy + dz * dz > Model._r2) continue;
+            const jl = job.location;
+            const dx = el.x - jl.x,
+               dy = el.y - jl.y,
+               dz = el.z - jl.z;
+            if (dx * dx + dy * dy + dz * dz > Model.getEffectiveR2()) continue;
 
-            claimed.add(entity.id);
+            _claimed.add(entity.id);
             const result = this.processItem(entity, job.action, job.player, dimension);
             totalXp += result.xp;
             if (result.lapis) {
@@ -306,7 +303,6 @@ class Service {
       }
    };
 
-   // ฮีล player 2 ครึ่งหัว
    healPlayer = (player) => {
       if (!isValidEntity(player)) return;
 
@@ -322,7 +318,6 @@ class Service {
       player.sendMessage(dynamicToast(`§a+${formatHealth(newHealth - current)} §7(${formatHealth(newHealth)})`, Model.CONFIG.feedback.health.texture));
    };
 
-   // สุ่ม Absorption 16% นานตาม config
    tryAbsorption = (player) => {
       if (!isValidEntity(player)) return false;
       if (randomInt(0, 99) >= Model.CONFIG.chance.absorption) return false;
@@ -336,14 +331,12 @@ class Service {
       return true;
    };
 
-   // ดำเนินการ redstone: XP + ฮีล + สุ่ม absorption
    handleRedstone = (player) => {
       this.addXp(player, randomInt(Model.CONFIG.xp.redstone[0], Model.CONFIG.xp.redstone[1]));
       this.healPlayer(player);
       if (!this.tryAbsorption(player)) player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.orb);
    };
 
-   // จุดเริ่มต้น action ตามประเภทบล็อก
    executeAction = (player, location, action, dimension) => {
       player.playSound(Model.CONFIG.sounds.orb, Model.SOUND_OPTIONS.effect);
 

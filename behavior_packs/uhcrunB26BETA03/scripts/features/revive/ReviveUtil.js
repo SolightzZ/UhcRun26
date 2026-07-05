@@ -1,4 +1,3 @@
-//อรรถประโยชน์สำหรับ revive: เช็คไอเทม, ลบไอเทม, หาผู้เล่นตาย
 import { logError } from '../../shared/Util.js';
 import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
 import { playerCache, playerTeamCache } from '../cache/State_Cache.js';
@@ -6,13 +5,11 @@ import { deathLocation, teamPlayerIndex } from '../team/State_Team.js';
 import { getPlayerTeam } from '../team/TeamActions.js';
 import { REVIVE_ITEM_ID } from './State_Revive.js';
 
-//ค้นหา player object ตาม id ถ้ายัง valid
 export function resolvePlayer(id) {
    const player = playerCache.get(id);
    return player?.isValid ? player : null;
 }
 
-//ตรวจสอบว่ามีไอเทมหัวผู้เล่นใน hotbar 9 ช่องแรก
 export function hasReviveItem(player) {
    const container = getPlayerInventoryContainer(player);
    if (!container) return false;
@@ -29,7 +26,6 @@ export function hasReviveItem(player) {
    return false;
 }
 
-//ลบไอเทมหัวผู้เล่น 1 อันจาก hotbar
 export function removeOneReviveItem(player) {
    const container = getPlayerInventoryContainer(player);
    if (!container) return false;
@@ -55,7 +51,6 @@ export function removeOneReviveItem(player) {
    return false;
 }
 
-//ส่ง actionbar ข้อความ revive ไปทุกคนในทีม
 export function sendReviveTeamActionBar(teamId, message) {
    if (!teamId || !message) return;
 
@@ -72,7 +67,7 @@ export function sendReviveTeamActionBar(teamId, message) {
          try {
             player.onScreenDisplay.setActionBar(message);
          } catch (error) {
-             logError('ReviveUtil', 'Failed to send actionbar to team member', error);
+            logError('ReviveUtil', 'Failed to send actionbar to team member', error);
          }
       }
    }
@@ -88,12 +83,11 @@ export function sendReviveTeamActionBar(teamId, message) {
       try {
          player.onScreenDisplay.setActionBar(message);
       } catch (error) {
-          logError('ReviveUtil', 'Failed to send actionbar to dead player', error);
+         logError('ReviveUtil', 'Failed to send actionbar to dead player', error);
       }
    }
 }
 
-//หาผู้เล่นที่ตายแล้วในทีมเดียวกัน (จาก deathLocation)
 export function getDeadPlayersInTeam(player) {
    const deadPlayers = [];
    if (!player?.isValid) return deadPlayers;

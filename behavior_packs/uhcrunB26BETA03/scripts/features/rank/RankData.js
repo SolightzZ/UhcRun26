@@ -1,21 +1,43 @@
-//ระบบ Rank Persistence — บันทึก/โหลดข้อมูลสถิติข้ามแมตช์ผ่าน Dynamic Property
 import { world } from '@minecraft/server';
-import { TEAMS } from '../../constants/game.js';
 import { logError, logWarn } from '../../shared/Util.js';
-import { calcPlacementPoints, calcKD } from './RankTiers.js';
-import { playerTeamCache } from '../cache/State_Cache.js';
+
 import { TEAM_LOOKUP } from '../team/State_Team.js';
+import { calcKD, calcPlacementPoints } from './RankTiers.js';
+import { resolveParticipantName } from '../stats/StatsManager.js';
 
 const RANK_KEY = 'uhc_ranks';
 let _rankData = null;
 let _dirty = false;
 
-//โครงสร้างข้อมูลเริ่มต้น
 function createEmptyData() {
    return { players: {}, teams: {} };
 }
 
-//โหลดข้อมูลจาก Dynamic Property
+function sanitizePlayerEntry(entry) {
+   if (!entry || typeof entry !== 'object') {
+      return { name: '', kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 };
+   }
+   return {
+      name: String(entry.name ?? ''),
+      kills: Number(entry.kills) || 0,
+      deaths: Number(entry.deaths) || 0,
+      wins: Number(entry.wins) || 0,
+      games: Number(entry.games) || 0,
+      survivedLast: Number(entry.survivedLast) || 0,
+   };
+}
+
+function sanitizeTeamEntry(entry) {
+   if (!entry || typeof entry !== 'object') {
+      return { points: 0, placements: {}, games: 0 };
+   }
+   return {
+      points: Number(entry.points) || 0,
+      placements: entry.placements && typeof entry.placements === 'object' && !Array.isArray(entry.placements) ? entry.placements : {},
+      games: Number(entry.games) || 0,
+   };
+}
+
 export function loadRankData() {
    if (_rankData) return _rankData;
 
@@ -33,6 +55,13 @@ export function loadRankData() {
       _rankData = parsed;
       if (!_rankData.players) _rankData.players = {};
       if (!_rankData.teams) _rankData.teams = {};
+      for (const id of Object.keys(_rankData.players)) {
+         _rankData.players[id] = sanitizePlayerEntry(_rankData.players[id]);
+         _rankData.players[id].name = _rankData.players[id].name || id;
+      }
+      for (const id of Object.keys(_rankData.teams)) {
+         _rankData.teams[id] = sanitizeTeamEntry(_rankData.teams[id]);
+      }
       return _rankData;
    } catch (error) {
       logError('RankData', 'Failed to load rank data', error);
@@ -41,44 +70,46 @@ export function loadRankData() {
    }
 }
 
-//บันทึกข้อมูลลง Dynamic Property (เฉพาะเมื่อมีการเปลี่ยนแปลง)
+const MAX_RANK_SIZE = 900 * 1024;
+
 export function saveRankData(data) {
    if (!data) return;
    try {
-      world.setDynamicProperty(RANK_KEY, JSON.stringify(data));
+      const raw = JSON.stringify(data);
+      if (raw.length > MAX_RANK_SIZE) {
+         logWarn('RankData', `Rank data too large (${raw.length} bytes), skipping save`);
+         return;
+      }
+      world.setDynamicProperty(RANK_KEY, raw);
       _dirty = false;
    } catch (error) {
       logError('RankData', 'Failed to save rank data', error);
    }
 }
 
-//ทำเครื่องหมายว่าข้อมูลมีการเปลี่ยนแปลง
 export function markDirty() {
    _dirty = true;
 }
 
-//บันทึกถ้ามีการเปลี่ยนแปลง
 export function flushIfDirty() {
    if (_dirty && _rankData) {
       saveRankData(_rankData);
    }
 }
 
-//เพิ่มสถิติ kills/deaths ของผู้เล่น (_cross-game accumulation_)
-export function mergePlayerStats(id, name, { kills = 0, deaths = 0, teamId = null } = {}) {
+export function mergePlayerStats(name, { kills = 0, deaths = 0, teamId = null } = {}) {
    const data = loadRankData();
-   if (!data.players[id]) {
-      data.players[id] = { name, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 };
+   if (!data.players[name]) {
+      data.players[name] = sanitizePlayerEntry({ name, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 });
    }
-   const p = data.players[id];
-   p.name = name;
+   const p = data.players[name];
    p.kills += kills;
    p.deaths += deaths;
    if (teamId) p.teamId = teamId;
    markDirty();
 }
 
-//บันทึกอันดับที่ทีมทำได้ (placement points + stats เท่านั้น — ไม่ increment games)
+// placement points only — does not increment games
 export function recordPlacement(teamId, placement) {
    if (!teamId || placement <= 0) return;
    const data = loadRankData();
@@ -92,18 +123,17 @@ export function recordPlacement(teamId, placement) {
    markDirty();
 }
 
-//เพิ่มจำนวนเกมที่เล่นให้กับผู้เล่นและทีมทุกคน
-export function recordGamesPlayed(playerIds) {
-   if (!playerIds?.length) return;
+export function recordGamesPlayed(playerNames) {
+   if (!playerNames?.length) return;
    const data = loadRankData();
    const teamsIncremented = new Set();
-   for (let i = 0, len = playerIds.length; i < len; i++) {
-      const id = playerIds[i];
-      if (!data.players[id]) {
-         data.players[id] = { name: id, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 };
+   for (let i = 0, len = playerNames.length; i < len; i++) {
+      const name = playerNames[i];
+      if (!data.players[name]) {
+         data.players[name] = sanitizePlayerEntry({ name, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 });
       }
-      data.players[id].games++;
-      const teamId = data.players[id].teamId;
+      data.players[name].games++;
+      const teamId = data.players[name].teamId;
       if (teamId && !teamsIncremented.has(teamId)) {
          teamsIncremented.add(teamId);
          if (!data.teams[teamId]) {
@@ -115,38 +145,35 @@ export function recordGamesPlayed(playerIds) {
    markDirty();
 }
 
-//บันทึกว่าผู้เล่นเป็นผู้รอดชีวิตคนสุดท้ายของทีม
-export function recordSurvivedLast(playerId) {
-   if (!playerId) return;
+export function recordSurvivedLast(playerName) {
+   if (!playerName) return;
    const data = loadRankData();
-   if (!data.players[playerId]) {
-      data.players[playerId] = { name: playerId, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 };
+   if (!data.players[playerName]) {
+      data.players[playerName] = sanitizePlayerEntry({ name: playerName, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 });
    }
-   data.players[playerId].survivedLast++;
+   data.players[playerName].survivedLast++;
    markDirty();
 }
 
-//บันทึกชัยชนะของทีม (placement + wins เท่านั้น — ไม่ increment games)
-export function recordWin(teamId, playerIds) {
+// placement + wins only — does not increment games
+export function recordWin(teamId, playerNames) {
    recordPlacement(teamId, 1);
    const data = loadRankData();
-   for (let i = 0, len = playerIds.length; i < len; i++) {
-      const id = playerIds[i];
-      if (!data.players[id]) {
-         data.players[id] = { name: id, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 };
+   for (let i = 0, len = playerNames.length; i < len; i++) {
+      const name = playerNames[i];
+      if (!data.players[name]) {
+         data.players[name] = sanitizePlayerEntry({ name, kills: 0, deaths: 0, wins: 0, games: 0, survivedLast: 0 });
       }
-      data.players[id].wins++;
+      data.players[name].wins++;
    }
    markDirty();
 }
 
-//ดึงข้อมูลผู้เล่นทั้งหมด เรียงลำดับตาม KD จากมากไปน้อย
 export function getAllPlayersSorted() {
    const data = loadRankData();
    const entries = Object.entries(data.players);
-   const result = entries.map(([id, p]) => ({
-      id,
-      name: p.name || id,
+   const result = entries.map(([name, p]) => ({
+      name: p.name || name,
       kills: p.kills || 0,
       deaths: p.deaths || 0,
       wins: p.wins || 0,
@@ -158,7 +185,6 @@ export function getAllPlayersSorted() {
    return result;
 }
 
-//ดึงข้อมูลทีมทั้งหมด เรียงลำดับตาม Placement Points จากมากไปน้อย (PUBG style)
 export function getTeamsSorted() {
    const data = loadRankData();
    const entries = Object.entries(data.teams);
@@ -172,9 +198,6 @@ export function getTeamsSorted() {
    return result;
 }
 
-// ── Data functions สำหรับ UI (ย้ายมาจาก RankUI.js) ──
-
-//ดึงสถิติ kill ของทีมจาก scoreboard
 export function getTeamKillStats() {
    try {
       const teamKillObj = world.scoreboard?.getObjective('uhc_teamkills');
@@ -182,34 +205,36 @@ export function getTeamKillStats() {
 
       const result = [];
       for (const participant of teamKillObj.getParticipants()) {
-         const name = participant.displayName;
+         const name = resolveParticipantName(participant);
          const kills = teamKillObj.getScore(participant);
-         if (kills > 0) {
+         if (name && kills > 0) {
             result.push({ name, kills });
          }
       }
       result.sort((a, b) => b.kills - a.kills);
       return result;
-   } catch {
+   } catch (error) {
+      logError('RankData', 'getTeamKillStats failed', error);
       return [];
    }
 }
 
-//ดึงสถิติ kill ของผู้เล่นจาก scoreboard
 export function getPlayerKillStats() {
    try {
       const killsObj = world.scoreboard?.getObjective('uhc_kills');
       if (!killsObj) return [];
 
       const result = [];
+      const rankData = loadRankData();
       for (const participant of killsObj.getParticipants()) {
-         const id = participant.displayName;
+         const name = resolveParticipantName(participant);
          const kills = killsObj.getScore(participant);
-         if (kills > 0) {
-            const teamId = playerTeamCache.get(id);
+         if (name && kills > 0) {
+            const p = rankData.players[name];
+            const teamId = p?.teamId ?? null;
             const teamInfo = teamId ? TEAM_LOOKUP.get(teamId) : null;
             result.push({
-               name: id,
+               name,
                kills,
                teamLabel: teamInfo ? teamInfo.color + teamInfo.name : null,
             });
@@ -217,26 +242,28 @@ export function getPlayerKillStats() {
       }
       result.sort((a, b) => b.kills - a.kills);
       return result;
-   } catch {
+   } catch (error) {
+      logError('RankData', 'getPlayerKillStats failed', error);
       return [];
    }
 }
 
-//ดึงสถิติ death ของผู้เล่นจาก scoreboard
 export function getPlayerDeathStats() {
    try {
       const deathsObj = world.scoreboard?.getObjective('uhc_deaths');
       if (!deathsObj) return [];
 
       const result = [];
+      const rankData = loadRankData();
       for (const participant of deathsObj.getParticipants()) {
-         const id = participant.displayName;
+         const name = resolveParticipantName(participant);
          const deaths = deathsObj.getScore(participant);
-         if (deaths > 0) {
-            const teamId = playerTeamCache.get(id);
+         if (name && deaths > 0) {
+            const p = rankData.players[name];
+            const teamId = p?.teamId ?? null;
             const teamInfo = teamId ? TEAM_LOOKUP.get(teamId) : null;
             result.push({
-               name: id,
+               name,
                deaths,
                teamLabel: teamInfo ? teamInfo.color + teamInfo.name : null,
             });
@@ -244,7 +271,8 @@ export function getPlayerDeathStats() {
       }
       result.sort((a, b) => b.deaths - a.deaths);
       return result;
-   } catch {
+   } catch (error) {
+      logError('RankData', 'getPlayerDeathStats failed', error);
       return [];
    }
 }

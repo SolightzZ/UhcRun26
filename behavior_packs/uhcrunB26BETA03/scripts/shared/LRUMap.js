@@ -1,6 +1,5 @@
 import { system } from '@minecraft/server';
 
-//LRU map พร้อม TTL cleanup ใช้ใน plugin ต่างๆ
 export class LRUMap {
    constructor(maxSize = Infinity, ttlTicks = 0) {
       this._m = new Map();

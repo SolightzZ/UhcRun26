@@ -1,5 +1,5 @@
 import { world } from '@minecraft/server';
-import border from '../features/border/BorderGuard.js';
+import border from '../features/border/BorderManager.js';
 import blockInteractGuard from '../plugin/block-interact-guard/Controller.js';
 import { runEventHandlers } from '../shared/Util.js';
 

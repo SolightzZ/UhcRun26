@@ -19,6 +19,7 @@ class Service {
 
    handleEnderChest = (event, player) => {
       event.cancel = true;
+      if (!player?.isValid) return;
 
       const dir = player.getViewDirection();
       const kbX = -dir.x * 2;

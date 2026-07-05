@@ -1,3 +1,4 @@
+import { uhcPlayerIds } from '../../features/cache/State_Cache.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
@@ -5,14 +6,14 @@ import service from './Service.js';
 class Controller {
    onPlayerInteractWithBlock = (event) => {
       const { block, player } = event;
-      if (!block?.isValid || !player) return;
+      if (!block?.isValid || !player?.isValid) return;
 
       const { typeId } = block;
 
       if (typeId === 'minecraft:ender_chest') return service.handleEnderChest(event, player);
       if (model.BLOCK_DENYLIST.has(typeId)) return (event.cancel = true);
 
-      if (!player.hasTag('uhc') && (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))) {
+      if (!uhcPlayerIds.has(player.id) && (service.isDoorLike(typeId) || model.SPECTATOR_DENYLIST.has(typeId))) {
          event.cancel = true;
          player.onScreenDisplay.setActionBar('§cSpectators cannot interact with this block!');
       }

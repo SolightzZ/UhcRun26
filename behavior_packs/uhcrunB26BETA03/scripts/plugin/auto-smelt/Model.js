@@ -1,9 +1,18 @@
+import { uhcPlayersCache } from '../../features/cache/State_Cache.js';
 import { LRUMap } from '../../shared/LRUMap.js';
 
-//ข้อมูล config + mapping บล็อก -> action
+// Adaptive scan radius thresholds — tighter when more players online
+const ADAPTIVE_RADIUS = Object.freeze({
+   BASE: 2.0,
+   MEDIUM: 1.5,
+   TIGHT: 1.0,
+   PLAYER_MEDIUM: 20,
+   PLAYER_TIGHT: 30,
+});
+
 class Model {
    CONFIG = Object.freeze({
-      scan: Object.freeze({ itemRadius: 2 }),
+      scan: Object.freeze({ itemRadius: ADAPTIVE_RADIUS.BASE }),
       xp: Object.freeze({
          smelt: [1, 4],
          coal: [1, 10],
@@ -81,7 +90,7 @@ class Model {
    });
 
    toolCache = Object.assign(new LRUMap(60, 1), {
-      //Override cleanup สำหรับ object structure ที่มี .tick
+      // Override cleanup for objects with .tick property
       cleanup(currentTick) {
          if (this._ttl <= 0) return;
          for (const [key, val] of this._m) {
@@ -93,7 +102,18 @@ class Model {
    });
    pendingJobs = new Map();
    scheduledDims = new Set();
-   _r2 = this.CONFIG.scan.itemRadius ** 2;
+
+   getEffectiveRadius() {
+      const count = uhcPlayersCache.length;
+      if (count >= ADAPTIVE_RADIUS.PLAYER_TIGHT) return ADAPTIVE_RADIUS.TIGHT;
+      if (count >= ADAPTIVE_RADIUS.PLAYER_MEDIUM) return ADAPTIVE_RADIUS.MEDIUM;
+      return ADAPTIVE_RADIUS.BASE;
+   }
+
+    getEffectiveR2() {
+      const r = this.getEffectiveRadius();
+      return r * r;
+   }
 }
 
 export default new Model();

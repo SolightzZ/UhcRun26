@@ -1,24 +1,28 @@
-//Rank UI — หน้าต่าง Leaderboard 4 แท็บ สำหรับระบบ Rank (server-ui only)
 import { ActionFormData } from '@minecraft/server-ui';
-import { logError } from '../../shared/Util.js';
-import { getRankTier } from '../../features/rank/RankTiers.js';
-import { getAllPlayersSorted, getTeamsSorted, flushIfDirty, getTeamKillStats, getPlayerKillStats, getPlayerDeathStats } from '../../features/rank/RankData.js';
-import { playerTeamCache } from '../../features/cache/State_Cache.js';
-import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { CONFIG } from '../../constants/game.js';
+import { flushIfDirty, getAllPlayersSorted, getPlayerDeathStats, getPlayerKillStats, getTeamKillStats, getTeamsSorted } from '../../features/rank/RankData.js';
+import { getRankTier } from '../../features/rank/RankTiers.js';
+import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
+import { logError } from '../../shared/Util.js';
+import { openMainMenu } from '../menu/MenuMain.js';
 
-//เปิดเมนูหลัก Rank (4 ปุ่ม)
+const RANK_PREFIXES = ['§6#1', '§f#2', '§e#3'];
+function rankPrefix(i) {
+   return RANK_PREFIXES[i] ?? `§7#${i + 1}`;
+}
+
 export function openRankMenu(player) {
    flushIfDirty();
 
    const form = new ActionFormData();
    form.title(CONFIG.title);
    form.body('§6UHCRun26 | Ranks');
-   form.button('§bCurrent Match');
-   form.button('§eTeam Placement');
-   form.button('§aPlayer Survival');
-   form.button('§5KDA');
-   form.button('Back', 'textures/ui/cancel');
+
+   form.button('§bMatch', 'textures/ui/sale_banner.png');
+   form.button('§ePlacement', 'textures/ui/marketplace_pause_menu_icon.png');
+   form.button('§aSurvival', 'textures/ui/xbox4.png');
+   form.button('§5K/D/A', 'textures/ui/multiplayer_glyph_color.png');
+   form.button('Back', 'textures/ui/wysiwyg_reset.png');
 
    form
       .show(player)
@@ -37,6 +41,9 @@ export function openRankMenu(player) {
             case 3:
                openKDABoard(player);
                break;
+            case 4:
+               openMainMenu(player);
+               break;
          }
       })
       .catch((error) => {
@@ -44,60 +51,54 @@ export function openRankMenu(player) {
       });
 }
 
-//Tab 1: Current Match — สถิติปัจจุบันจาก Scoreboard
 function openCurrentMatch(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | Current Match');
 
    let body = '';
 
-   // Top Teams (Kills)
    const teamKillStats = getTeamKillStats();
    body += '§bTop Teams (Kills)\n';
    if (teamKillStats.length === 0) {
-      body += '§7No data yet\n';
+      body += '§7No stats in this match yet.\n';
    } else {
       for (let i = 0; i < Math.min(teamKillStats.length, 5); i++) {
          const t = teamKillStats[i];
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : `§e#${i + 1}`;
-         body += `${prefix} ${t.name} §f- §c${t.kills} Kills\n`;
+         body += `${RANK_PREFIXES[i] ?? `§e#${i + 1}`} ${t.name} §f- §c${t.kills} Kills\n`;
       }
    }
 
    body += '\n';
 
-   // Top Players (Kills)
    const playerKillStats = getPlayerKillStats();
    body += '§eTop Players (Kills)\n';
    if (playerKillStats.length === 0) {
-      body += '§7No data yet\n';
+      body += '§7No stats in this match yet.\n';
    } else {
       for (let i = 0; i < Math.min(playerKillStats.length, 5); i++) {
          const p = playerKillStats[i];
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : `§e#${i + 1}`;
          const teamLabel = p.teamLabel ? ` §8[${p.teamLabel}]` : '';
-         body += `${prefix} §a${p.name}${teamLabel} §f- §c${p.kills} Kills\n`;
+         body += `${RANK_PREFIXES[i] ?? `§e#${i + 1}`} §a${p.name}${teamLabel} §f- §c${p.kills} Kills\n`;
       }
    }
 
    body += '\n';
 
-   // Top Players (Deaths)
    const playerDeathStats = getPlayerDeathStats();
    body += '§cTop Players (Deaths)\n';
    if (playerDeathStats.length === 0) {
-      body += '§7No data yet\n';
+      body += '§7No stats in this match yet.\n';
    } else {
       for (let i = 0; i < Math.min(playerDeathStats.length, 5); i++) {
          const p = playerDeathStats[i];
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : `§e#${i + 1}`;
          const teamLabel = p.teamLabel ? ` §8[${p.teamLabel}]` : '';
-         body += `${prefix} §a${p.name}${teamLabel} §f- §4${p.deaths} Deaths\n`;
+         body += `${RANK_PREFIXES[i] ?? `§e#${i + 1}`} §a${p.name}${teamLabel} §f- §4${p.deaths} Deaths\n`;
       }
    }
 
    form.body(body);
-   form.button('Back', 'textures/ui/cancel');
+   form.divider();
+   form.button('Back', 'textures/ui/wysiwyg_reset.png');
 
    form
       .show(player)
@@ -110,7 +111,6 @@ function openCurrentMatch(player) {
       });
 }
 
-//Tab 2: Team Placement — จัดอันดับทีม (PUBG style)
 function openTeamPlacement(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | Team Placement');
@@ -118,23 +118,23 @@ function openTeamPlacement(player) {
    const teamsSorted = getTeamsSorted();
 
    if (teamsSorted.length === 0) {
-      form.body('§7No placement data yet.\n\nPlay matches to earn placement points!');
+      form.body('§7No placement stats yet.\n\nPlay matches to get team points!');
    } else {
-      let body = '§eTeam Rankings\n§7(PUBG-style: last team = #1)\n\n';
+      let body = '§eTeam Rankings\n§7(Points: last surviving)\nTeamgets most points\n\n';
       for (let i = 0; i < teamsSorted.length; i++) {
          const t = teamsSorted[i];
          const teamInfo = TEAM_LOOKUP.get(t.id);
          const teamColor = teamInfo ? teamInfo.color : '§f';
          const teamName = teamInfo ? teamInfo.name : t.id;
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : i === 2 ? '§e#3' : `§7#${i + 1}`;
          const firsts = t.placements['1'] || 0;
          const seconds = t.placements['2'] || 0;
-         body += `${prefix} ${teamColor}${teamName} §7- §f${t.points} pts §7(#1:§f${firsts} #2:§f${seconds})\n`;
+         body += `${rankPrefix(i)} ${teamColor}${teamName} §7- §f${t.points} pts §7(#1:§f${firsts} #2:§f${seconds})\n`;
       }
       form.body(body);
    }
 
-   form.button('Back', 'textures/ui/cancel');
+   form.divider();
+   form.button('Back', 'textures/ui/wysiwyg_reset.png');
 
    form
       .show(player)
@@ -147,7 +147,6 @@ function openTeamPlacement(player) {
       });
 }
 
-//Tab 3: Player Survival — ผู้รอดชีวิตคนสุดท้าย
 function openPlayerSurvival(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | Player Survival');
@@ -157,18 +156,18 @@ function openPlayerSurvival(player) {
    survivors.sort((a, b) => b.survivedLast - a.survivedLast);
 
    if (survivors.length === 0) {
-      form.body('§7No survival data yet.\n\nBe the last survivor of your team!');
+      form.body('§7No survival stats yet.\n\nBe the last survivor of your team!');
    } else {
-      let body = '§e§lLast Survivors (All Time)\n\n';
+      let body = '§eLast Survivors (Tournament)\n\n';
       for (let i = 0; i < Math.min(survivors.length, 10); i++) {
          const p = survivors[i];
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : i === 2 ? '§e#3' : `§7#${i + 1}`;
-         body += `${prefix} §a${p.name} §7- §f${p.survivedLast} Games\n`;
+         body += `${rankPrefix(i)} §a${p.name} §7- §f${p.survivedLast} Games\n`;
       }
       form.body(body);
    }
 
-   form.button('Back', 'textures/ui/cancel');
+   form.divider();
+   form.button('Back', 'textures/ui/wysiwyg_reset.png');
 
    form
       .show(player)
@@ -181,42 +180,39 @@ function openPlayerSurvival(player) {
       });
 }
 
-//Tab 4: KDA Leaderboard — จัดอันดับ KD
 function openKDABoard(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | KDA Leaderboard');
 
    const allPlayers = getAllPlayersSorted();
-   const myData = allPlayers.find((p) => p.id === player.id);
+   const myData = allPlayers.find((p) => p.name === player.name);
 
    let body = '';
 
-   // แสดงข้อมูลของผู้เล่นที่กดเปิด
    if (myData) {
       const tier = getRankTier(myData.kd, myData.games);
-      body += `§eYour Rank: ${tier.color}${tier.name} §7(KD §f${myData.kd.toFixed(2)}§7)\n`;
+      body += `§eYour Rank: ${tier.color}${tier.name} §7(K/D §f${myData.kd.toFixed(2)}§7)\n`;
       body += `Kills: §c${myData.kills} §7| Deaths: §4${myData.deaths}\n`;
       body += `Games: §f${myData.games} §7| Wins: §a${myData.wins}\n\n`;
    } else {
       body += '§eYour Rank: §7Unranked\n\n';
    }
 
-   // Top players KD
-   body += '§e§lTop Players (KD)\n';
+   body += '§eTop Players (K/D)\n';
    const ranked = allPlayers.filter((p) => p.games > 0);
    if (ranked.length === 0) {
-      body += '§7No data yet\n';
+      body += '§7No tournament stats yet.\n';
    } else {
       for (let i = 0; i < Math.min(ranked.length, 10); i++) {
          const p = ranked[i];
          const tier = getRankTier(p.kd, p.games);
-         const prefix = i === 0 ? '§6#1' : i === 1 ? '§f#2' : i === 2 ? '§e#3' : `§7#${i + 1}`;
-         body += `${prefix} ${tier.color}${p.name} §7- KD §e${p.kd.toFixed(2)} §7(${tier.color}${tier.name}§7)\n`;
+         body += `${rankPrefix(i)} ${tier.color}${p.name} §7- K/D §e${p.kd.toFixed(2)} §7(${tier.color}${tier.name}§7)\n`;
       }
    }
 
    form.body(body);
-   form.button('Back', 'textures/ui/cancel');
+   form.divider();
+   form.button('Back', 'textures/ui/wysiwyg_reset.png');
 
    form
       .show(player)

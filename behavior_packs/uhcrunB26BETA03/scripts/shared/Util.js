@@ -3,46 +3,29 @@ import { GameMode, world } from '@minecraft/server';
 export const COMPASS_ITEM = 'minecraft:compass';
 export const SND_BASS = 'note.bassattack';
 export const SND_PLING = 'note.pling';
-export const TEX_CANCEL = 'textures/ui/cancel';
+export const TEX_CANCEL = 'textures/ui/wysiwyg_reset.png';
 export const TEX_HEART = 'textures/ui/heart_new';
 export const TEX_BARRIER = 'textures/blocks/barrier';
 
-export function setSpectator(player) {
-   player?.setGameMode(GameMode.Spectator);
-}
-
-export function setAdventure(player) {
-   player?.setGameMode(GameMode.Adventure);
-}
-
-export function setSurvival(player) {
-   player?.setGameMode(GameMode.Survival);
-}
-
+let _overworld = null;
 export function getOverworld() {
-   return world.getDimension('overworld');
+   return _overworld ?? (_overworld = world.getDimension('overworld'));
 }
-
 export function getSafeDimension(player) {
    return player.dimension ?? getOverworld();
 }
 
-export function isValidAndUhc(player) {
-   return player?.isValid && player.hasTag('uhc');
-}
-
-// Knockback
 export const KB = Object.freeze({
    horizontal: 0.18,
    vertical: 0.32,
    maxHorizontal: 1.2,
 });
 
+
 export function clamp(v, max) {
    return v > max ? max : v < -max ? -max : v;
 }
 
-// ทิศทางการเคลื่อนที่ของหน่วยบนแกน XZ จากจุดสามเหลี่ยม (เช่น ผู้โจมตี → ผู้ถูกโจมตี)
 export function normalizeXZ(x, z) {
    const len = Math.hypot(x, z) || 1;
    return { nx: x / len, nz: z / len, len };
@@ -75,7 +58,6 @@ export function isValidEntity(entity) {
    }
 }
 
-// เรียกใช้งานตัวจัดการปลั๊กอิน/ตัวจัดการอื่นๆ แยกกัน เพื่อป้องกันไม่ให้ความล้มเหลวเพียงครั้งเดียวส่งผลกระทบต่อส่วนอื่นๆ
 export function runEventHandlers(tag, handlers, event) {
    for (let i = 0; i < handlers.length; i++) {
       try {
@@ -86,16 +68,21 @@ export function runEventHandlers(tag, handlers, event) {
    }
 }
 
+const TOAST_PREFIX = '§N§O§T§I§F§I§C§A§T§I§O§N';
+let _pad500 = null;
+let _pad100 = null;
 
-// Dynamic Toast
 function padTo(text, total = 100) {
    const safe = text.length > total ? text.slice(0, total) : text;
-   return safe + '\t'.repeat(total - safe.length);
+   const rem = total - safe.length;
+   if (total === 500) return safe + (_pad500 ?? (_pad500 = '\t'.repeat(500))).substring(0, rem);
+   if (total === 100) return safe + (_pad100 ?? (_pad100 = '\t'.repeat(100))).substring(0, rem);
+   return safe + '\t'.repeat(rem);
 }
 
-// toast hack: ใช้ §N§O§T§I§F§I§C§A§T§I§O§N trigger vanilla toast UI
+// toast hack: uses §N§O§T§I§F§I§C§A§T§I§O§N to trigger vanilla toast UI
 export function dynamicToast(msg = '', icon = '', bg = 'textures/ui/greyBorder') {
-   return '§N§O§T§I§F§I§C§A§T§I§O§N' + padTo(msg, 500) + padTo(icon, 100) + padTo(bg, 100);
+   return TOAST_PREFIX + padTo(msg, 500) + padTo(icon, 100) + padTo(bg, 100);
 }
 
 const locPool = [];
@@ -111,7 +98,6 @@ export function freeLoc(loc) {
    if (loc) locPool.push(loc);
 }
 
-// สร้างตัวเลือกแบบสอบถามเอนทิตีใหม่สำหรับสุญญากาศสินค้า การโทรแต่ละครั้งจะหลีกเลี่ยงการแชร์สถานะที่ไม่แน่นอน
 export function createItemQueryOptions(x, y, z, maxDistance = 16) {
    return {
       type: 'minecraft:item',
@@ -120,12 +106,35 @@ export function createItemQueryOptions(x, y, z, maxDistance = 16) {
    };
 }
 
-
-
 export function logError(tag, message, error) {
-   console.error(`[${tag}] ${message}:`, error instanceof Error ? error.message : String(error));
+   const errStr = error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error);
+   console.error(`[${tag}] ${message}:`, errStr);
 }
 
 export function logWarn(tag, message) {
    console.warn(`[${tag}] ${message}`);
+}
+
+export function setSurvival(player) {
+   try {
+      player.setGameMode(GameMode.survival);
+   } catch (error) {
+      logError('Util', 'setSurvival failed', error);
+   }
+}
+
+export function setAdventure(player) {
+   try {
+      player.setGameMode(GameMode.adventure);
+   } catch (error) {
+      logError('Util', 'setAdventure failed', error);
+   }
+}
+
+export function setSpectator(player) {
+   try {
+      player.setGameMode(GameMode.spectator);
+   } catch (error) {
+      logError('Util', 'setSpectator failed', error);
+   }
 }

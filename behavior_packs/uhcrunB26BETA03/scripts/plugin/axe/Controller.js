@@ -2,7 +2,7 @@ import { system } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
-// self-register: pre-cache air block type
+// Pre-cache air block permutation at startup
 system.run(() => {
    model.getAir();
 });

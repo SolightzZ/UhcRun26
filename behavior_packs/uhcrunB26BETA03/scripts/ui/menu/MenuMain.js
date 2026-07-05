@@ -1,14 +1,12 @@
-//เมนูหลักของ UHC (Spawn, Team, Features, Credits, Admin) — server-ui only
 import { ActionFormData } from '@minecraft/server-ui';
-import { logError } from '../../shared/Util.js';
 import { CONFIG, MENU_MSG } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
-import { openTeamMenu } from '../../ui/team/TeamActionsUI.js';
 import { teleportToSpawn } from '../../features/team/TeleportManager.js';
+import { logError } from '../../shared/Util.js';
+import { openTeamMenu } from '../../ui/team/TeamActionsUI.js';
 import { AdminMenu } from './MenuAdmin.js';
 import { Credits, Features, Ranks } from './MenuInfo.js';
 
-//แสดงเมนูหลักให้ผู้เล่น (มีปุ่ม Admin ถ้ามี tag admin)
 export function openMainMenu(player) {
    if (!player?.isValid) return;
    refreshPlayerCaches();

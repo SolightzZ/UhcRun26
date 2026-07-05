@@ -3,9 +3,8 @@ import model from './Model.js';
 import service from './Service.js';
 
 class Controller {
-   // กระแทกผู้เล่นเมื่อเหยียบ pressure plate
-   onPressurePlatePush = ({ block, source: player }) => {
-      if (!model.PLATE_TYPES.has(block.typeId)) return;
+    onPressurePlatePush = ({ block, source: player }) => {
+      if (!block?.isValid || !model.PLATE_TYPES.has(block.typeId)) return;
       if (!player?.isValid) return;
 
       const dir = player.getViewDirection();

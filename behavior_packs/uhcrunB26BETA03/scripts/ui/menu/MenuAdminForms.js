@@ -1,12 +1,11 @@
-//ฟอร์มย่อยของ AdminMenu — management, player list, kill history, clear teams — server-ui only
 import { ActionFormData } from '@minecraft/server-ui';
 import { CONFIG, MENU_MSG, TEAMS } from '../../constants/game.js';
 import { playerCache, playerTeamCache } from '../../features/cache/State_Cache.js';
 import { kdHistoryObj } from '../../features/match/State_Game.js';
 import { TEAM_INDEX_MAP, TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { clearAllTeams, getCachedPlayers, getPlayerTeam, joinTeam, leaveTeam } from '../../features/team/TeamActions.js';
-import { AdminMenu } from './MenuAdmin.js';
 import { logError, logWarn } from '../../shared/Util.js';
+import { AdminMenu } from './MenuAdmin.js';
 
 export function Managements(admin) {
    const form = new ActionFormData();
@@ -29,7 +28,7 @@ export function Managements(admin) {
    players.forEach((p) => {
       const teamId = playerTeamCache.get(p.id) || p.getDynamicProperty(CONFIG.key);
       const team = TEAM_LOOKUP.get(teamId);
-      const label = team ? `${p.name}\\n§8[ ${team.color}${team.name} §8]` : `§f${p.name}\\n§8[ §cNo Team §8]`;
+      const label = team ? `${p.name}\n§8[ ${team.color}${team.name} §8]` : `§f${p.name}\n§8[ §cNo Team §8]`;
       form.button(label, team ? team.icon : 'textures/ui/world_glyph_desaturated');
       playerIds.push(p.id);
    });
@@ -59,7 +58,7 @@ function editPlayerMenu(admin, target) {
    const form = new ActionFormData();
    form.title(`Manage Team: ${target.name}`);
    const currentTeam = currentTeamId ? TEAM_LOOKUP.get(currentTeamId) : null;
-   form.body(`Select a team for ${target.name}.\\n§7Current: ${currentTeam ? currentTeam.color + currentTeam.name : '§cUnassigned'}`);
+   form.body(`Select a team for ${target.name}.\n§7Current: ${currentTeam ? currentTeam.color + currentTeam.name : '§cUnassigned'}`);
    form.button('Remove from Team', 'textures/ui/permissions_visitor_hand');
 
    for (const team of TEAMS) {
@@ -142,7 +141,7 @@ export function playerLists(player) {
             icon = team.icon;
          }
       }
-      consoleBody += `${count + 1}. ${p.name} | ${teamId ?? 'No Team'}\\n`;
+      consoleBody += `${count + 1}. ${p.name} | ${teamId ?? 'No Team'}\n`;
       form.button(label, icon);
       count++;
    });
@@ -161,7 +160,7 @@ export function playerLists(player) {
          if (!res) return;
          if (res.canceled) return;
          if (res.selection === consoleIndex) {
-            logWarn('AdminMenu', 'Player List\\n' + consoleBody.trimEnd());
+            logWarn('AdminMenu', 'Player List\n' + consoleBody.trimEnd());
             AdminMenu(player);
             return;
          }
@@ -196,7 +195,7 @@ export function killList(player) {
       if (parts.length !== 2) continue;
       const killer = parts[0].replace('Kill: ', '');
       if (!killer) continue;
-      history += '§7' + key + ' §8= §c' + score + '\\n';
+      history += '§7' + key + ' §8= §c' + score + '\n';
       totals.set(killer, (totals.get(killer) ?? 0) + score);
    }
 
@@ -223,12 +222,12 @@ export function killList(player) {
       return;
    }
 
-   let body = '§f=== TOTAL KILLS ===\\n';
+   let body = '§f=== TOTAL KILLS ===\n';
    const sortedTotals = [...totals.entries()].sort((a, b) => b[1] - a[1]);
    for (const [killer, score] of sortedTotals) {
-      body += `§7${killer} §8= §c${score}\\n`;
+      body += `§7${killer} §8= §c${score}\n`;
    }
-   body += '\\n§f=== HISTORY ===\\n';
+   body += '\n§f=== HISTORY ===\n';
    body += history.trimEnd();
    form.body(body);
    form.button('Console', 'textures/ui/icons/icon_fall');
@@ -240,7 +239,7 @@ export function killList(player) {
          if (res.canceled) return;
          if (res.selection === 0) {
             const plain = body.replace(/§./g, '');
-            logWarn('AdminMenu', 'KD Dump:\\n' + plain);
+            logWarn('AdminMenu', 'KD Dump:\n' + plain);
          }
          AdminMenu(player);
       })

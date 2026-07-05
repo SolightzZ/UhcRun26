@@ -1,4 +1,5 @@
-import { EntityInventoryComponent, ItemComponentTypes, ItemStack, system } from '@minecraft/server';
+import { ItemComponentTypes, ItemStack, system } from '@minecraft/server';
+import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
@@ -12,15 +13,13 @@ class Service {
    };
 
    getHeldItem = (player) => {
-      const inv = player.getComponent(EntityInventoryComponent.componentId);
-      return inv?.container?.getItem(player.selectedSlotIndex);
+      const container = getPlayerInventoryContainer(player);
+      return container?.getItem(player.selectedSlotIndex);
    };
 
-   // ลดความทนทานขวานตามจำนวนบล็อกที่ตัด
    applyToolDamage = (player, amount, axeTypeId) => {
       if (!player?.isValid) return false;
-      const inv = player.getComponent(EntityInventoryComponent.componentId);
-      const container = inv?.container;
+      const container = getPlayerInventoryContainer(player);
       if (!container) return false;
       const slot = player.selectedSlotIndex;
       const item = container.getItem(slot);
@@ -40,16 +39,8 @@ class Service {
       return true;
    };
 
-   isDimensionValid = (dim) => {
-      try {
-         return dim?.id !== undefined;
-      } catch (error) {
-         logError('Axe', 'Dimension validation failed', error);
-         return false;
-      }
-   };
+   isDimensionValid = (dim) => dim?.id !== undefined;
 
-   // เช็ค cooldown ต่อผู้เล่น
    checkCooldown = (playerId) => {
       const now = system.currentTick;
       const last = model.lastFellTick.get(playerId) ?? -model.CONFIG.COOLDOWN_TICKS;
@@ -64,7 +55,6 @@ class Service {
       else model.playerJobCount.set(playerId, next);
    };
 
-   // สแกนลำต้นไม้แนวตั้ง
    scanTrunk = (dim, x, startY, z, logType, direction, out) => {
       if (!this.isDimensionValid(dim)) return;
       out.length = 0;
@@ -77,7 +67,6 @@ class Service {
       }
    };
 
-   // สแกนใบไม้รอบลำต้น (BFS)
    *scanLeaves(dim, player, allLogs, anchorX, brokenY, anchorZ, leafType) {
       if (!this.isDimensionValid(dim)) return [];
       const { CANOPY_RADIUS: r, LEAF_SCAN_PAD: pad, MAX_LEAVES, SCAN_BLOCK_CAP } = model.CONFIG;
@@ -93,8 +82,8 @@ class Service {
       const scanMaxY = maxY + pad;
 
       const leaves = [];
-      const visited = new Set();
-      const queue = [];
+      const _visited = new Set();
+      const _queue = [];
 
       for (let i = 0; i < allLogs.length; i += 3) {
          const lx = allLogs[i],
@@ -104,9 +93,9 @@ class Service {
             for (let dz = -1; dz <= 1; dz++) {
                if (dx === 0 && dz === 0) continue;
                const key = this.hashLoc(lx + dx, ly, lz + dz);
-               if (!visited.has(key)) {
-                  visited.add(key);
-                  queue.push(lx + dx, ly, lz + dz);
+               if (!_visited.has(key)) {
+                  _visited.add(key);
+                  _queue.push(lx + dx, ly, lz + dz);
                }
             }
          }
@@ -118,17 +107,17 @@ class Service {
       const loc = { x: 0, y: 0, z: 0 };
       let qi = 0;
 
-      while (qi < queue.length && leaves.length / 3 < MAX_LEAVES && calls < SCAN_BLOCK_CAP) {
+      while (qi < _queue.length && leaves.length / 3 < MAX_LEAVES && calls < SCAN_BLOCK_CAP) {
          if (!player?.isValid) return [];
 
-         if (queue.length - qi > QUEUE_CAP) {
+         if (_queue.length - qi > QUEUE_CAP) {
             yield { type: 'progress', leaves };
             continue;
          }
 
-         const cx = queue[qi++],
-            cy = queue[qi++],
-            cz = queue[qi++];
+         const cx = _queue[qi++],
+            cy = _queue[qi++],
+            cz = _queue[qi++];
 
          if (cy < scanMinY || cy > scanMaxY) continue;
          if (Math.abs(cx - anchorX) > r || Math.abs(cz - anchorZ) > r) continue;
@@ -154,9 +143,9 @@ class Service {
                ny = cy + model.NEIGHBOUR_OFFSETS[ni + 1],
                nz = cz + model.NEIGHBOUR_OFFSETS[ni + 2];
             const nkey = this.hashLoc(nx, ny, nz);
-            if (!visited.has(nkey)) {
-               visited.add(nkey);
-               if (queue.length - qi < QUEUE_CAP) queue.push(nx, ny, nz);
+            if (!_visited.has(nkey)) {
+               _visited.add(nkey);
+               if (_queue.length - qi < QUEUE_CAP) _queue.push(nx, ny, nz);
             }
          }
 
@@ -169,7 +158,6 @@ class Service {
       return leaves;
    }
 
-   // ทำลายบล็อกไม้ (รวม item drop)
    *breakLogBlocks(dim, logs, logType) {
       if (!this.isDimensionValid(dim)) return 0;
       let broken = 0,
@@ -211,7 +199,6 @@ class Service {
       return broken;
    }
 
-   // ทำลายใบไม้ + สุ่มแอปเปิล
    *breakLeafBlocks(dim, player, leaves, leafType) {
       if (!this.isDimensionValid(dim)) return 0;
       let broken = 0,
@@ -231,10 +218,7 @@ class Service {
             if (block?.isValid && block.typeId === leafType) {
                block.setPermutation(air);
                broken++;
-               if (
-                  Math.random() < model.CONFIG.APPLE_CHANCE &&
-                  appleBatch < model.CONFIG.MAX_APPLES
-               ) {
+               if (Math.random() < model.CONFIG.APPLE_CHANCE && appleBatch < model.CONFIG.MAX_APPLES) {
                   appleBatch++;
                }
             }
@@ -256,7 +240,6 @@ class Service {
       return broken;
    }
 
-   // generator โค่นต้นไม้ทั้งต้น (ลำต้น + ใบไม้)
    *breakTreeJob(player, dim, x, brokenY, z, logType, leafType, axeTypeId) {
       if (!player?.isValid || !this.isDimensionValid(dim)) return;
 
@@ -304,15 +287,23 @@ class Service {
       if (dmg > 0 && player?.isValid) this.applyToolDamage(player, dmg, axeTypeId);
    }
 
-   // เลือก job แบบ fair (สลับผู้เล่น)
+   // Fair scheduling: picks job from a different player than the last one scheduled
    findFairJob = () => {
       if (model.jobQueue.length === 0) return null;
 
       if (model.jobQueue.length === 1 || !model.lastScheduledPlayerId) {
+         const job = model.jobQueue[0];
+         if (!job.player?.isValid) return null;
          return model.jobQueue.shift();
       }
 
       for (let i = 0; i < model.jobQueue.length; i++) {
+         if (!model.jobQueue[i].player?.isValid) {
+            model.jobQueue[i] = model.jobQueue[model.jobQueue.length - 1];
+            model.jobQueue.pop();
+            i--;
+            continue;
+         }
          if (model.jobQueue[i].player.id !== model.lastScheduledPlayerId) {
             const job = model.jobQueue[i];
             model.jobQueue[i] = model.jobQueue[model.jobQueue.length - 1];
@@ -324,7 +315,6 @@ class Service {
       return model.jobQueue.shift();
    };
 
-   //  scheduler รัน job โค่นไม้ตามลำดับ
    scheduleJobs = () => {
       model.schedulerPending = false;
       while (model.activeJobs < model.CONFIG.MAX_CONCURRENT_JOBS && model.jobQueue.length > 0) {
@@ -332,24 +322,19 @@ class Service {
          if (!job) break;
 
          model.activeJobs++;
-         model.lastScheduledPlayerId = job.player.id;
+         model.lastScheduledPlayerId = job.player?.id;
+         if (!job.player?.isValid) {
+            model.activeJobs--;
+            continue;
+         }
          system.runJob(
             function* (j) {
-               const playerId = j.player.id;
+               const playerId = j.player?.id;
                try {
-                  yield* this.breakTreeJob(
-                     j.player,
-                     j.dim,
-                     j.x,
-                     j.brokenY,
-                     j.z,
-                     j.logType,
-                     j.leafType,
-                     j.axeTypeId,
-                  );
+                  yield* this.breakTreeJob(j.player, j.dim, j.x, j.brokenY, j.z, j.logType, j.leafType, j.axeTypeId);
                } finally {
                   model.activeJobs--;
-                  this.adjustPlayerJobCount(playerId, -1);
+                  if (playerId) this.adjustPlayerJobCount(playerId, -1);
                   if (model.jobQueue.length > 0 && !model.schedulerPending) {
                      model.schedulerPending = true;
                      system.run(() => this.scheduleJobs());
@@ -360,7 +345,6 @@ class Service {
       }
    };
 
-   // เพิ่ม tree job เข้า queue
    enqueueTreeJob = (player, dim, x, brokenY, z, logType, leafType, axeTypeId) => {
       if (model.jobQueue.length >= model.CONFIG.MAX_QUEUE_SIZE) return false;
       const pjc = model.playerJobCount.get(player.id) ?? 0;
@@ -377,7 +361,6 @@ class Service {
       return true;
    };
 
-   // รับ evento แตกบล็อก ถ้าเป็นขวาน + ไม้ ให้โค่นทั้งต้น
    onPlayerBreakBlock = (ev) => {
       const player = ev?.player;
       if (!player?.isValid) return;

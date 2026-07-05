@@ -1,12 +1,12 @@
-//เมนู admin สำหรับจัดการทีม, stats, teleport, cache — server-ui only
 import { ActionFormData } from '@minecraft/server-ui';
-import { logError, logWarn } from '../../shared/Util.js';
 import { CONFIG, MENU_MSG, TEAMS } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
 import { hitRegistry, killStreak, multiKill, playerCache, playerTeamCache, uhcPlayersCache } from '../../features/cache/State_Cache.js';
-import { deathLocation, playerStats, teamCounts, teamStats, TEAM_LOOKUP } from '../../features/team/State_Team.js';
+import { TEAM_LOOKUP, deathLocation, playerStats, teamCounts, teamStats } from '../../features/team/State_Team.js';
 import { getCachedPlayers, getPlayersByTeam } from '../../features/team/TeamActions.js';
+import { logError, logWarn } from '../../shared/Util.js';
 import { Managements, clearTeams, killList, playerLists } from './MenuAdminForms.js';
+import { openMainMenu } from './MenuMain.js';
 import { showTeleportForm } from './MenuTeleport.js';
 
 function showDumpViewer(admin, title, body, logTag) {
@@ -146,7 +146,6 @@ function viewDeathLocations(admin) {
    showDumpViewer(admin, 'Death Locations', body, 'DEATH LOCATIONS DUMP');
 }
 
-//เมนูหลัก admin
 export function AdminMenu(player) {
    if (!player?.isValid) return;
    refreshPlayerCaches();
@@ -165,6 +164,7 @@ export function AdminMenu(player) {
    form.button('UHC Player List', 'textures/ui/servers');
    form.button('Team Stats', 'textures/ui/icons/icon_spring');
    form.button('Death Locations', 'textures/ui/icon_recipe_equipment');
+   form.button('Back', 'textures/ui/wysiwyg_reset');
 
    form
       .show(player)
@@ -204,6 +204,9 @@ export function AdminMenu(player) {
                break;
             case 10:
                viewDeathLocations(player);
+               break;
+            case 11:
+               openMainMenu(player);
                break;
          }
       })

@@ -1,21 +1,15 @@
 import { END_SEQUENCE_STATE } from '../block-filler/BlockFillerConstants.js';
 import { uhcPlayerIds } from '../cache/State_Cache.js';
-import matchManager from '../match/MatchManager.js';
-import bm, { CHECKPOINTS, ctx } from './BorderManager.js';
+import { GLOBAL_BORDER_LIMIT, PLACE_BLOCK_LOCK_RADIUS } from '../../constants/game.js';
+import bm, { ctx } from './BorderManager.js';
 
-const GLOBAL_BORDER_LIMIT = CHECKPOINTS[0];
-const PLACE_BLOCK_LOCK_RADIUS = 16;
-
-//จัดการ events เกี่ยวกับ border: ยกเลิก interact/break/place block นอกเขต
 class BorderEvents {
-   //เช็คว่าผู้เล่นเป็น UHC หรือไม่
    isUhcPlayer(player) {
       if (!ctx.isRunning) return false;
       if (!player?.isValid) return false;
       return uhcPlayerIds.has(player.id);
    }
 
-   // ดึงพิกัด target จาก block หรือ entity
    getTargetAxis(target, axis) {
       if (!target) return undefined;
       if (target[axis] !== undefined) return target[axis];
@@ -23,7 +17,6 @@ class BorderEvents {
       return target.location[axis];
    }
 
-   // เช็คว่าอยู่นอก global limit หรือไม่
    isOutsideGlobalLimit(target, player) {
       const bx = this.getTargetAxis(target, 'x');
       const bz = this.getTargetAxis(target, 'z');
@@ -35,7 +28,6 @@ class BorderEvents {
       return false;
    }
 
-   //เช็คว่าควรยกเลิก action เพราะอยู่นอก border หรือไม่
    shouldCancelBorderAction(player, target) {
       if (!ctx.isRunning) return false;
       if (!ctx.wbBounds) return false;
@@ -50,7 +42,6 @@ class BorderEvents {
       return this.isUhcPlayer(player);
    }
 
-   //จัดการ action ของ border (interact / break)
    handleBorderAction(ev, target) {
       if (this.isOutsideGlobalLimit(target, ev.player)) {
          ev.cancel = true;
@@ -65,16 +56,15 @@ class BorderEvents {
       return false;
    }
 
-   //เช็คว่าควรล็อคการวางบล็อกหรือไม่ (border เล็ก + ผ่าน initial wait)
+   // lock place-block when border is small and past initial wait
    shouldLockPlaceBlock(player) {
       if (!ctx.isRunning) return false;
       if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
-      // ไม่ล็อคระหว่าง INITIAL_WAIT หรือ PATTERN3 ให้วางได้จนกว่า Pattern 1 เคลียร์วงนอก
+      // allow placement during INITIAL_WAIT and PATTERN3 until pattern 1 clears outer ring
       if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1) return false;
       return this.isUhcPlayer(player);
    }
 
-   //ยกเลิกการวางบล็อกถ้าอยู่นอก border
    handlePlayerPlaceBlock(ev) {
       if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
          ev.cancel = true;
@@ -92,7 +82,6 @@ class BorderEvents {
       this.handleBorderAction(ev, ev.block);
    }
 
-   //ยกเลิกการแตกบล็อกถ้าอยู่นอก global limit
    handlePlayerBreakBlock(ev) {
       if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
          ev.cancel = true;

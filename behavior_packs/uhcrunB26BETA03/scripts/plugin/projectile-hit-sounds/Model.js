@@ -1,4 +1,3 @@
-// รายการ projectile ที่รองรับการเล่นเสียง
 class Model {
    PROJECTILES = new Set([
       'minecraft:arrow',

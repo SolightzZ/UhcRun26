@@ -1,20 +1,19 @@
-//ฟังก์ชัน teleport สำหรับ admin และผู้เล่นทั่วไป
 import { system, world } from '@minecraft/server';
 import { MENU_MSG, SPAWN_CONFIG } from '../../constants/game.js';
 import { createLoc, freeLoc, getSafeDimension, logError } from '../../shared/Util.js';
 import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
 
-//เทเลพอร์ต admin ไปหาผู้เล่นเป้าหมาย
 export function AdminTeleport(source, target) {
    if (!source?.isValid || !target?.isValid) return;
 
    const loc = target.location;
-
-   if (!loc) return;
+   const rot = target.getRotation();
+   if (!loc || !rot) return;
 
    try {
       const dim = getSafeDimension(target);
-      const tLoc = createLoc(loc.x, loc.y, loc.z);
+      const yawRad = (rot.y * Math.PI) / 180;
+      const tLoc = createLoc(loc.x + Math.sin(yawRad) * 5, loc.y, loc.z - Math.cos(yawRad) * 5);
       source.teleport(tLoc, { dimension: dim });
       freeLoc(tLoc);
    } catch (error) {
@@ -22,7 +21,6 @@ export function AdminTeleport(source, target) {
    }
 }
 
-//TPA ปกติสำหรับผู้เล่นทั่วไป
 export function playerTeleport(source, target) {
    if (!source?.isValid) return;
    if (!target?.isValid) {
@@ -31,9 +29,11 @@ export function playerTeleport(source, target) {
    }
 
    const loc = target.location;
+   const rot = target.getRotation();
 
    try {
-      const pLoc = createLoc(loc.x, loc.y, loc.z);
+      const yawRad = (rot.y * Math.PI) / 180;
+      const pLoc = createLoc(loc.x + Math.sin(yawRad) * 5, loc.y, loc.z - Math.cos(yawRad) * 5);
       source.teleport(pLoc, { dimension: target.dimension });
       freeLoc(pLoc);
       source.playSound('teleport.ender_pearl');
@@ -42,39 +42,38 @@ export function playerTeleport(source, target) {
    }
 }
 
-//เทเลพอร์ตไป world spawn พร้อม particle
+let _spawnDim = null;
+
 export function teleportToSpawn(player) {
+   if (!_spawnDim) _spawnDim = world.getDimension(SPAWN_CONFIG.dimension);
    if (!player?.isValid) return;
 
    const tx = SPAWN_CONFIG.x + Math.floor(Math.random() * 5) - 2;
    const ty = SPAWN_CONFIG.y - 7;
    const tz = SPAWN_CONFIG.z + Math.floor(Math.random() * 5) - 2;
    try {
-      const dim = world.getDimension(SPAWN_CONFIG.dimension);
       const sLoc = createLoc(tx, ty, tz);
-      player.teleport(sLoc, { dimension: dim });
+      player.teleport(sLoc, { dimension: _spawnDim });
       freeLoc(sLoc);
    } catch (error) {
       logError('Teleport', 'teleportToSpawn failed', error);
       return;
    }
 
-   const spawnDim = world.getDimension(SPAWN_CONFIG.dimension);
    system.runTimeout(() => {
       if (!player?.isValid) return;
       player.playSound('random.enderchestopen', { volume: 0.9, pitch: 0.95 });
+
       try {
-         spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
-      } catch (error) {
-         logError('Teleport', 'Failed to spawn particle at spawn', error);
+         _spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
+      } catch {
+         // Chunk not loaded yet — particle is non-critical
       }
    }, 5);
 }
 
-//รายชื่อผู้เล่น UHC ทั้งหมดยกเว้นคนที่ส่งมา
 export const getOtherUhcPlayers = (excludeId) => uhcPlayersCache.filter((p) => p.id !== excludeId);
 
-//รายชื่อผู้เล่นทั้งหมดในเซิฟเวอร์ยกเว้นคนที่ส่งมา
 export function teleportGetAllPlayers(player) {
    const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
    const result = [];

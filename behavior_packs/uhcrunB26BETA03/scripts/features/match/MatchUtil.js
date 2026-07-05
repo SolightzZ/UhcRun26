@@ -1,9 +1,9 @@
 import { EquipmentSlot, ItemStack, world } from '@minecraft/server';
 import { getPlayerTeam } from '../../features/team/TeamActions.js';
-import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
 import { COMPASS_ITEM, logError, setAdventure, setSpectator } from '../../shared/Util.js';
+import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
+import { allPlayersCache, uhcPlayerIds } from '../cache/State_Cache.js';
 
-//effects ที่ต้องลบออกจากผู้เล่นเมื่อจบเกม
 const UHC_EFFECTS = ['regeneration', 'blindness', 'invisibility', 'resistance', 'conduit_power', 'slow_falling'];
 
 const EFFECT_HIDDEN = { amplifier: 255, showParticles: false };
@@ -16,9 +16,7 @@ const START_EFFECTS = [
    ['night_vision', 99999],
 ];
 
-//อรรถประโยชน์สำหรับ UhcMatchManager: จัดการ items, effects, สถานะผู้เล่น
 class UtilUhcMatchManager {
-   //ให้ items เริ่มต้น (ข้าวของ, อาหาร, เรือ)
    playerSetupAddItems(player) {
       if (!player?.isValid) return;
       const inv = getPlayerInventoryContainer(player);
@@ -29,7 +27,6 @@ class UtilUhcMatchManager {
       inv.addItem(new ItemStack('minecraft:oak_boat', 1));
    }
 
-   // ลบ effects ทั้งหมดออกจากผู้เล่น
    playerSetupClearEffects(player) {
       if (!player?.isValid) return;
       for (let i = 0; i < UHC_EFFECTS.length; i++) {
@@ -41,8 +38,6 @@ class UtilUhcMatchManager {
       }
    }
 
-   // คืนค่าผู้เล่นเมื่อจบเกม
-   //คืนค่าผู้เล่นเมื่อจบเกม ลบ uhc tag, เพิ่ม regen 26 วิ
    playerSetupApplyEndState(player) {
       if (!player?.isValid) return;
       try {
@@ -58,13 +53,12 @@ class UtilUhcMatchManager {
       }
    }
 
-   //ตั้งค่าผู้เล่นเมื่อเริ่มเกม: uhc tag, effects, spectator ถ้าไม่มีทีม
    playerSetupApplyStartState(player) {
       if (!player?.isValid) return;
 
       try {
          if (getPlayerTeam(player)) {
-            if (!player.hasTag('uhc')) {
+            if (!uhcPlayerIds.has(player.id)) {
                player.addTag('uhc');
             }
             for (const [effect, seconds] of START_EFFECTS) {
@@ -80,9 +74,8 @@ class UtilUhcMatchManager {
       }
    }
 
-   // ล้างของ inventory คงไว้เฉพาะ compass
    playerSetupClearItemsKeepCompass(targetPlayer) {
-      const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : world.getPlayers();
+      const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
       const total = players.length;
       if (total === 0) return;
 

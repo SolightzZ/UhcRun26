@@ -1,4 +1,3 @@
-// สถานะเกม
 export let isGameRunning = false;
 
 export function setGameRunningState(state) {
@@ -10,12 +9,9 @@ export const KD = Object.freeze({
    HIT_TIMEOUT_SECONDS: 8,
 });
 
-// 160 ticks timeout สำหรับ hit registry (8 วิ)
 export const HIT_TIMEOUT_TICKS = 20 * KD.HIT_TIMEOUT_SECONDS;
-// 320 ticks timeout สำหรับ multi kill (16 วิ)
 export const MULTI_TIMEOUT_TICKS = 20 * 16;
 
-// Scoreboard objectives
 export let kdHistoryObj = null;
 export let teamKillObj = null;
 export let uhcKillsObj = null;
@@ -33,7 +29,7 @@ export function setUhcKillsObj(obj) {
 export function setUhcDeathsObj(obj) {
    uhcDeathsObj = obj;
 }
-// สถานะ dirty flag + task สำหรับบันทึก stats
+// dirty flag + save task for stats persistence
 export let statsDirty = false;
 export let statsSaveTask = null;
 
@@ -44,7 +40,6 @@ export function setStatsSaveTask(task) {
    statsSaveTask = task;
 }
 
-// First blood (ฆ่าคนแรก)
 export let firstBloodDone = false;
 export function setFirstBloodDone(val) {
    firstBloodDone = val;

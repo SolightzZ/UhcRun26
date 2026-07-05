@@ -3,8 +3,7 @@ import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
-   // spawn TNT entity ทันทีเมื่อวาง (instant TNT)
-   placeTnt = (block, player) => {
+    placeTnt = (block, player) => {
       if (!player?.isValid) return;
 
       const now = system.currentTick;

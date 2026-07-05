@@ -1,4 +1,3 @@
-//ค่า config หลักของระบบ UHC
 export const CONFIG = Object.freeze({
    adminTag: 'admin',
    uhcTag: 'uhc',
@@ -9,7 +8,13 @@ export const CONFIG = Object.freeze({
    maxTotalPlayers: 54,
 });
 
-//ข้อความ revive ภาษาไทย/อังกฤษ
+// Hardcoded numeric limits extracted for maintainability
+export const DP_SIZE_LIMIT = 900000;
+export const GLOBAL_BORDER_LIMIT = 500;
+export const PLACE_BLOCK_LOCK_RADIUS = 16;
+export const PVP_TICK_BASE = 700;
+export const PVP_DELAY = 20;
+
 export const REVIVE_MSG = Object.freeze({
    cancel: '§cยกเลิกการชุบ',
    cancelEn: '§cRevive cancelled',
@@ -36,7 +41,6 @@ export const REVIVE_MSG = Object.freeze({
    uiBack: 'Back',
 });
 
-//คงพื้นที่ให้ chunk โหลดตลอด
 export const TICKING_AREAS = Object.freeze([
    'tickingarea add -80 0 -80 79 255 79 center',
    'tickingarea add -80 0 80 79 255 239 north',
@@ -49,7 +53,6 @@ export const TICKING_AREAS = Object.freeze([
    'tickingarea add -240 0 -240 -81 255 -81 sw',
    'tickingarea add -80 0 240 79 255 399 far_north',
 ]);
-//ข้อความเมนูต่างๆ
 export const MENU_MSG = Object.freeze({
    back: 'Back',
    console: 'Console',
@@ -70,13 +73,12 @@ export const MENU_MSG = Object.freeze({
    mainMenuBody: '§6UHCRUN26 §7(Mini Game Battle Royal)',
 });
 
-//ข้อความ UI จัดการทีม
 export const TEAM_MENU = Object.freeze({
    titleSuffix: 'Team Manager',
    unknownTeam: 'Team?',
    leave: '§cLeave',
    refresh: '§6Refresh',
-   close: '§7Close',
+   close: 'Back',
    serverFull: (max) => `§cเซิร์ฟเวอร์เต็มแล้ว (${max} คน)`,
    serverFullShort: (max) => `§cเซิร์ฟเวอร์เต็ม (${max})`,
    cannotChangeMidGame: '§cไม่สามารถเปลี่ยนทีมระหว่างเกมได้',
@@ -84,7 +86,6 @@ export const TEAM_MENU = Object.freeze({
    noTeam: '§cYou have no team',
 });
 
-//ทีมทั้งหมด 9 ทีม พร้อมสีและ icon
 export const TEAMS = Object.freeze([
    { id: 'team1', name: 'Red', color: '§c', icon: 'textures/items/dye_powder_red' },
    { id: 'team2', name: 'Blue', color: '§9', icon: 'textures/items/dye_powder_blue_new' },
@@ -97,7 +98,6 @@ export const TEAMS = Object.freeze([
    { id: 'team9', name: 'Pink', color: '§d', icon: 'textures/items/dye_powder_pink' },
 ]);
 
-//ตำแหน่ง world spawn และ structure
 export const SPAWN_CONFIG = Object.freeze({
    x: 596,
    y: 130,

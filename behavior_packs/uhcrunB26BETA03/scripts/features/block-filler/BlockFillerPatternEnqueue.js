@@ -3,32 +3,11 @@ import fillQueue from './BlockFillerFillQueue.js';
 import taskBuilder from './BlockFillerTaskBuilder.js';
 import util from './BlockFillerUtil.js';
 
-//จัดการ pattern task: เข้าแถว segment, วน layered tasks ทีละชั้น
 class BlockFillerPatternEnqueue {
    ACTIVE_LAYERED_TASKS = [];
 
-   // เข้าแถว segment เดียวเข้า fill queue
-   enqueuePatternSegment(
-      dim,
-      segment,
-      startY,
-      endY,
-      mode,
-      yDirection = util.UPWARD_Y,
-      fillOptions = {},
-   ) {
-      const segments = taskBuilder.createFillTask(
-         dim,
-         segment.x1,
-         startY,
-         segment.z1,
-         segment.x2,
-         endY,
-         segment.z2,
-         mode,
-         yDirection,
-         fillOptions,
-      );
+   enqueuePatternSegment(dim, segment, startY, endY, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
+      const segments = taskBuilder.createFillTask(dim, segment.x1, startY, segment.z1, segment.x2, endY, segment.z2, mode, yDirection, fillOptions);
 
       if (!segments || segments.length === 0) return;
 
@@ -39,19 +18,10 @@ class BlockFillerPatternEnqueue {
       }
    }
 
-   // เข้าแถวทุก segment ของ patternTask
    enqueuePatternSegments(dim, y, patternTask) {
       const endY = patternTask.fillBottomY ?? y;
       for (let i = 0; i < patternTask.segments.length; i++) {
-         this.enqueuePatternSegment(
-            dim,
-            patternTask.segments[i],
-            y,
-            endY,
-            patternTask.mode,
-            patternTask.yDirection,
-            patternTask.fillOptions,
-         );
+         this.enqueuePatternSegment(dim, patternTask.segments[i], y, endY, patternTask.mode, patternTask.yDirection, patternTask.fillOptions);
       }
    }
 
@@ -59,24 +29,15 @@ class BlockFillerPatternEnqueue {
       const rotation = patternTask.rotationCache?.[rotationIndex];
       if (!rotation) return;
       for (let i = 0; i < rotation.length; i++) {
-         this.enqueuePatternSegment(
-            dim,
-            rotation[i],
-            y,
-            y,
-            patternTask.mode,
-            patternTask.yDirection,
-            patternTask.fillOptions,
-         );
+         this.enqueuePatternSegment(dim, rotation[i], y, y, patternTask.mode, patternTask.yDirection, patternTask.fillOptions);
       }
    }
 
-   // วน layered tasks เพื่อเข้าแถวทีละชั้น
    processLayeredTasks() {
       const len = this.ACTIVE_LAYERED_TASKS.length;
       if (len === 0) return;
 
-      // จำกัดงานต่อ tick เพื่อกระจายภาระ ไม่ให้คอขวด
+      // limit work per tick to prevent bottleneck
       const MAX_LAYERED_PER_TICK = Math.min(4, Math.max(1, Math.ceil(len / 4)));
       let processed = 0;
 
@@ -108,7 +69,6 @@ class BlockFillerPatternEnqueue {
       }
    }
 
-   // เพิ่ม layered task สำหรับผู้เล่น (ไล่ชั้นจากบนลงล่าง)
    registerLayeredTask(player, patternTask) {
       if (!player?.isValid) return;
       for (let i = 0; i < this.ACTIVE_LAYERED_TASKS.length; i++) {
@@ -135,7 +95,6 @@ class BlockFillerPatternEnqueue {
       fillQueue.startFillLoopIfNeeded();
    }
 
-   // ลบ task ที่หยุดแล้วหรือผู้เล่นออก
    cleanupDeadTasks() {
       if (system.currentTick % 100 !== 0) return;
       for (let i = this.ACTIVE_LAYERED_TASKS.length - 1; i >= 0; i--) {

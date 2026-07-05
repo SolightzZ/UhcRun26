@@ -1,10 +1,8 @@
-//เมนูแสดงข้อมูลเครดิต, ฟีเจอร์, และ ranks — server-ui only
 import { ActionFormData } from '@minecraft/server-ui';
 import { logError } from '../../shared/Util.js';
 import { openRankMenu } from '../../ui/rank/RankUI.js';
 import { openMainMenu } from './MenuMain.js';
 
-//แสดงเครดิตผู้พัฒนาและข้อมูลเกม
 export function Credits(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | Credits');
@@ -21,11 +19,13 @@ export function Credits(player) {
    form.label('§7SolightzZ');
    form.divider();
    form.header('§eAbout');
-   form.label('§7• กระโดดเข้าสู่สนามเอาชีวิตรอด\\n§7• รวมทีม วางแผน และต่อสู้\\n§7• เอาชีวิตรอดให้ได้นานที่สุด\\n§7• จนเหลือทีมสุดท้ายที่ยืนหยัด');
+   form.label('§7• Survive. Fight. Win.\n§7• Stand strong until the end.\n§7• Last team standing wins.');
+   form.divider();
    form.header('§ePowered By');
    form.label('§7Minecraft Bedrock Script API');
-   form.header('§eCredits');
-   form.label('§7World Border: §fmyGenGaming\\n§7Particles: §fRexoes\\n§7Lobby Build: §fOMEGA BLADE\\n§7Action Form: §fPablo');
+   form.divider();
+   form.header('§eSpecial Thanks');
+   form.label('§7World Border: §fmyGenGaming\n§7Particles: §fRexoes\n§7Lobby Build: §fOMEGA BLADE\n§7Action Form: §fPablo');
    form.divider();
    form.label('                  - Sleeplite - ');
    form.button('Back', 'textures/uhc/solightzz');
@@ -40,36 +40,40 @@ export function Credits(player) {
       });
 }
 
-//แสดงรายละเอียดฟีเจอร์ทั้งหมดของ UHC
 export function Features(player) {
    const form = new ActionFormData();
    form.title('UHCRun26 | Features');
    form.header('§eSurvival');
-   form.label('§7• Max Health: §f24 HP\\n§7• No natural regeneration\\n§7• Heal via §fGolden Apple §7& §fCooked Beef\\n§7• Grave system (§f48 slots§7)');
+   form.label('§7• §f40 Max Health (20 Hearts)\n§7• No natural healing\n§7• Cooked food heals you\n§7• Golden Apple & Redstone heal you\n§7• Teammates drop head on death');
    form.divider();
    form.header('§eOre');
    form.label(
-      '§7• Iron (→ Iron Ingot + XP)\\n§7• Gold (→ Gold Ingot + XP)\\n§7• Coal (→ XP)\\n§7• Copper (→ XP)\\n§7• Emerald (→ XP)\\n§7• Lapis (→ Lapis / Book)\\n§7• Gravel (→ Arrow)\\n§7• Redstone (→ Heal + XP)\\n§7• Diamond (→ Sound)\\n§7• Obsidian (→ Sound)\\n',
+      '§7• Iron/Gold → Auto-smelt + XP\n§7• Coal/Copper/Emerald → XP\n§7• Lapis → Lapis + Book (random)\n§7• Gravel → Arrow (random)\n§7• Redstone → Heal + Shield (random)\n§7• Diamond/Obsidian → Fast mining (random)',
    );
    form.divider();
-   form.header('§eCombat & PvP');
-   form.label(
-      '§7• PvP enabled after §f720 ticks (§712 minute§7)\\n§7• Knockback system\\n§7• Fishing rod mechanics\\n§7• Bow hit sound + target name\\n§7• CPS Limit: §f20 max\\n§7• Kill & Death tracking',
-   );
+   form.header('§eCombat');
+   form.label('§7• Better knockback (KB)\n§7• Fishing rod knockback\n§7• Bow Ding\n§7• Pressure plates launch you high');
+   form.divider();
+   form.header('§ePvP & Anticheat');
+   form.label('§7• PvP starts at 12 minutes\n§7• Click speed limit (Anti-Autoclick)\n§7• Multi-kill alerts\n§7• First kill alert');
    form.divider();
    form.header('§eWorld Border');
-   form.label('§7• Shrinks from §f500x500 → 2x2\\n§7• Damage outside border\\n§7• Optimized Overworld generation\\n§7• Void Nether & End');
+   form.label('§7• Border shrinks (500 to 2)\n§7• Damage outside border\n§7• Shrinks in 16 steps\n§7• Ground fills at final fight');
    form.divider();
    form.header('§eResources');
-   form.label(
-      '§7• Auto Smelt (§fOre → Ingot + XP§7)\\n§7• Auto Enchant tools\\n§7• Food regeneration system\\n§7• Tree Capitator + Apple drops\\n§7• Auto TNT\\n§7• Custom loot tables\\n§7• Villager trading',
-   );
+   form.label('§7• Auto-smelt ores\n§7• Faster mining tools\n§7• Chop whole tree in one hit\n§7• Instant TNT explosion\n§7• Items fly to you (Vacuum)');
+   form.divider();
+   form.header('§eDeath & Loot');
+   form.label('§7• Show killer name on death\n§7• No item drops on death (deleted)\n§7• Track kills and deaths\n§7• Stats saved every game');
    form.divider();
    form.header('§eTeam & Revive');
-   form.label('§7• สูงสุด §f54 §7คน (9 ทีม)\\n§7• Revive using player head (§f30s§7)\\n§7• Team chat & colored nametags');
+   form.label('§7• Up to 54 players (9 teams)\n§7• Revive teammates in 8s\n§7• Revive cooldown is 18s\n§7• Team name colors');
    form.divider();
-   form.header('§eUtilities');
-   form.label('§7• Scoreboard\\n§7• Interaction guard');
+   form.header('§eEnd Game');
+   form.label('§7• Last team alive wins\n§7• Draw if everyone dies\n§7• Final arena fills with land\n§7• Show match stats at end');
+   form.divider();
+   form.header('§eSystems');
+   form.label('§7• Scoreboard on screen\n§7• Rank levels (Bronze to Master)\n§7• Leaderboard NPCs in lobby\n§7• Block interactive containers');
    form.divider();
    form.label('                  - Sleeplite - ');
    form.button('Back', 'textures/uhc/solightzz');
@@ -84,7 +88,6 @@ export function Features(player) {
       });
 }
 
-//แสดง ranks leaderboard
 export function Ranks(player) {
    openRankMenu(player);
 }

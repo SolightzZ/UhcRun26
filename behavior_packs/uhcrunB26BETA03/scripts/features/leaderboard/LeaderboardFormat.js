@@ -1,4 +1,3 @@
-//จัดรูปแบบข้อความ leaderboard สำหรับแสดงบน NPC
 import { MAX_PLAYERS, MAX_TEAMS, generateStatsHash, getRankColor, lbCache } from '../../constants/leaderboard.js';
 
 function buildEmptyPlayerText() {
@@ -13,7 +12,6 @@ function buildEmptyDeathsText() {
    return `§cTop ${MAX_PLAYERS} Deaths\n\n§7None (0)\n`;
 }
 
-//สร้างข้อความแสดงอันดับทีมเรียงตาม kills
 export function buildTeamText(teamList) {
    if (!teamList.length) return buildEmptyTeamText();
    const header = `§bTop ${MAX_TEAMS} Teams (Kills)\n\n`;
@@ -36,7 +34,6 @@ function buildPlayerLines(sourceMap, filterFn, sortFn, lineFn) {
    return filtered;
 }
 
-//สร้างข้อความแสดงอันดับผู้เล่นเรียงตาม kills
 export function getPlayerText(playerStatsMap) {
    const currentHash = generateStatsHash(playerStatsMap);
    if (currentHash === lbCache.lastStatsHash && lbCache.cachedPlayerText) {
@@ -67,7 +64,6 @@ export function getPlayerText(playerStatsMap) {
    return lbCache.cachedPlayerText;
 }
 
-//สร้างข้อความแสดงอันดับผู้เล่นเรียงตาม deaths
 export function getDeathsText(playerStatsMap) {
    const currentHash = generateStatsHash(playerStatsMap);
    if (currentHash === lbCache.lastDeathsHash && lbCache.cachedDeathsText) {

@@ -1,10 +1,8 @@
-//ระบบ cooldown ของ revive (30 วิระหว่าง revive แต่ละครั้ง)
 import { system } from '@minecraft/server';
 import { REVIVE_MSG } from '../../constants/game.js';
 import { dynamicToast, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { reviverCooldown } from './State_Revive.js';
 
-//อ่านเวลาคูลดาวน์คงเหลือของ revive
 export function getRemainingReviveCooldown(playerId) {
    if (!playerId) return 0;
 
@@ -15,7 +13,6 @@ export function getRemainingReviveCooldown(playerId) {
    return remaining > 0 ? remaining : 0;
 }
 
-//ลบ cooldown ที่หมดอายุแล้ว
 export function clearExpiredReviveCooldown(playerId) {
    if (!playerId) return;
 
@@ -24,7 +21,6 @@ export function clearExpiredReviveCooldown(playerId) {
    reviverCooldown.delete(playerId);
 }
 
-//แจ้งเตือนผู้เล่นว่ายังอยู่ใน cooldown (optional เสียง)
 export function notifyReviverCooldown(reviver, playSound = false) {
    clearExpiredReviveCooldown(reviver.id);
 

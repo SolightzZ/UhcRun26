@@ -1,18 +1,95 @@
-//จัดการ stats: บันทึก, โหลด, reset, track hits, announcer
 import { system, world } from '@minecraft/server';
-import { TEAMS } from '../../constants/game.js';
+import { DP_SIZE_LIMIT, TEAMS } from '../../constants/game.js';
 import { dynamicToast, logError, logWarn } from '../../shared/Util.js';
+
+const MULTI_KILL_DATA = Object.freeze([
+   null,
+   { text: '§eKILL', sound: 'kill1' },
+   { text: '§6DOUBLE KILL', sound: 'kill2' },
+   { text: '§cTRIPLE KILL', sound: 'kill3' },
+   { text: '§5QUADRA KILL', sound: 'kill4' },
+   { text: '§4ACE', sound: 'kill5' },
+]);
+
 import { allPlayersCache, allPlayersCacheIds, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache } from '../cache/State_Cache.js';
 import { HIT_TIMEOUT_TICKS, MULTI_TIMEOUT_TICKS, firstBloodDone, kdHistoryObj, setFirstBloodDone, setStatsDirty, setStatsSaveTask, statsDirty, statsSaveTask } from '../match/State_Game.js';
 import { TEAM_LOOKUP, clearPlayerStats, playerStats, setTeamStats, teamStats } from '../team/State_Team.js';
 
-//ลบ Dynamic Property ที่เก็บ stats
+const PN_MAP_KEY = 'uhc_playerNames';
+let _pnCache = null;
+
+const _sbIdToUuid = new Map();
+
+function loadPlayerNames() {
+   if (_pnCache !== null) return _pnCache;
+   try {
+      const raw = world.getDynamicProperty(PN_MAP_KEY);
+      _pnCache = raw ? JSON.parse(raw) : {};
+   } catch {
+      _pnCache = {};
+   }
+   return _pnCache;
+}
+
+function persistPlayerNames(map) {
+   try {
+      const json = JSON.stringify(map);
+      world.setDynamicProperty(PN_MAP_KEY, json);
+      _pnCache = map;
+   } catch (error) {
+      logError('Stats', 'Failed to persist player name map', error);
+   }
+}
+
+export function recordPlayerName(player) {
+   if (!player?.id || !player?.name) return;
+   const map = loadPlayerNames();
+   if (map[player.id] === player.name) return;
+   map[player.id] = player.name;
+   persistPlayerNames(map);
+}
+
+export function getStoredPlayerName(id) {
+   const map = loadPlayerNames();
+   return map[id] || null;
+}
+
+export function recordScoreboardId(player) {
+   if (!player?.scoreboardIdentity?.id) return;
+   _sbIdToUuid.set(player.scoreboardIdentity.id, player.id);
+}
+
+export function resolveParticipantName(participant) {
+   if (!participant) return null;
+
+   const dn = participant.displayName;
+   const isNumericId = typeof dn === 'string' && /^-?\d+$/.test(dn);
+
+   if (dn && typeof dn === 'string' && !isNumericId) return dn;
+
+   try {
+      const entity = participant.getEntity();
+      if (entity?.name) return entity.name;
+   } catch {}
+
+   const uuid = _sbIdToUuid.get(participant.id);
+   if (uuid) {
+      const stored = getStoredPlayerName(uuid);
+      if (stored) return stored;
+   }
+
+   return dn || null;
+}
+
+export function clearSbIdCache() {
+   _sbIdToUuid.clear();
+}
+
 export function clearStatsDynamicProperties() {
    world.setDynamicProperty('uhc_teamStats', undefined);
    world.setDynamicProperty('uhc_playerStats', undefined);
 }
 
-//รีเซ็ต stats ทีมและผู้เล่น
 export function resetAllStats() {
    for (const team of TEAMS) {
       setTeamStats(team.id, { kills: 0, deaths: 0 });
@@ -21,14 +98,14 @@ export function resetAllStats() {
    clearStatsDynamicProperties();
 }
 
-//กำหนดให้บันทึก stats แบบ debounce 60 ticks
+// debounce save 60 ticks
 export function scheduleSaveStats() {
    setStatsDirty(true);
    if (statsSaveTask !== null) return;
    setStatsSaveTask(system.runTimeout(runSaveStats, 60));
 }
 
-//บันทึก stats จริง (ทีมก่อน แล้วผู้เล่น), กัน race ด้วย flags
+// save team then player, guard race with flags
 function runSaveStats() {
    setStatsSaveTask(null);
    if (!statsDirty) return;
@@ -40,7 +117,6 @@ function runSaveStats() {
    }
 }
 
-//แปลงเป็น JSON และตรวจสอบความถูกต้อง
 function safeStringify(data, label) {
    try {
       return JSON.stringify(data);
@@ -50,12 +126,33 @@ function safeStringify(data, label) {
    }
 }
 
-//เขียน stats ลง Dynamic Property
+// Pure-JS UTF-8 byte length (no TextEncoder in Bedrock JS engine)
+function utf8ByteLength(str) {
+   let len = 0;
+   for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code < 0x80) len += 1;
+      else if (code < 0x800) len += 2;
+      else if (code < 0xd800 || code > 0xdfff) len += 3;
+      else {
+         i++;
+         len += 4;
+      }
+   }
+   return len;
+}
+
 function saveStatsToWorld(key, map, label) {
    try {
       const data = Object.fromEntries(map);
       const json = safeStringify(data, label);
-      if (json) world.setDynamicProperty(key, json);
+      if (!json) return;
+      const bytes = utf8ByteLength(json);
+      if (bytes > DP_SIZE_LIMIT) {
+         logWarn('Stats', `${label} JSON ${bytes}B exceeds DP size limit, skipping save`);
+         return;
+      }
+      world.setDynamicProperty(key, json);
    } catch (error) {
       logError('Stats', `saveStats ${label} failed`, error);
    }
@@ -69,7 +166,6 @@ function savePlayerStats() {
    saveStatsToWorld('uhc_playerStats', playerStats, 'playerStats');
 }
 
-// เพิ่มประวัติการฆ่า KD history objective
 function incrementPairHistory(killer, victim) {
    if (!kdHistoryObj) return;
    if (!killer) return;
@@ -84,7 +180,6 @@ function incrementPairHistory(killer, victim) {
    kdHistoryObj.addScore(historyKey, 1);
 }
 
-// ประกาศ multi kill (Double / Triple / Quadra / Ace) ตามจำนวน kill ติดกันในกรอบเวลา
 function handleMultiKill(killer) {
    if (!killer) return;
    if (!killer.isValid) return;
@@ -106,23 +201,13 @@ function handleMultiKill(killer) {
    }
 
    let count = data.count;
-   if (count > 5) {
-      count = 5;
-   }
-
-   const MULTI_KILL_DATA = [
-      null,
-      { text: '§eKILL', sound: 'kill1' },
-      { text: '§6DOUBLE KILL', sound: 'kill2' },
-      { text: '§cTRIPLE KILL', sound: 'kill3' },
-      { text: '§5QUADRA KILL', sound: 'kill4' },
-      { text: '§4ACE', sound: 'kill5' },
-   ];
+   if (count > 5) count = 5;
 
    const info = MULTI_KILL_DATA[count];
    if (!info) return;
    try {
-      const message = info.text + ' §7| §f' + killer.name;
+      const safeName = killer.name.replace(/§./g, '');
+      const message = info.text + ' §7| §f' + safeName;
       world.sendMessage(dynamicToast(message, 'textures/ui/icons/icon_multiplayer'));
       world.sendMessage(message);
       killer.playSound(info.sound);
@@ -131,7 +216,6 @@ function handleMultiKill(killer) {
    }
 }
 
-// นับ kill streak ของผู้เล่น
 function handleKillStreak(killer) {
    if (!killer) return;
    if (!killer.isValid) return;
@@ -143,7 +227,6 @@ function handleKillStreak(killer) {
    killStreak.set(killer.id, current);
 }
 
-// ประกาศ First Blood (ฆ่าคนแรกของเกม)
 function handleFirstBlood(killer, victim) {
    if (!killer) return;
    if (!victim) return;
@@ -153,7 +236,9 @@ function handleFirstBlood(killer, victim) {
 
    setFirstBloodDone(true);
    try {
-      const message = '§cFIRST BLOOD §7| ' + killer.name + ' > §f' + victim.name;
+      const safeKiller = killer.name.replace(/§./g, '');
+      const safeVictim = victim.name.replace(/§./g, '');
+      const message = '§cFIRST BLOOD §7| ' + safeKiller + ' > §f' + safeVictim;
       world.sendMessage(dynamicToast(message, 'textures/ui/friend_glyph_desaturated'));
       world.sendMessage(message);
       killer.playSound('mob.wither.death');
@@ -162,7 +247,6 @@ function handleFirstBlood(killer, victim) {
    }
 }
 
-// รีเซ็ตระบบประกาศ
 export function resetAnnouncer() {
    multiKill.clear();
    killStreak.clear();
@@ -182,7 +266,6 @@ export function resetAnnouncer() {
    logWarn('UHC', 'Announcer System Reset.');
 }
 
-// บันทึกการโจมตีล่าสุดลง hitRegistry
 export function trackHit(attacker, victim, cause) {
    if (!victim) return;
    const victimId = victim.id;
@@ -233,7 +316,6 @@ export function trackHit(attacker, victim, cause) {
    existing.tick = currentTick;
 }
 
-// ล้าง hit registry ที่เก่าเกิน HIT_TIMEOUT_TICKS
 export function handlerHit() {
    const currentTick = system.currentTick;
    for (const [victimId, entry] of hitRegistry) {
@@ -251,7 +333,6 @@ export function handlerHit() {
    }
 }
 
-// อ่าน hit entry ล่าสุดของ victim
 function getRecentHitEntry(victimId) {
    if (!victimId) return null;
    const entry = hitRegistry.get(victimId);
@@ -266,7 +347,6 @@ function getRecentHitEntry(victimId) {
    return entry;
 }
 
-// หา killer จาก hit registry
 function resolveKiller(victimId) {
    const entry = getRecentHitEntry(victimId);
    if (!entry?.attackerId) return null;
@@ -277,7 +357,6 @@ function resolveKiller(victimId) {
    return killer;
 }
 
-// หาสาเหตุการตาย
 function resolveDeathCause(victimId) {
    const entry = getRecentHitEntry(victimId);
    if (!entry) return 'environment';
@@ -287,7 +366,6 @@ function resolveDeathCause(victimId) {
    return 'player';
 }
 
-// ดึงข้อความแสดงชื่อคนฆ่า (มีสีทีม)
 function getKillerDisplay(player) {
    const resolvedKiller = resolveKiller(player.id);
    if (!resolvedKiller?.isValid || resolvedKiller.id === player.id) {
@@ -303,7 +381,6 @@ function getKillerDisplay(player) {
    return `${team.color}${resolvedKiller.name}§r`;
 }
 
-// แปลงสาเหตุการตายเป็นข้อความ
 function getEnvironmentDeath(playerId) {
    switch (resolveDeathCause(playerId)) {
       case 'fall':
@@ -329,13 +406,12 @@ function getEnvironmentDeath(playerId) {
       case 'player':
          return 'player attack';
       case 'environment':
-         return 'environment';
+         return 'died';
       default:
          return 'died';
    }
 }
 
-// ข้อมูลการตาย (มีคนฆ่า หรือสิ่งแวดล้อม)
 function getDeathDisplayInfo(player) {
    const resolvedKiller = resolveKiller(player.id);
    if (resolvedKiller?.isValid && resolvedKiller.id !== player.id) {
@@ -353,7 +429,6 @@ function getDeathDisplayInfo(player) {
    };
 }
 
-// แสดง UI YOU DIED บนหน้าจอ
 function showDeathUI(player, deathInfo) {
    try {
       const subtitle = deathInfo?.isPlayerKill ? `§7Killed by ${deathInfo.text}` : `§7Cause: ${deathInfo?.text ?? 'unknown'}`;
@@ -373,7 +448,6 @@ function showDeathUI(player, deathInfo) {
    }
 }
 
-// ส่งข้อความตายให้ผู้เล่นทางแชท
 function sendDeathMessage(player, deathInfo) {
    try {
       const stats = playerStats.get(player.id) ?? { kills: 0, deaths: 0 };

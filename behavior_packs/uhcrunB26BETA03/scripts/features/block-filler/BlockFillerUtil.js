@@ -1,13 +1,11 @@
 import { BlockPermutation } from '@minecraft/server';
+import { logWarn } from '../../shared/Util.js';
 import { BLOCK_CATEGORIES, MODE } from './BlockFillerConstants.js';
 
-//อรรถประโยชน์สำหรับ BlockFiller: PRNG, resolve บล็อก, แบ่ง bounds, cache
 class BlockFillerUtility {
-   // instance fields สำหรับเข้าถึงจากภายนอกผ่าน util.X
    WORLD_MIN_Y = -64;
    WORLD_MAX_Y = 319;
-   BATCH_SIZE_NORMAL = 120;
-    BATCH_SIZE_ENDGAME = 120;
+
    FILL_INTERVAL_TICKS = 1;
    TASK_QUEUE_HARD_CAP = 8000;
    MAX_PENDING_BLOCKS = 80000;
@@ -29,7 +27,6 @@ class BlockFillerUtility {
       if (this.seed === 0) this.seed = 1;
    }
 
-   // แก้ block id เป็น BlockPermutation (cache ผลลัพธ์)
    resolveBlock(id) {
       if (this.PERM_CACHE.has(id)) return this.PERM_CACHE.get(id);
 
@@ -45,7 +42,6 @@ class BlockFillerUtility {
       return perm;
    }
 
-   // เตรียม permutations สำหรับแต่ละ mode
    initPermutations() {
       if (this.AIR) return;
 
@@ -60,9 +56,9 @@ class BlockFillerUtility {
             try {
                const perm = this.resolveBlock(blockIds[j]);
                if (perm) permutations.push(perm);
-      } catch (error) {
-         // ข้าม block id ที่ใช้ไม่ได้
-      }
+            } catch (error) {
+               logWarn('BlockFiller', `Skipping invalid block: ${blockIds[j]} ${error}`);
+            }
          }
 
          if (permutations.length === 0) {
@@ -73,7 +69,7 @@ class BlockFillerUtility {
       }
    }
 
-   // PRNG แบบเร็ว (xorshift variant)
+   // xorshift variant PRNG
    fastRandomInt(max) {
       this.seed |= 0;
       this.seed = (this.seed + 0x6d2b79f5) | 0;
@@ -83,7 +79,6 @@ class BlockFillerUtility {
       return result % max;
    }
 
-   // สุ่มบล็อกจาก category
    randomBlock(mode) {
       const permutations = this.CATEGORY_MAP.get(mode);
       if (!permutations || permutations.length === 0) return this.AIR;
@@ -98,7 +93,6 @@ class BlockFillerUtility {
       return permutations[index] ?? this.AIR;
    }
 
-   // สร้างฟังก์ชัน resolve บล็อกตาม mode
    createBlockResolver(mode, fillOptions = {}) {
       if (fillOptions.blockId) {
          const fixedPermutation = this.resolveBlock(fillOptions.blockId);
@@ -118,11 +112,6 @@ class BlockFillerUtility {
       }
    }
 
-   reseedRandom() {
-      this.seed ^= (Math.random() * 0xffffffff) >>> 0;
-   }
-
-   // คำนวณขอบเขตจากพิกัด 2 จุด
    calculateBounds(x1, y1, z1, x2, y2, z2) {
       const minX = Math.min(x1, x2);
       const maxX = Math.max(x1, x2);
@@ -137,16 +126,10 @@ class BlockFillerUtility {
       return { minX, maxX, minY, maxY, minZ, maxZ };
    }
 
-   // คำนวณจำนวนบล็อกจาก bounds
    calculateBlockCount(bounds) {
-      return (
-         (bounds.maxX - bounds.minX + 1) *
-         (bounds.maxZ - bounds.minZ + 1) *
-         (bounds.maxY - bounds.minY + 1)
-      );
+      return (bounds.maxX - bounds.minX + 1) * (bounds.maxZ - bounds.minZ + 1) * (bounds.maxY - bounds.minY + 1);
    }
 
-   // แบ่ง bounds ออกเป็น 2 ส่วน (แบ่งแกนที่ยาวที่สุด)
    splitBounds(bounds, stack, yDirection = this.UPWARD_Y) {
       const sizeX = bounds.maxX - bounds.minX;
       const sizeY = bounds.maxY - bounds.minY;

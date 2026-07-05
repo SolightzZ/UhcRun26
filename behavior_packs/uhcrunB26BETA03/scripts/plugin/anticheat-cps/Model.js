@@ -1,15 +1,14 @@
 import { LRUMap } from '../../shared/LRUMap.js';
 
-//LRU cache พร้อม TTL cleanup สำหรับเก็บ playerState
-//Override cleanup สำหรับ object structure ที่มี lastWarnTick
-
+// LRU cache with TTL cleanup storing playerState; overrides cleanup for lastWarnTick objects
 class Model {
-   MAX_CPS = 18; //ขีดเตือนอ่อน
-   HARD_LIMIT = 24; //ขีด kick
+   MAX_CPS = 18;
+   HARD_LIMIT = 24;
    WINDOW_TICKS = 20;
    BUF_SIZE = this.HARD_LIMIT;
 
-   adminPlayers = new Map(); // id → Player สำหรับ admins (cache แทน world.getPlayers())
+   // id → Player cache to avoid world.getPlayers()
+   adminPlayers = new Map();
 
    playerState = Object.assign(new LRUMap(Infinity, 200), {
       cleanup(currentTick) {
@@ -27,9 +26,9 @@ class Model {
       },
    });
 
-   // สร้าง buffer วงกลมบันทึก tick ที่ตี
+   // Circular buffer storing low 8 bits of hit ticks; full tick = (currentTick & 0xFFFFFF00) | storedByte with wrap correction
    createPlayerData = () => ({
-      buf: new Int32Array(this.BUF_SIZE),
+      buf: new Uint8Array(this.BUF_SIZE),
       head: 0,
       count: 0,
       lastWarnTick: 0,

@@ -1,24 +1,20 @@
-// Events
-import './events/system-startup.js';
 import './events/system-runInterval.js';
+import './events/system-startup.js';
 import './events/world-entityDie.js';
+import './events/world-entityHitEntity.js';
 import './events/world-entityHurt.js';
+import './events/world-entityItemPickup.js';
+import './events/world-entitySpawn.js';
+import './events/world-itemCompleteUse.js';
 import './events/world-itemUse.js';
+import './events/world-playerBreakBlock.js';
+import './events/world-playerBreakBlockAfter.js';
+import './events/world-playerHotbarSelectedSlotChange.js';
+import './events/world-playerInteractWithBlock.js';
 import './events/world-playerInteractWithEntity.js';
 import './events/world-playerLeave.js';
-import './events/world-playerSpawn.js';
-import './events/world-playerBreakBlock.js';
 import './events/world-playerPlaceBlock.js';
-import './events/world-playerInteractWithBlock.js';
-import './events/world-entityHitEntity.js';
-import './events/world-playerBreakBlockAfter.js';
-import './events/world-entitySpawn.js';
-import './events/world-playerHotbarSelectedSlotChange.js';
-import './events/world-projectileHitEntity.js';
-import './events/world-itemCompleteUse.js';
-import './events/world-entityItemPickup.js';
-import './events/world-pressurePlatePush.js';
 import './events/world-playerPlaceBlockAfter.js';
-
-import { logWarn } from './shared/Util.js';
-logWarn('UHC', 'uhcrunB26BETA03 loaded');
+import './events/world-playerSpawn.js';
+import './events/world-pressurePlatePush.js';
+import './events/world-projectileHitEntity.js';

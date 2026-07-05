@@ -1,15 +1,14 @@
-//UI revive: แสดงรายชื่อผู้เล่นที่ตายในทีมเพื่อเลือกชุบ — server-ui only
 import { ActionFormData } from '@minecraft/server-ui';
 import { REVIVE_MSG } from '../../constants/game.js';
-import { logError, SND_BASS, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
+import { uhcPlayerIds } from '../../features/cache/State_Cache.js';
 import { isGameRunning } from '../../features/match/State_Game.js';
-import { deathLocation } from '../../features/team/State_Team.js';
-import { getPlayerTeam } from '../../features/team/TeamActions.js';
 import { notifyReviverCooldown } from '../../features/revive/ReviveCooldown.js';
 import { tryStartRevive } from '../../features/revive/ReviveManager.js';
 import { getDeadPlayersInTeam, hasReviveItem, resolvePlayer } from '../../features/revive/ReviveUtil.js';
+import { deathLocation } from '../../features/team/State_Team.js';
+import { getPlayerTeam } from '../../features/team/TeamActions.js';
+import { logError, SND_BASS, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
 
-//เปิด GUI รายชื่อผู้เล่นตายในทีมให้เลือก revive
 export function openReviveUI(player, deadList) {
    if (!player?.isValid) return;
 
@@ -42,15 +41,14 @@ export function openReviveUI(player, deadList) {
          tryStartRevive(player, target);
       })
       .catch((error) => {
-          logError('ReviveUI', 'openReviveUI form error', error);
+         logError('ReviveUI', 'openReviveUI form error', error);
       });
 }
 
-//ตรวจสอบเงื่อนไขและเปิด revive UI เมื่อใช้ไอเทมหัวผู้เล่น
 export function onUseReviveItem(player) {
    if (!player?.isValid) return;
    if (!isGameRunning) return;
-   if (!player.hasTag('uhc')) return;
+   if (!uhcPlayerIds.has(player.id)) return;
    if (!hasReviveItem(player)) return;
 
    if (notifyReviverCooldown(player, true)) return;

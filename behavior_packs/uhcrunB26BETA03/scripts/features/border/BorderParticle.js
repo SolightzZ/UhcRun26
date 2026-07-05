@@ -1,31 +1,41 @@
 import { MolangVariableMap } from '@minecraft/server';
+import { wrapTick } from '../../shared/profiler/index.js';
+import { logError } from '../../shared/Util.js';
 import { ctx } from './BorderManager.js';
 
 const BORDER_RENDER = Object.freeze({
-   VIEW_DISTANCE: 35,
+   VIEW_DISTANCE: 35, // base — auto-reduces when many players
    PARTICLE_Y: 100,
+});
+
+const ADAPTIVE = Object.freeze({
+   PLAYER_HIGH: 20,
+   VIEW_MIN: 15,
 });
 
 const worldborder_ew = 'worldborder:worldborder_ew';
 const worldborder = 'worldborder:worldborder';
 
 const GROUPS_POOL_CAP = 54;
-const GROUPS_RENDER_CAP = 24;
 const CELL_SIZE = 16;
 const CELL_OFFSET = 32;
 const CELL_RANGE = 64;
 
-//เรนเดอร์อนุภาค border แบบ optimize: group ผู้เล่นตาม cell, spawn เฉพาะใกล้กล้อง
 class BorderManagerParticle {
    groupMaps = new Map();
    groupsPool = [];
-   spawnedThisTick = new Set();
    sharedPos = { x: 0, y: BORDER_RENDER.PARTICLE_Y, z: 0 };
    groupsLen = 0;
    renderTickCounter = 0;
    cachedMolang = null;
+   _playerCount = 0;
 
-   // สร้าง MolangVariableMap พร้อมสีและขนาด border (cache ถ้าไม่เปลี่ยน)
+   getAdaptiveView() {
+      if (this._playerCount < ADAPTIVE.PLAYER_HIGH) return BORDER_RENDER.VIEW_DISTANCE;
+      const reduction = Math.min(BORDER_RENDER.VIEW_DISTANCE - ADAPTIVE.VIEW_MIN, Math.floor((this._playerCount - ADAPTIVE.PLAYER_HIGH) / 3) * 3);
+      return BORDER_RENDER.VIEW_DISTANCE - reduction;
+   }
+
    particleRendererGetMolang(width = 8) {
       const key = `${ctx.currentBorderColor.red},${ctx.currentBorderColor.green},${ctx.currentBorderColor.blue},${width}`;
       if (this.cachedMolang?.key === key) return this.cachedMolang.varMap;
@@ -37,7 +47,7 @@ class BorderManagerParticle {
       return molang;
    }
 
-   // จัดกลุ่มผู้เล่นตามตำแหน่ง grid (cell) เพื่อลดจำนวนการวนซ้ำ
+   // group players by grid cell to reduce iteration
    particleRendererGroupByCell(players) {
       this.groupMaps.clear();
       this.groupsLen = 0;
@@ -81,81 +91,52 @@ class BorderManagerParticle {
       }
    }
 
-   // spawn อนุภาคแบบปลอดภัย ไม่ให้ crash
-   particleRendererSafeSpawn(dim, particleId, location, molang) {
-      try {
-         dim.spawnParticle(particleId, location, molang);
-      } catch (error) {
-         // ป้องกัน crash ถ้า spawn อนุภาคล้มเหลว
-      }
-   }
-
-   // เรนเดอร์ขอบ border ด้านเดียว (edge)
-   particleRendererRenderEdge(dim, fixed, rangeMin, rangeMax, playerCoord, view, step, axis, particleId, molang) {
-      if (playerCoord < fixed - view || playerCoord > fixed + view) return;
-
-      let value = rangeMin - (rangeMin % step);
-      if (value < rangeMin) value += step;
-
-      const spawned = this.spawnedThisTick;
-      const pos = this.sharedPos;
-
-      const isX = axis === 0;
-
-      const fixedMasked = (fixed & 0x7fff) << 15;
-      const axisShift = axis << 30;
-      const mask = 0x7fff;
-
-      for (; value <= rangeMax; value += step) {
-         const key = axisShift | fixedMasked | (value & mask);
-
-         if (spawned.has(key)) continue;
-         spawned.add(key);
-
-         if (isX) {
-            pos.x = fixed;
-            pos.z = value;
-         } else {
-            pos.x = value;
-            pos.z = fixed;
-         }
-
-         try {
-            dim.spawnParticle(particleId, pos, molang);
-         } catch (error) {}
-      }
-   }
-
-   // เรนเดอร์อนุภาครอบ AABB border สำหรับผู้เล่นทุกกลุ่ม
-   particleRendererRenderBorderAABB(dim, step, molang) {
+   particleRendererRenderBorderAABB(dim, molang, view) {
       if (!dim || !this.groupsLen || !ctx.wbBounds) return;
-      const [east, west, north, south] = ctx.wbBounds,
-         view = BORDER_RENDER.VIEW_DISTANCE;
-      this.spawnedThisTick.clear();
+      const [east, west, north, south] = ctx.wbBounds;
+      const pos = this.sharedPos;
+      pos.y = BORDER_RENDER.PARTICLE_Y;
 
-      // กระจายเรนเดอร์แต่ละ tick เพื่อลดภาระต่อรอบ
-      const limit = Math.min(this.groupsLen, GROUPS_RENDER_CAP);
+      const limit = Math.min(this.groupsLen, 24);
       const offset = this.renderTickCounter % Math.max(1, limit);
 
-      for (let i = offset; i < limit; i++) {
+      for (let j = 0; j < limit; j++) {
+         const i = (offset + j) % this.groupsLen;
          const rep = this.groupsPool[i].rep;
          if (!rep?.isValid) continue;
          const loc = rep.location;
          if (!loc) continue;
          const px = loc.x,
-            pz = loc.z,
-            minX = px - view,
-            maxX = px + view,
-            minZ = pz - view,
-            maxZ = pz + view;
-         if (px > east - view) this.particleRendererRenderEdge(dim, east, Math.max(north, minZ), Math.min(south, maxZ), px, view, step, 0, worldborder, molang);
-         if (px < west + view) this.particleRendererRenderEdge(dim, west, Math.max(north, minZ), Math.min(south, maxZ), px, view, step, 0, worldborder, molang);
-         if (pz < north + view) this.particleRendererRenderEdge(dim, north, Math.max(west, minX), Math.min(east, maxX), pz, view, step, 1, worldborder_ew, molang);
-         if (pz > south - view) this.particleRendererRenderEdge(dim, south, Math.max(west, minX), Math.min(east, maxX), pz, view, step, 1, worldborder_ew, molang);
+            pz = loc.z;
+
+         try {
+            if (px > east - view) {
+               pos.x = east;
+               pos.z = Math.max(north, Math.min(south, pz));
+               dim.spawnParticle(worldborder, pos, molang);
+            }
+            if (px < west + view) {
+               pos.x = west;
+               pos.z = Math.max(north, Math.min(south, pz));
+               dim.spawnParticle(worldborder, pos, molang);
+            }
+            if (pz < north + view) {
+               pos.x = Math.max(west, Math.min(east, px));
+               pos.z = north;
+               dim.spawnParticle(worldborder_ew, pos, molang);
+            }
+            if (pz > south - view) {
+               pos.x = Math.max(west, Math.min(east, px));
+               pos.z = south;
+               dim.spawnParticle(worldborder_ew, pos, molang);
+            }
+         } catch (e) {
+            logError('BorderParticle', 'spawnParticle failed', e);
+         }
       }
    }
 
-   // เรนเดอร์กรณี border เล็ก (< 100)
+   // small border (<100) still spawns 4 points
    particleRendererRenderSmall(dim) {
       const radius = ctx.borderRadius;
       const molang = this.particleRendererGetMolang(radius);
@@ -178,14 +159,16 @@ class BorderManagerParticle {
          pos.z = -radius;
          dim.spawnParticle(worldborder_ew, pos, molang);
       } catch (error) {
-         // ป้องกัน crash ถ้าเล็กเกินไป
+         logError('BorderParticle', 'Render small failed', error);
       }
    }
 
-   // main render tick เรียกทุก 4 ticks
    particleRendererTick(players) {
       if (!ctx.isRunning || !ctx.borderReady || !ctx.wbBounds) return;
       if (ctx.uhcTick % 4 !== 0) return;
+
+      this._playerCount = players.length;
+
       this.particleRendererGroupByCell(players);
       if (!this.groupsLen) return;
 
@@ -205,8 +188,13 @@ class BorderManagerParticle {
          this.particleRendererRenderSmall(dim);
          return;
       }
-      this.particleRendererRenderBorderAABB(dim, 16, this.particleRendererGetMolang(8));
+
+      const view = this.getAdaptiveView();
+      this.particleRendererRenderBorderAABB(dim, this.particleRendererGetMolang(8), view);
    }
 }
 
-export default new BorderManagerParticle();
+const _particleInstance = new BorderManagerParticle();
+const _boundParticleTick = _particleInstance.particleRendererTick.bind(_particleInstance);
+_particleInstance.particleRendererTick = wrapTick('particleRender', _boundParticleTick);
+export default _particleInstance;

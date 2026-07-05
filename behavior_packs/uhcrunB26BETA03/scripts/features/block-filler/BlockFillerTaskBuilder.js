@@ -1,16 +1,15 @@
+import { BlockVolume } from '@minecraft/server';
+import { logError } from '../../shared/Util.js';
 import { MODE } from './BlockFillerConstants.js';
 import util from './BlockFillerUtil.js';
-import { logError } from '../../shared/Util.js';
 
 let sharedChunkCache = Object.create(null);
 
-//สร้าง task functions สำหรับเติมบล็อก, แบ่ง bounds, สร้าง pattern segment
 class BlockFillerTaskBuilder {
    resetChunkCache() {
       sharedChunkCache = Object.create(null);
    }
 
-   // สร้างฟังก์ชัน task ที่ไล่ setPermutation ทีละ block
    createBoundsTask(dim, bounds, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
       let x = bounds.minX;
       let y = yDirection === util.DOWNWARD_Y ? bounds.maxY : bounds.minY;
@@ -23,9 +22,7 @@ class BlockFillerTaskBuilder {
       const resolvePermutation = util.createBlockResolver(mode, fillOptions);
       const isStatic = !fillOptions.randomize && !fillOptions.blockId && mode !== MODE.NETHER;
       const staticPerm = isStatic ? resolvePermutation() : null;
-      const staticPermTypeId = staticPerm
-         ? (staticPerm.typeId ?? staticPerm?.type?.id ?? '')
-         : null;
+      const staticPermTypeId = staticPerm ? (staticPerm.typeId ?? staticPerm?.type?.id ?? '') : null;
 
       const minX = bounds.minX,
          maxX = bounds.maxX;
@@ -37,11 +34,20 @@ class BlockFillerTaskBuilder {
          maxZ = bounds.maxZ;
 
       return (limit) => {
+         // native fillBlocks shortcut for static fills — first call only
+         if (isStatic && staticPerm && remaining === totalBlockCount) {
+            try {
+               const volume = new BlockVolume({ x: minX, y: minY, z: minZ }, { x: maxX, y: maxY, z: maxZ });
+               dim.fillBlocks(volume, staticPerm);
+               remaining = 0;
+               return { consumed: totalBlockCount, done: true };
+            } catch (error) {
+               logError('TaskBuilder', 'fillBlocks failed, falling back to per-block', error);
+            }
+         }
+
          let consumed = 0;
-         if (
-            (yDirection === util.DOWNWARD_Y && y < minY) ||
-            (yDirection !== util.DOWNWARD_Y && y > maxY)
-         ) {
+         if ((yDirection === util.DOWNWARD_Y && y < minY) || (yDirection !== util.DOWNWARD_Y && y > maxY)) {
             return { consumed: 0, done: true };
          }
 
@@ -53,10 +59,10 @@ class BlockFillerTaskBuilder {
                   try {
                      const testBlock = dim.getBlock({ x, y: 0, z });
                      chunkOk = !!testBlock;
-   } catch (error) {
-      logError('TaskBuilder', 'Chunk check failed', error);
-      chunkOk = false;
-   }
+                  } catch (error) {
+                     logError('TaskBuilder', 'Chunk check failed', error);
+                     chunkOk = false;
+                  }
                   sharedChunkCache[chunkKey] = chunkOk;
                }
 
@@ -75,10 +81,10 @@ class BlockFillerTaskBuilder {
                if (block.typeId !== permTypeId) {
                   try {
                      block.setPermutation(perm);
-   } catch (error) {
-      logError('TaskBuilder', 'Block setPermutation failed', error);
-      return { consumed, done: false, blocked: true, remaining };
-   }
+                  } catch (error) {
+                     logError('TaskBuilder', 'Block setPermutation failed', error);
+                     return { consumed, done: false, blocked: true, remaining };
+                  }
                }
                consumed++;
                remaining--;
@@ -91,10 +97,7 @@ class BlockFillerTaskBuilder {
             if (z <= maxZ) continue;
             z = minZ;
             y += yDirection;
-            if (
-               (yDirection === util.DOWNWARD_Y && y < minY) ||
-               (yDirection !== util.DOWNWARD_Y && y > maxY)
-            ) {
+            if ((yDirection === util.DOWNWARD_Y && y < minY) || (yDirection !== util.DOWNWARD_Y && y > maxY)) {
                return { consumed, done: true };
             }
          }
@@ -102,7 +105,6 @@ class BlockFillerTaskBuilder {
       };
    }
 
-   // แบ่ง bounds ใหญ่ออกเป็น segments ย่อยตาม MAX_BLOCKS_PER_TASK
    createFillTask(dim, x1, y1, z1, x2, y2, z2, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
       util.initPermutations();
       const initialBounds = util.calculateBounds(x1, y1, z1, x2, y2, z2);
@@ -124,7 +126,6 @@ class BlockFillerTaskBuilder {
       return segments;
    }
 
-   // สร้าง segment สำหรับ pattern (ระบุเฉพาะ XZ)
    createPatternSegment(name, x1, z1, x2, z2) {
       return Object.freeze({ name, x1, z1, x2, z2 });
    }
@@ -134,17 +135,13 @@ class BlockFillerTaskBuilder {
       const z1 = -segment.x1;
       const x2 = segment.z2;
       const z2 = -segment.x2;
-      return this.createPatternSegment(
-         segment.name,
-         Math.min(x1, x2),
-         Math.min(z1, z2),
-         Math.max(x1, x2),
-         Math.max(z1, z2),
-      );
+      return this.createPatternSegment(segment.name, Math.min(x1, x2), Math.min(z1, z2), Math.max(x1, x2), Math.max(z1, z2));
    }
 
    buildPatternRotationCache(segments) {
-      const rotation1 = [], rotation2 = [], rotation3 = [];
+      const rotation1 = [],
+         rotation2 = [],
+         rotation3 = [];
       for (let i = 0; i < segments.length; i++) {
          const r1 = this.rotatePatternSegment(segments[i]);
          const r2 = this.rotatePatternSegment(r1);
@@ -156,7 +153,6 @@ class BlockFillerTaskBuilder {
       return [segments, rotation1, rotation2, rotation3];
    }
 
-   // สร้าง pattern task สำหรับ end sequence
    createPatternTask(name, mode, segments, options = {}) {
       return Object.freeze({
          name,
