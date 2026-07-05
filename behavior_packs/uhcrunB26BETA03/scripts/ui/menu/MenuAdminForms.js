@@ -5,7 +5,7 @@ import { kdHistoryObj } from '../../features/match/State_Game.js';
 import { TEAM_INDEX_MAP, TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { clearAllTeams, getCachedPlayers, getPlayerTeam, joinTeam, leaveTeam } from '../../features/team/TeamActions.js';
 import { logError, logWarn } from '../../shared/Util.js';
-import { AdminMenu } from './MenuAdmin.js';
+import { go } from '../MenuRouter.js';
 
 export function Managements(admin) {
    const form = new ActionFormData();
@@ -19,7 +19,7 @@ export function Managements(admin) {
       form.button(MENU_MSG.back);
       return form
          .show(admin)
-         .then(() => AdminMenu(admin))
+         .then(() => go(admin, 'admin'))
          .catch((error) => {
             logError('AdminMenu', 'Managements form error (empty)', error);
          });
@@ -40,7 +40,7 @@ export function Managements(admin) {
       .then((res) => {
          if (!res || res.canceled) return;
          if (res.selection === playerIds.length) {
-            AdminMenu(admin);
+            go(admin, 'admin');
             return;
          }
          const target = playerCache.get(playerIds[res.selection]);
@@ -161,11 +161,11 @@ export function playerLists(player) {
          if (res.canceled) return;
          if (res.selection === consoleIndex) {
             logWarn('AdminMenu', 'Player List\n' + consoleBody.trimEnd());
-            AdminMenu(player);
+            go(player, 'admin');
             return;
          }
          if (res.selection === backIndex) {
-            AdminMenu(player);
+            go(player, 'admin');
             return;
          }
       })
@@ -214,7 +214,7 @@ export function killList(player) {
             if (res.selection === 0) {
                logWarn('AdminMenu', 'KD History is empty.');
             }
-            AdminMenu(player);
+            go(player, 'admin');
          })
          .catch((error) => {
             logError('AdminMenu', 'killList form error (empty history)', error);
@@ -241,7 +241,7 @@ export function killList(player) {
             const plain = body.replace(/§./g, '');
             logWarn('AdminMenu', 'KD Dump:\n' + plain);
          }
-         AdminMenu(player);
+         go(player, 'admin');
       })
       .catch((error) => {
          logError('AdminMenu', 'killList form error', error);

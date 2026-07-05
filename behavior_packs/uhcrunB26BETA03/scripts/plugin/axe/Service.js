@@ -287,7 +287,7 @@ class Service {
       if (dmg > 0 && player?.isValid) this.applyToolDamage(player, dmg, axeTypeId);
    }
 
-   // Fair scheduling: picks job from a different player than the last one scheduled
+   // การจัดคิวงานอย่างเป็นธรรม (Fair Scheduling): เลือกงานจากผู้เล่นคนอื่นสลับจากผู้เล่นคนล่าสุดที่ถูกจัดคิว
    findFairJob = () => {
       if (model.jobQueue.length === 0) return null;
 

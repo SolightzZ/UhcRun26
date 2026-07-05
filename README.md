@@ -160,16 +160,16 @@ main.js ── Entry (imports 20 event files as side-effect modules)
 │   └── world-pressurePlatePush.js      Pressure plate launch
 │
 ├── ⌨️ commands/ (7 files) ── custom slash command handlers
-│   ├── function.js        CommandMap + registration
-│   ├── uhc-commands.js    setup, start, end, reset
-│   ├── tpa.js             Teleport menu
-│   ├── cache-commands.js  check, clear, clearall
-│   ├── lifecycle.js       Operation mutex lock
-│   ├── confirm-action.js  MessageForm confirmation helper
-│   └── player-util.js     batch, cmd, player pipelines
+│   ├── CustomCommands.js  CommandMap + registration
+│   ├── uhcCommands.js      setup, start, end, reset
+│   ├── teleport.js         Teleport menu
+│   ├── cacheCommands.js    check, clear, clearall
+│   ├── lifecycle.js        Operation mutex lock
+│   ├── confirmAction.js    MessageForm confirmation helper
+│   └── playerUtil.js       batch, cmd, player pipelines
 │
 ├── 🧠 features/ (9 subdirs, 37 files) ── core game logic
-│   ├── border/        6 files ── Shrink, particles, damage, scoreboard
+│   ├── border/        7 files ── Shrink, particles, damage, scoreboard, state
 │   ├── block-filler/  7 files ── Async fill queue, patterns, end sequence
 │   ├── cache/         3 files ── Player caches, item vacuum, GC
 │   ├── leaderboard/   3 files ── 3 NPCs: kills, deaths, teams
@@ -193,13 +193,18 @@ main.js ── Entry (imports 20 event files as side-effect modules)
 │   ├── projectile-hit-sounds/ Orb sound on projectile hit
 │   └── tnt-instant/           Place-and-primed TNT
 │
-├── 🛠️ shared/ (8 files) ── utilities
+├── 🛠️ shared/ (5 files) ── utilities
 │   ├── Util.js            Gamemode, KB, logging, dynamicToast, loc pool
-│   ├── TickProfiler.js    wrapTick profiler (30s reports)
+│   ├── EventBus.js        Decoupled pub/sub event communication
 │   ├── LRUMap.js          LRU cache with TTL
-│   ├── VectorPool.js      {x, y, z} pool (size 500)
+│   ├── CacheRegistry.js   Centralized plugin cache registry
 │   ├── State_Queue.js     Item vacuum + death queue state
-│   └── profiler/          5 files ── state, TPS, reporter, wrapper
+├── 📊 profiler/ (5 files) ── tick budget profiler
+│   ├── index.js           Entry + auto-enable
+│   ├── state.js           Shared state + flush logic
+│   ├── wrapper.js         wrapTick / wrapGenerator
+│   ├── reporter.js        30s report scheduling
+│   └── tps.js             TPS sampling
 │
 └── 🖥️ ui/ (7 files) ── ActionFormData menus
     ├── menu/     MainMenu, AdminMenu, Teleport, Info
@@ -221,7 +226,7 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => autoSmelt.onPlayerBreakBlock(ev), (ev) => axe.onPlayerBreakBlock(ev)];
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
-   runEventHandlers('BreakBlockAfter', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });
 ```
 
@@ -310,7 +315,7 @@ plugin/<name>/
 |----------|------|---------|-------------|
 | `CONFIG.maxTotalPlayers` | `constants/game.js` | `54` | Hard total player cap |
 | `TEAMS` | `constants/game.js` | 9 teams | Team pool (id, name, color, icon) |
-| `CHECKPOINTS` | `features/border/BorderManager.js` | `[500, 450, …, 2]` | 16 border shrink stages |
+| `CHECKPOINTS` | `features/border/BorderState.js` | `[500, 450, …, 2]` | 16 border shrink stages |
 | `MAX_SPAWN_RADIUS` | `features/match/MatchTeleport.js` | `490` | Max scatter radius |
 | `GROUPS_RENDER_CAP` | `features/border/BorderParticle.js` | `36` | Particle groups rendered per tick |
 | `GROUPS_POOL_CAP` | `features/border/BorderParticle.js` | `54` | Max particle group pool |
@@ -339,7 +344,8 @@ plugin/<name>/
 │       │   ├── events/                     20 files — event subscriptions
 │       │   ├── features/                   9 subdirs, 37 files — core game logic
 │       │   ├── plugin/                     12 MVC components, 36 files
-│       │   ├── shared/                     8 files — utilities, profiler, LRU
+│       │   ├── shared/                     5 files — utilities, caches, LRU
+│       │   ├── profiler/                   5 files — tick budget profiler
 │       │   └── ui/                         7 files — ActionForm menus
 │       ├── entities/                       8 files
 │       ├── loot_tables/                    60+ files — chests, entities, equipment

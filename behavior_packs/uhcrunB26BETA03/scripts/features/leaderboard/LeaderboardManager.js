@@ -2,8 +2,7 @@ import { system } from '@minecraft/server';
 import { NPCS, NPC_QUERY_OPTIONS, UI, resetCache } from '../../constants/leaderboard.js';
 import { getOverworld, logError } from '../../shared/Util.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
-
-import { getStats, getTeamText } from './LeaderboardData.js';
+import { clearLookupCache, getStats, getTeamText } from './LeaderboardData.js';
 import { getDeathsText, getPlayerText } from './LeaderboardFormat.js';
 
 function collectNpcsByTag(allNpcs) {
@@ -37,6 +36,9 @@ export function renderBoard() {
    const { pNpcs: playerNpcs, tNpcs: teamNpcs, dNpcs: deathNpcs } = collectNpcsByTag(allNpcs);
 
    if (!teamNpcs.length && !playerNpcs.length && !deathNpcs.length) return;
+
+   // ล้างแคชการค้นหาตามติ๊กเพื่อให้แน่ใจว่าดึงข้อมูลใหม่ในแต่ละรอบของการเรนเดอร์กระดาน (renderBoard)
+   clearLookupCache();
 
    const playerStats = getStats();
 
@@ -98,7 +100,7 @@ function spawnLeaderboardNPCNow() {
                newNpcEntity.addTag('lb:deaths');
             }
          } catch (error) {
-            // ignore
+            // ละเว้น
          }
       }
 

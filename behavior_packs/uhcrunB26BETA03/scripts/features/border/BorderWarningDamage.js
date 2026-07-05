@@ -1,6 +1,6 @@
 import { EntityDamageCause } from '@minecraft/server';
 import { logError } from '../../shared/Util.js';
-import { center, ctx } from './BorderManager.js';
+import { center, ctx } from './BorderState.js';
 
 const configDamage = { cause: EntityDamageCause.void };
 const MAX_DAMAGE = 5;

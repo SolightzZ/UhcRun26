@@ -1,5 +1,6 @@
 import { world } from '@minecraft/server';
 import { CONFIG, TEAMS } from '../../constants/game.js';
+import cacheRegistry from '../../shared/CacheRegistry.js';
 import { logError } from '../../shared/Util.js';
 import { isGameRunning } from '../match/State_Game.js';
 import {
@@ -18,8 +19,7 @@ import {
 } from '../team/State_Team.js';
 import { allPlayersCache, allPlayersCacheIds, hitRegistry, inventoryCache, killStreak, multiKill, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from './State_Cache.js';
 
-// swap-remove for performance
-export function removeCachedPlayerById(list, id) {
+function removeCachedPlayerById(list, id) {
    if (!list || list.length === 0) return;
    const index = list.findIndex((p) => p?.id === id);
    if (index === -1) return;
@@ -70,7 +70,7 @@ export function rebuildTeamRuntimeState(players) {
 export function refreshPlayerCaches() {
    const players = world.getPlayers();
 
-   // modify in-place to preserve reference integrity across imports
+   // ปรับแต่งโดยตรงในตำแหน่งเดิม (in-place) เพื่อคงความสมบูรณ์ของการอ้างอิงในการนำเข้าต่าง ๆ
    allPlayersCache.length = 0;
    uhcPlayersCache.length = 0;
    allPlayersCacheIds.clear();
@@ -116,8 +116,8 @@ export function removePlayerFromRuntimeState(id, teamId) {
    playerTeamCache.delete(id);
 }
 
-// Full cleanup variant — also purges caches, hit tracking, and UHC state
-export function removePlayerFromRuntimeStateFull(id, teamId) {
+// ฟังก์ชันการล้างข้อมูลแบบสมบูรณ์ — ล้างทั้งหน่วยความจำแคช, ข้อมูลการโจมตีล่าสุด และสถานะ UHC
+function removePlayerFromRuntimeStateFull(id, teamId) {
    removePlayerFromRuntimeState(id, teamId);
    playerCache.delete(id);
    hitRegistry.delete(id);
@@ -178,6 +178,9 @@ export function purgePlayerCacheOnLeave(id) {
    deletePlayerStats(id);
 
    aliveTeamDirtyHandler();
+
+   // การล้างหน่วยความจำแคชของปลั๊กอินส่วนกลาง — แทนที่การล้างข้อมูลตอนผู้เล่นออกของแต่ละปลั๊กอิน
+   cacheRegistry.purgePlayer(id);
 }
 
 export function dumpCacheInfo(player) {

@@ -5,5 +5,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => itemConsumeEffects.onItemCompleteUse(ev)];
 
 world.afterEvents.itemCompleteUse.subscribe((event) => {
-   runEventHandlers('ItemCompleteUse', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

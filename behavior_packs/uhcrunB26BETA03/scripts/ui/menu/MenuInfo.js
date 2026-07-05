@@ -1,7 +1,6 @@
 import { ActionFormData } from '@minecraft/server-ui';
 import { logError } from '../../shared/Util.js';
-import { openRankMenu } from '../../ui/rank/RankUI.js';
-import { openMainMenu } from './MenuMain.js';
+import { go, setNav } from '../MenuRouter.js';
 
 export function Credits(player) {
    const form = new ActionFormData();
@@ -33,7 +32,7 @@ export function Credits(player) {
       .show(player)
       .then((res) => {
          if (!res || res.canceled) return;
-         openMainMenu(player);
+         go(player, 'main');
       })
       .catch((error) => {
          logError('UI_ERROR', 'Credits form failed', error);
@@ -81,7 +80,7 @@ export function Features(player) {
       .show(player)
       .then((res) => {
          if (!res || res.canceled) return;
-         openMainMenu(player);
+         go(player, 'main');
       })
       .catch((error) => {
          logError('UI_ERROR', 'Features form failed', error);
@@ -89,5 +88,9 @@ export function Features(player) {
 }
 
 export function Ranks(player) {
-   openRankMenu(player);
+   go(player, 'rank');
 }
+
+setNav('credits', Credits);
+setNav('features', Features);
+setNav('ranks', Ranks);

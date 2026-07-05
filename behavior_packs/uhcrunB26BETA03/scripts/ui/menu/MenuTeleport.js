@@ -5,6 +5,7 @@ import { playerCache, playerTeamCache } from '../../features/cache/State_Cache.j
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { AdminTeleport, getOtherUhcPlayers, playerTeleport, teleportGetAllPlayers } from '../../features/team/TeleportManager.js';
 import { logError } from '../../shared/Util.js';
+import { go, setNav } from '../MenuRouter.js';
 
 export function showTeleportForm(player, isAdmin) {
    if (!player) return;
@@ -66,7 +67,7 @@ export function showTeleportForm(player, isAdmin) {
                teleportShowTeamPlayers(player, action.teamId, mode);
                break;
             case 'back':
-               AdminMenu(player);
+               go(player, 'admin');
                break;
          }
       })
@@ -74,6 +75,8 @@ export function showTeleportForm(player, isAdmin) {
          logError('TeleportMenu', 'showTeleportForm error', error);
       });
 }
+
+setNav('teleport', showTeleportForm);
 
 function teleportRandom(player, isAdmin) {
    const candidates = getOtherUhcPlayers(player.id);

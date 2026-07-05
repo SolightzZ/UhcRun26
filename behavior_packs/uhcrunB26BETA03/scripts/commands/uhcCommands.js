@@ -1,11 +1,11 @@
 import { Difficulty, world } from '@minecraft/server';
 import { SPAWN_CONFIG, TICKING_AREAS } from '../constants/game.js';
 import { spawnLeaderboardNPC, updateLeaderboard } from '../features/leaderboard/LeaderboardManager.js';
-import matchManager from '../features/match/MatchManager.js';
+import MatchManager from '../features/match/MatchManager.js';
 import { logError } from '../shared/Util.js';
-import { confirmAction } from './confirm-action.js';
+import { confirmAction } from './confirmAction.js';
 import { beginLifecycle, endLifecycle } from './lifecycle.js';
-import { batch, cmd, end, setupOrReset } from './player-util.js';
+import { batch, cmd, end, setupOrReset } from './playerUtil.js';
 
 export function uhcSetup(source) {
    confirmAction(
@@ -73,7 +73,7 @@ export function uhcReset(source) {
          try {
             world.sendMessage('[UHC] Reset complete.');
 
-            matchManager.resetGameUhc();
+            MatchManager.resetGameUhc();
 
             world.gameRules.naturalRegeneration = true;
             world.gameRules.showCoordinates = false;
@@ -115,7 +115,7 @@ export function uhcStart(source) {
          try {
             cmd('daylock false');
 
-            matchManager.startGameUhc();
+            MatchManager.startGameUhc();
 
             world.gameRules.naturalRegeneration = false;
             world.gameRules.showCoordinates = true;
@@ -149,7 +149,7 @@ export function uhcEnd(source) {
             world.sendMessage('[UHC] The game is over.');
             cmd('effect @a clear');
 
-            matchManager.endGameUhc();
+            MatchManager.endGameUhc();
 
             world.gameRules.pvp = false;
             world.gameRules.fallDamage = false;

@@ -5,5 +5,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => itemPickup.onEntityItemPickup(ev)];
 
 world.afterEvents.entityItemPickup.subscribe((event) => {
-   runEventHandlers('EntityItemPickup', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

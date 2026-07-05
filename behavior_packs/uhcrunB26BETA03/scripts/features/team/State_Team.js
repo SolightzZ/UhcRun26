@@ -20,7 +20,7 @@ for (let i = 0; i < TEAMS.length; i++) {
    teamStats.set(team.id, { kills: 0, deaths: 0 });
 }
 
-// setter functions replace direct map.set/.delete/.clear
+// ใช้ฟังก์ชันเซ็ตเตอร์ (Setter Functions) แทนการสั่ง map.set/.delete/.clear โดยตรง
 export function setTeamCount(id, n) {
    teamCounts.set(id, n);
 }
@@ -52,7 +52,7 @@ export function clearDeathLocations() {
    deathLocation.clear();
 }
 
-// callback when team changes (used by CacheManager)
+// ฟังก์ชันเรียกกลับ (Callback) เมื่อมีการเปลี่ยนทีม (ใช้งานโดย CacheManager)
 export let aliveTeamDirtyHandler = () => {};
 export function setAliveTeamDirtyHandler(handler) {
    aliveTeamDirtyHandler = typeof handler === 'function' ? handler : () => {};

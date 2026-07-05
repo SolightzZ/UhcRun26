@@ -1,7 +1,8 @@
 import { DisplaySlotId, ObjectiveSortOrder, world } from '@minecraft/server';
-import bf from '../block-filler/BlockFiller.js';
+import BlockFiller from '../block-filler/BlockFiller.js';
 import { getPlayerTeam } from '../team/TeamActions.js';
-import bm, { borderEnd, CHECKPOINTS, ctx, icons, MinecraftColor, renderCache } from './BorderManager.js';
+import BorderShrink from './BorderShrink.js';
+import { borderEnd, CHECKPOINTS, ctx, getGameState, icons, MinecraftColor, renderCache } from './BorderState.js';
 
 const uhc = 'uhc';
 const uhcName = '§h§nUhcRun26';
@@ -67,7 +68,7 @@ class BorderManagerScoreboard {
       const tick = ctx.uhcTick;
 
       if (ctx.nextShrinkIndex >= CHECKPOINTS.length && ctx.targetRadius === null) {
-         return bf.getEndSequenceLabel(tick, ctx.endSeqState, ctx.endSeqStartTick, bf.fillHasPendingWork());
+         return BlockFiller.getEndSequenceLabel(tick, ctx.endSeqState, ctx.endSeqStartTick, BlockFiller.fillHasPendingWork());
       }
 
       if (ctx.targetRadius != null) {
@@ -105,7 +106,7 @@ class BorderManagerScoreboard {
          if (aliveTeams.size) {
             let result = '';
 
-            const teams = bm.getTeamsCached();
+            const teams = BorderShrink.getTeamsCached();
             for (let i = 0, len = teams.length; i < len; i++) {
                const team = teams[i];
 
@@ -126,7 +127,7 @@ class BorderManagerScoreboard {
    }
 
    scoreboardGetGameState() {
-      return bm.getGameState();
+      return getGameState(ctx);
    }
 
    scoreboardUpdate(obj, uhcPlayers) {

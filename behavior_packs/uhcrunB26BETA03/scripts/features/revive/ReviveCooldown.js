@@ -3,7 +3,7 @@ import { REVIVE_MSG } from '../../constants/game.js';
 import { dynamicToast, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { reviverCooldown } from './State_Revive.js';
 
-export function getRemainingReviveCooldown(playerId) {
+function getRemainingReviveCooldown(playerId) {
    if (!playerId) return 0;
 
    const endTick = reviverCooldown.get(playerId) ?? 0;
@@ -13,7 +13,7 @@ export function getRemainingReviveCooldown(playerId) {
    return remaining > 0 ? remaining : 0;
 }
 
-export function clearExpiredReviveCooldown(playerId) {
+function clearExpiredReviveCooldown(playerId) {
    if (!playerId) return;
 
    if (getRemainingReviveCooldown(playerId) > 0) return;

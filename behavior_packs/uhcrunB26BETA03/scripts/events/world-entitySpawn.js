@@ -5,5 +5,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => blockInteractGuard.onEntitySpawn(ev)];
 
 world.afterEvents.entitySpawn.subscribe((event) => {
-   runEventHandlers('EntitySpawn', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

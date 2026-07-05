@@ -5,5 +5,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [HandlerRevive];
 
 world.afterEvents.itemUse.subscribe((event) => {
-   runEventHandlers('ItemUse', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

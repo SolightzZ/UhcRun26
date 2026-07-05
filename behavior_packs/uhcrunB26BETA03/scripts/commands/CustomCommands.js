@@ -1,10 +1,9 @@
 import { CommandPermissionLevel, CustomCommandStatus, system } from '@minecraft/server';
-import { toggleProfiler } from '../shared/profiler/index.js';
 import { logError } from '../shared/Util.js';
 import { openMainMenu } from '../ui/menu/MenuMain.js';
-import { uhcCheck, uhcClear, uhcClearAll } from './cache-commands.js';
-import { tpa } from './tpa.js';
-import { uhcEnd, uhcReset, uhcSetup, uhcStart } from './uhc-commands.js';
+import { uhcCheck, uhcClear, uhcClearAll } from './cacheCommands.js';
+import { tpa } from './teleport.js';
+import { uhcEnd, uhcReset, uhcSetup, uhcStart } from './uhcCommands.js';
 
 export function HandlerCustomCommands({ customCommandRegistry }) {
    for (const name in CommandMap) {
@@ -42,7 +41,7 @@ export function HandlerCustomCommands({ customCommandRegistry }) {
    }
 }
 
-export const CommandMap = {
+const CommandMap = {
    'addon:uhcsetup': {
       description: 'Setup UHC world (spawn, gamerules, leaderboard)',
       handler: uhcSetup,
@@ -71,11 +70,6 @@ export const CommandMap = {
    'addon:gui': {
       description: 'Open the main admin GUI menu',
       handler: openMainMenu,
-      permission: CommandPermissionLevel.GameDirectors,
-   },
-   'addon:profiler': {
-      description: 'Toggle tick-budget profiler on/off (reports every 30s via console)',
-      handler: toggleProfiler,
       permission: CommandPermissionLevel.GameDirectors,
    },
    'addon:check': {

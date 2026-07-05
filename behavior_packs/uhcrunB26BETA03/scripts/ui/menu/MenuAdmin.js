@@ -5,9 +5,8 @@ import { hitRegistry, killStreak, multiKill, playerCache, playerTeamCache, uhcPl
 import { TEAM_LOOKUP, deathLocation, playerStats, teamCounts, teamStats } from '../../features/team/State_Team.js';
 import { getCachedPlayers, getPlayersByTeam } from '../../features/team/TeamActions.js';
 import { logError, logWarn } from '../../shared/Util.js';
+import { go, setNav } from '../MenuRouter.js';
 import { Managements, clearTeams, killList, playerLists } from './MenuAdminForms.js';
-import { openMainMenu } from './MenuMain.js';
-import { showTeleportForm } from './MenuTeleport.js';
 
 function showDumpViewer(admin, title, body, logTag) {
    const plain = body.replace(/§./g, '');
@@ -182,7 +181,7 @@ export function AdminMenu(player) {
                clearTeams(player);
                break;
             case 3:
-               showTeleportForm(player, true);
+               go(player, 'teleport', true);
                break;
             case 4:
                Managements(player);
@@ -206,7 +205,7 @@ export function AdminMenu(player) {
                viewDeathLocations(player);
                break;
             case 11:
-               openMainMenu(player);
+               go(player, 'main');
                break;
          }
       })
@@ -214,3 +213,5 @@ export function AdminMenu(player) {
          logError('AdminMenu', 'AdminMenu form error', error);
       });
 }
+
+setNav('admin', AdminMenu);

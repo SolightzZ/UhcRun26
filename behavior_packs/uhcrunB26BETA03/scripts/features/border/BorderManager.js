@@ -1,93 +1,17 @@
-import { world } from '@minecraft/server';
 import { dynamicToast, TEX_BARRIER } from '../../shared/Util.js';
-import bf from '../block-filler/BlockFiller.js';
+import BlockFiller from '../block-filler/BlockFiller.js';
 import { END_SEQUENCE_STATE } from '../block-filler/BlockFillerConstants.js';
 import { uhcPlayersCache } from '../cache/State_Cache.js';
-import { getCachedPlayers } from '../team/TeamActions.js';
-import borderEvents from './BorderGuard.js';
-import particleInstance from './BorderParticle.js';
-import scoreboardInstance from './BorderScoreboard.js';
-import shrinkInstance from './BorderShrink.js';
-import warningDamageInstance from './BorderWarningDamage.js';
-
-export const icons = Object.freeze({
-   Sword: '',
-   shield: '',
-   Border: '',
-   Bot: '',
-   Hourglass: '',
-});
-
-export const MinecraftColor = Object.freeze({
-   darkAqua: '§3',
-   gray: '§7',
-   green: '§a',
-   red: '§c',
-   yellow: '§e',
-   white: '§f',
-   darkBlue: '§1',
-   cyan: '§b',
-});
-
-export const CHECKPOINTS = [500, 450, 400, 350, 300, 250, 200, 150, 100, 80, 50, 25, 16, 10, 5, 2];
-
-export const borderEnd = CHECKPOINTS[CHECKPOINTS.length - 1];
-
-export const borderColors = {
-   blue: { red: 0, green: 0.54, blue: 1, alpha: 1.0 },
-   red: { red: 1.0, green: 0.2, blue: 0.2, alpha: 1.0 },
-};
-
-export const ticks = 20;
-export const center = { x: 0, z: 0 };
-
-// Game state — mutated by BorderManager and sub-systems
-function GameContext() {
-   return {
-      isRunning: false,
-      isDestroyed: false,
-      uhcTick: 0,
-      checkInterval: null,
-      cachedDimension: null,
-      prevShowCoordinates: false,
-      borderReady: false,
-      borderRadius: CHECKPOINTS[0],
-      nextShrinkIndex: 1,
-      nextShrinkTick: 300,
-      targetRadius: null,
-      wbBounds: null,
-      shrinkStartTick: 0,
-      shrinkDuration: 0,
-      startRadius: CHECKPOINTS[0],
-      currentBorderColor: borderColors.blue,
-      endSeqState: 0,
-      endSeqStartTick: -1,
-      objective: null,
-      borderDamageIndex: 0,
-      cacheRetryTick: 0,
-      countdownIntervalId: null,
-   };
-}
-
-export const ctx = GameContext();
-
-// Change-detection caches — only read/written by renderers (Scoreboard, Particle)
-export const renderCache = {
-   aliveTeamBarCache: MinecraftColor.gray + '-',
-   aliveTeamDirty: true,
-   lastBorderRadius: -1,
-   lastPlayerCount: -1,
-   lastTargetRadius: null,
-   borderMolang: null,
-   scoreboardUpdateThrottle: 0,
-};
-
-const titleConfig = Object.freeze({ stayDuration: 200, fadeInDuration: 10, fadeOutDuration: 20 });
-const soundConfig = Object.freeze({ volume: 0.8, pitch: 1 });
+import BorderGuard from './BorderGuard.js';
+import BorderParticle from './BorderParticle.js';
+import BorderScoreboard from './BorderScoreboard.js';
+import BorderShrink from './BorderShrink.js';
+import { borderColors, broadcast, CHECKPOINTS, ctx, GameContext, MinecraftColor, renderCache } from './BorderState.js';
+import BorderWarningDamage from './BorderWarningDamage.js';
 
 class BorderManager {
    init() {
-      bf.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
+      BlockFiller.setIsEndgameHandler(() => ctx.nextShrinkIndex >= CHECKPOINTS.length);
    }
 
    resetBorderState() {
@@ -101,9 +25,9 @@ class BorderManager {
       ctx.startRadius = CHECKPOINTS[0];
       ctx.currentBorderColor = borderColors.blue;
       this.endSequenceReset();
-      shrinkInstance.borderManagerSetRadius(CHECKPOINTS[0]);
+      BorderShrink.borderManagerSetRadius(CHECKPOINTS[0]);
       ctx.borderReady = true;
-      shrinkInstance.borderManagerSyncGeometry();
+      BorderShrink.borderManagerSyncGeometry();
    }
 
    resetUiState() {
@@ -112,8 +36,8 @@ class BorderManager {
       renderCache.lastBorderRadius = -1;
       renderCache.lastPlayerCount = -1;
       renderCache.lastTargetRadius = null;
-      scoreboardInstance.clearCache();
-      warningDamageInstance.clearCache();
+      BorderScoreboard.clearCache();
+      BorderWarningDamage.clearCache();
    }
 
    borderManagerTick() {
@@ -122,8 +46,8 @@ class BorderManager {
          return;
       }
 
-      if (ctx.uhcTick === ctx.nextShrinkTick - 30) shrinkInstance.borderManagerBroadcastWarning();
-      if (ctx.uhcTick >= ctx.nextShrinkTick) shrinkInstance.borderManagerApplyShrink();
+      if (ctx.uhcTick === ctx.nextShrinkTick - 30) BorderShrink.borderManagerBroadcastWarning();
+      if (ctx.uhcTick >= ctx.nextShrinkTick) BorderShrink.borderManagerApplyShrink();
    }
 
    endSequenceReset() {
@@ -137,23 +61,23 @@ class BorderManager {
 
       if (ctx.endSeqStartTick === -1) {
          ctx.endSeqStartTick = ctx.uhcTick;
-         this.broadcast(uhcPlayersCache, {
+         broadcast(uhcPlayersCache, {
             message: dynamicToast('Border ถึงวงสุดท้ายแล้ว!', TEX_BARRIER),
             sound: 'world_noti',
          });
          return;
       }
 
-      if (!bf.shouldAdvanceEndSequence(ctx.uhcTick, ctx.endSeqState, ctx.endSeqStartTick, bf.fillHasPendingWork())) return;
+      if (!BlockFiller.shouldAdvanceEndSequence(ctx.uhcTick, ctx.endSeqState, ctx.endSeqStartTick, BlockFiller.fillHasPendingWork())) return;
 
-      const step = bf.getEndSequenceStep(ctx.endSeqState);
+      const step = BlockFiller.getEndSequenceStep(ctx.endSeqState);
       if (!step) return;
 
       ctx.endSeqState = step.nextState;
       ctx.endSeqStartTick = ctx.uhcTick;
 
       const players = uhcPlayersCache;
-      this.broadcast(players, {
+      broadcast(players, {
          message: dynamicToast(step.message, step.icon),
          sound: 'world_noti',
       });
@@ -166,54 +90,8 @@ class BorderManager {
       }
    }
 
-   broadcast(targetOrPayload, maybePayload) {
-      let targets, payload;
-
-      if (maybePayload !== undefined) {
-         targets = targetOrPayload;
-         payload = maybePayload;
-      } else {
-         targets = getCachedPlayers();
-         payload = targetOrPayload;
-      }
-
-      if (!payload || !targets?.length) return;
-
-      const { message, title, subtitle, sound } = payload;
-
-      const hasMessage = typeof message === 'string';
-      const hasTitle = typeof title === 'string' || typeof subtitle === 'string';
-      const hasSound = typeof sound === 'string';
-
-      if (!hasMessage && !hasTitle && !hasSound) return;
-
-      let titleOptions;
-
-      if (hasTitle) {
-         titleOptions = {
-            stayDuration: titleConfig.stayDuration,
-            fadeInDuration: titleConfig.fadeInDuration,
-            fadeOutDuration: titleConfig.fadeOutDuration,
-            subtitle: typeof subtitle === 'string' ? subtitle : '',
-         };
-      }
-
-      for (let i = 0; i < targets.length; i++) {
-         const player = targets[i];
-         if (!player?.isValid) continue;
-
-         if (hasMessage) player.sendMessage(message);
-
-         if (hasTitle) {
-            player.onScreenDisplay.setTitle(typeof title === 'string' ? title : '', titleOptions);
-         }
-
-         if (hasSound) player.playSound(sound, soundConfig);
-      }
-   }
-
    particleRendererTick(players) {
-      return particleInstance.particleRendererTick(players);
+      return BorderParticle.particleRendererTick(players);
    }
 
    resetContext(target) {
@@ -236,54 +114,44 @@ class BorderManager {
    }
 
    scoreboardInit() {
-      return scoreboardInstance.scoreboardInit();
+      return BorderScoreboard.scoreboardInit();
    }
    scoreboardClear() {
-      return scoreboardInstance.scoreboardClear();
+      return BorderScoreboard.scoreboardClear();
    }
    scoreboardUpdate(obj, uhcPlayers) {
-      return scoreboardInstance.scoreboardUpdate(obj, uhcPlayers);
+      return BorderScoreboard.scoreboardUpdate(obj, uhcPlayers);
    }
    borderManagerApplyDamage(player) {
-      return warningDamageInstance.borderManagerApplyDamage(player);
+      return BorderWarningDamage.borderManagerApplyDamage(player);
    }
    getTeamsCached() {
-      return shrinkInstance.getTeamsCached();
+      return BorderShrink.getTeamsCached();
    }
    borderManagerSyncGeometry() {
-      return shrinkInstance.borderManagerSyncGeometry();
+      return BorderShrink.borderManagerSyncGeometry();
    }
    borderManagerIsOutside(x, z) {
-      return shrinkInstance.borderManagerIsOutside(x, z);
+      return BorderShrink.borderManagerIsOutside(x, z);
    }
    borderManagerTickShrink() {
-      return shrinkInstance.borderManagerTickShrink();
+      return BorderShrink.borderManagerTickShrink();
    }
 
    handlePlayerBreakBlock(ev) {
-      return borderEvents.handlePlayerBreakBlock(ev);
+      return BorderGuard.handlePlayerBreakBlock(ev);
    }
    handlePlayerInteractWithEntity(ev) {
-      return borderEvents.handlePlayerInteractWithEntity(ev);
+      return BorderGuard.handlePlayerInteractWithEntity(ev);
    }
    handlePlayerInteractWithBlock(ev) {
-      return borderEvents.handlePlayerInteractWithBlock(ev);
+      return BorderGuard.handlePlayerInteractWithBlock(ev);
    }
    handlePlayerPlaceBlock(ev) {
-      return borderEvents.handlePlayerPlaceBlock(ev);
+      return BorderGuard.handlePlayerPlaceBlock(ev);
    }
    isUhcPlayer(player) {
-      return borderEvents.isUhcPlayer(player);
-   }
-
-   // Return computed game state string so scoreboard doesn't read ctx directly
-   getGameState() {
-      if (!ctx.isRunning) return `${icons.Hourglass}`;
-      if (ctx.uhcTick < 30) return `?`;
-      if (!world.gameRules) return `?`;
-      if (!world.gameRules.pvp) return `${icons.shield}`;
-      if (ctx.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
-      return `?`;
+      return BorderGuard.isUhcPlayer(player);
    }
 }
 

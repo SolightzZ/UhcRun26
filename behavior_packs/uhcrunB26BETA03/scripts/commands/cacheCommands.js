@@ -1,5 +1,5 @@
 import { clearAllCachesIncludingStats, clearRuntimeCaches, dumpCacheInfo } from '../features/cache/CacheManager.js';
-import { confirmAction } from './confirm-action.js';
+import { confirmAction } from './confirmAction.js';
 
 export function uhcCheck(source) {
    confirmAction(source, 'Check Cache Sizes', '§7This will output the current sizes of all UHC runtime caches into your chat.\n\n§eDo you want to proceed?', () => dumpCacheInfo(source));

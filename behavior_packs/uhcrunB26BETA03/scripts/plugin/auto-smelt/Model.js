@@ -1,7 +1,7 @@
 import { uhcPlayersCache } from '../../features/cache/State_Cache.js';
 import { LRUMap } from '../../shared/LRUMap.js';
 
-// Adaptive scan radius thresholds — tighter when more players online
+// ขีดจำกัดรัศมีการสแกนแบบปรับเปลี่ยนได้ — จะแคบลงเมื่อมีผู้เล่นออนไลน์มากขึ้น
 const ADAPTIVE_RADIUS = Object.freeze({
    BASE: 2.0,
    MEDIUM: 1.5,
@@ -90,7 +90,7 @@ class Model {
    });
 
    toolCache = Object.assign(new LRUMap(60, 1), {
-      // Override cleanup for objects with .tick property
+      // เขียนทับการล้างข้อมูลสำหรับออบเจ็กต์ที่มีคุณสมบัติ .tick
       cleanup(currentTick) {
          if (this._ttl <= 0) return;
          for (const [key, val] of this._m) {
@@ -110,7 +110,7 @@ class Model {
       return ADAPTIVE_RADIUS.BASE;
    }
 
-    getEffectiveR2() {
+   getEffectiveR2() {
       const r = this.getEffectiveRadius();
       return r * r;
    }

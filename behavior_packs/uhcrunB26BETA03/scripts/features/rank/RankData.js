@@ -1,9 +1,8 @@
 import { world } from '@minecraft/server';
 import { logError, logWarn } from '../../shared/Util.js';
-
+import { resolveParticipantName } from '../stats/StatsManager.js';
 import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { calcKD, calcPlacementPoints } from './RankTiers.js';
-import { resolveParticipantName } from '../stats/StatsManager.js';
 
 const RANK_KEY = 'uhc_ranks';
 let _rankData = null;
@@ -38,7 +37,7 @@ function sanitizeTeamEntry(entry) {
    };
 }
 
-export function loadRankData() {
+function loadRankData() {
    if (_rankData) return _rankData;
 
    try {
@@ -72,7 +71,7 @@ export function loadRankData() {
 
 const MAX_RANK_SIZE = 900 * 1024;
 
-export function saveRankData(data) {
+function saveRankData(data) {
    if (!data) return;
    try {
       const raw = JSON.stringify(data);
@@ -87,7 +86,7 @@ export function saveRankData(data) {
    }
 }
 
-export function markDirty() {
+function markDirty() {
    _dirty = true;
 }
 
@@ -109,7 +108,7 @@ export function mergePlayerStats(name, { kills = 0, deaths = 0, teamId = null } 
    markDirty();
 }
 
-// placement points only — does not increment games
+// คะแนนอันดับเท่านั้น — ไม่นับจำนวนการเล่นเกมเพิ่ม
 export function recordPlacement(teamId, placement) {
    if (!teamId || placement <= 0) return;
    const data = loadRankData();
@@ -155,7 +154,7 @@ export function recordSurvivedLast(playerName) {
    markDirty();
 }
 
-// placement + wins only — does not increment games
+// อันดับและการชนะเท่านั้น — ไม่นับจำนวนการเล่นเกมเพิ่ม
 export function recordWin(teamId, playerNames) {
    recordPlacement(teamId, 1);
    const data = loadRankData();

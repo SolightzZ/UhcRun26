@@ -4,7 +4,7 @@ import { flushIfDirty, getAllPlayersSorted, getPlayerDeathStats, getPlayerKillSt
 import { getRankTier } from '../../features/rank/RankTiers.js';
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { logError } from '../../shared/Util.js';
-import { openMainMenu } from '../menu/MenuMain.js';
+import { go, setNav } from '../MenuRouter.js';
 
 const RANK_PREFIXES = ['§6#1', '§f#2', '§e#3'];
 function rankPrefix(i) {
@@ -42,7 +42,7 @@ export function openRankMenu(player) {
                openKDABoard(player);
                break;
             case 4:
-               openMainMenu(player);
+               go(player, 'main');
                break;
          }
       })
@@ -224,3 +224,5 @@ function openKDABoard(player) {
          logError('RankUI', 'KDA Leaderboard form failed', error);
       });
 }
+
+setNav('rank', openRankMenu);

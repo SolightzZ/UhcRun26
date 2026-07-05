@@ -67,7 +67,7 @@ export function teleportToSpawn(player) {
       try {
          _spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
       } catch {
-         // Chunk not loaded yet — particle is non-critical
+         // ชังก์ยังไม่ได้ถูกโหลด — การแสดงผลพาร์ติเคิลไม่ใช่ส่วนวิกฤต
       }
    }, 5);
 }

@@ -6,5 +6,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [HandlerOnHurt, (ev) => knockback.onEntityHurt(ev)];
 
 world.afterEvents.entityHurt.subscribe((event) => {
-   runEventHandlers('EntityHurt', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

@@ -1,7 +1,7 @@
 import { TEAMS } from '../../constants/game.js';
 import { dynamicToast, TEX_BARRIER } from '../../shared/Util.js';
 import { uhcPlayersCache } from '../cache/State_Cache.js';
-import bm, { borderColors, borderEnd, center, CHECKPOINTS, ctx } from './BorderManager.js';
+import { borderColors, borderEnd, broadcast, center, CHECKPOINTS, ctx } from './BorderState.js';
 
 const SHRINK_CONFIG = [
    [200, 80, 90],
@@ -101,7 +101,7 @@ class BorderManagerShrink {
       const restTime = this.borderManagerGetRestTime(target);
       ctx.nextShrinkTick = ctx.shrinkStartTick + ctx.shrinkDuration + restTime;
 
-      bm.broadcast(players, {
+      broadcast(players, {
          message: dynamicToast(`Border กำลังลดลง ${target}`, TEX_BARRIER),
          sound: 'world_noti',
       });
@@ -112,7 +112,7 @@ class BorderManagerShrink {
 
       if (!players.length) return;
 
-      bm.broadcast(players, {
+      broadcast(players, {
          message: dynamicToast('Border กำลังลดลงใน 30 วินาที', 'textures/ui/ErrorGlyph_small_hover'),
          sound: 'noti',
       });

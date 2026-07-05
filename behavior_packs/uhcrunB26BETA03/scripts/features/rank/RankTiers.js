@@ -23,7 +23,7 @@ export function getRankTier(kd, totalGames) {
    return tier;
 }
 
-// #1=5, #2=4, #3=3, #4=2, #5+=1
+// อันดับที่ 1=5 คะแนน, อันดับที่ 2=4 คะแนน, อันดับที่ 3=3 คะแนน, อันดับที่ 4=2 คะแนน, อันดับที่ 5 ขึ้นไป=1 คะแนน
 export function calcPlacementPoints(placement) {
    if (placement <= 1) return 5;
    if (placement === 2) return 4;

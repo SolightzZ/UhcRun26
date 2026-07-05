@@ -5,12 +5,13 @@ import { allPlayersCache } from '../features/cache/State_Cache.js';
 import { COMPASS_ITEM, logError, setAdventure } from '../shared/Util.js';
 
 let SPAWN_DIMENSION = null;
+
 function getSpawnDimension() {
    if (!SPAWN_DIMENSION) SPAWN_DIMENSION = world.getDimension(SPAWN_CONFIG.dimension);
    return SPAWN_DIMENSION;
 }
 
-export const SETUP_RESET_EFFECTS = Object.freeze([
+const SETUP_RESET_EFFECTS = Object.freeze([
    { type: 'regeneration', duration: 500 },
    { type: 'resistance', duration: 500 },
    { type: 'saturation', duration: 500 },
@@ -54,14 +55,14 @@ export function cmd(commandString) {
    }
 }
 
-export function setItemPlayer(player) {
+function setItemPlayer(player) {
    const container = getPlayerInventoryContainer(player);
    if (!container) return;
    container.clearAll();
    container.setItem(0, new ItemStack(COMPASS_ITEM, 1));
 }
 
-export function applyEffects(player, effects = []) {
+function applyEffects(player, effects = []) {
    for (let ei = 0, eLen = effects.length; ei < eLen; ei++) {
       const { type, duration, amp = 0 } = effects[ei];
       try {
@@ -75,7 +76,7 @@ export function applyEffects(player, effects = []) {
    }
 }
 
-export function setPlayerSpawn(player) {
+function setPlayerSpawn(player) {
    if (!player?.isValid) return;
    try {
       player.playSound('spawn');

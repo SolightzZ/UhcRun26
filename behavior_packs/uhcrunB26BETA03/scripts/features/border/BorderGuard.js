@@ -1,7 +1,8 @@
+import { GLOBAL_BORDER_LIMIT, PLACE_BLOCK_LOCK_RADIUS } from '../../constants/game.js';
 import { END_SEQUENCE_STATE } from '../block-filler/BlockFillerConstants.js';
 import { uhcPlayerIds } from '../cache/State_Cache.js';
-import { GLOBAL_BORDER_LIMIT, PLACE_BLOCK_LOCK_RADIUS } from '../../constants/game.js';
-import bm, { ctx } from './BorderManager.js';
+import BorderShrink from './BorderShrink.js';
+import { ctx } from './BorderState.js';
 
 class BorderEvents {
    isUhcPlayer(player) {
@@ -37,7 +38,7 @@ class BorderEvents {
       const bz = this.getTargetAxis(target, 'z');
       if (bx === undefined) return false;
       if (bz === undefined) return false;
-      if (!bm.borderManagerIsOutside(bx, bz)) return false;
+      if (!BorderShrink.borderManagerIsOutside(bx, bz)) return false;
 
       return this.isUhcPlayer(player);
    }
@@ -56,11 +57,12 @@ class BorderEvents {
       return false;
    }
 
-   // lock place-block when border is small and past initial wait
+   // ล็อคการวางบล็อกเมื่อขอบเขตมีขนาดเล็กและผ่านพ้นการรอเริ่มต้นแล้ว
    shouldLockPlaceBlock(player) {
       if (!ctx.isRunning) return false;
       if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
-      // allow placement during INITIAL_WAIT and PATTERN3 until pattern 1 clears outer ring
+
+      // อนุญาตให้วางบล็อกได้ในระหว่าง INITIAL_WAIT และ PATTERN3 จนกว่า pattern 1 จะเคลียร์วงแหวนรอบนอก
       if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1) return false;
       return this.isUhcPlayer(player);
    }

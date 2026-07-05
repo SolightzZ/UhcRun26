@@ -61,7 +61,7 @@ class Service {
       const player = ev.entity;
       if (!player?.isValid || player.typeId !== 'minecraft:player') return;
 
-      // Bedrock's native runtime returns a non-standard collection — use Array.from() to ensure iterability
+      // สภาพแวดล้อมรันไทม์ดั้งเดิมของ Bedrock ส่งคืนคอลเลกชันที่ไม่ได้เป็นมาตรฐาน — ให้ใช้ Array.from() เพื่อรองรับการวนลูปประมวลผลข้อมูล
       const items = Array.from(ev.items ?? []);
       if (!items.length) return;
 

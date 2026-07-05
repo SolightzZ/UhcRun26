@@ -6,5 +6,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => axe.onPlayerBreakBlock(ev), (ev) => autoSmelt.onPlayerBreakBlock(ev)];
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
-   runEventHandlers('PlayerBreakBlockAfter', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

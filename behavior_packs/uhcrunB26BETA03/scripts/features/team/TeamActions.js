@@ -31,14 +31,14 @@ function patchPlayerStats(playerId, patch) {
    return ps;
 }
 
-export function formatTeamNametag(player, teamId) {
+function formatTeamNametag(player, teamId) {
    const teamInfo = TEAM_LOOKUP.get(teamId);
    if (!teamInfo) return player.name;
    const teamIndex = (TEAM_INDEX_MAP.get(teamId) ?? -1) + 1;
    return `${teamInfo.color}[${teamIndex}]${player.name}`;
 }
 
-export function flushNametagUpdates() {
+function flushNametagUpdates() {
    const dirtyArr = Array.from(dirtyNametagIds);
    for (let di = 0, dLen = dirtyArr.length; di < dLen; di++) {
       const id = dirtyArr[di];
@@ -50,7 +50,7 @@ export function flushNametagUpdates() {
    dirtyNametagIds.clear();
 }
 
-export function markNametagDirty(playerId) {
+function markNametagDirty(playerId) {
    if (!playerId) return;
    dirtyNametagIds.add(playerId);
    if (nametagFlushTask !== null) return;
@@ -81,7 +81,7 @@ export function getCachedPlayers() {
    return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
 }
 
-// cache first, then dynamic property
+// ดำเนินการกับหน่วยความจำแคชก่อน จากนั้นจึงดำเนินการกับคุณสมบัติไดนามิก (Dynamic Property)
 export function getPlayerTeam(player) {
    if (!player?.isValid) return null;
    const cachedTeamId = playerTeamCache.get(player.id);
@@ -182,13 +182,13 @@ export function leaveTeam(player) {
    setTeam(player, null);
 }
 
-// clear teams, keep uhc tags
+// ล้างข้อมูลทีม แต่คงแท็ก UHC ไว้
 export function clearAllTeams(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
    refreshPlayerCaches();
    clearAllReviveRuntime();
 
-   const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+   const players = getCachedPlayers();
    const teamsLen = TEAMS.length;
 
    clearTeamRuntimeState();
@@ -217,17 +217,17 @@ export function clearAllTeams(executor) {
    }
 }
 
-// clear runtime AND strip player entity tags, nametags, and dynamic properties
+// ล้างข้อมูลรันไทม์ และลบแท็กเอนทิตี ป้ายชื่อ และคุณสมบัติไดนามิกของผู้เล่นออก
 export function clearAllTaguhcAndDynamicProperty(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
 
    const freshPlayers = world.getPlayers();
 
-   // Strip entity tags: iterate freshPlayers so we don't depend on cache
+   // ลบแท็กเอนทิตี: วนลูปข้อมูล freshPlayers เพื่อไม่ให้ขึ้นตรงกับหน่วยความจำแคช
    for (let pi = 0, pLen = freshPlayers.length; pi < pLen; pi++) {
       const p = freshPlayers[pi];
       if (!p?.isValid) continue;
-      // Check if player has team data before stripping
+      // ตรวจสอบว่าผู้เล่นมีข้อมูลทีมก่อนที่จะทำการลบข้อมูล
       let hasTeam = false;
       for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
          const tid = TEAMS[ti].id;
@@ -238,11 +238,11 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
       }
       if (p.getDynamicProperty(CONFIG.key)) hasTeam = true;
       p.setDynamicProperty(CONFIG.key, undefined);
-      // Only reset nametag if player had no team data — keep formatted nametag otherwise
+      // รีเซ็ตป้ายชื่อเฉพาะกรณีที่ผู้เล่นไม่มีข้อมูลทีมเท่านั้น — นอกเหนือจากนั้นให้คงป้ายชื่อที่จัดรูปแบบไว้
       if (!hasTeam) p.nameTag = p.name;
    }
 
-   // Cancel any pending nametag flush BEFORE clearing caches
+   // ยกเลิกการอัปเดตป้ายชื่อที่ค้างอยู่ก่อนที่จะทำการล้างหน่วยความจำแคช
    if (nametagFlushTask !== null) {
       system.clearRun(nametagFlushTask);
       nametagFlushTask = null;

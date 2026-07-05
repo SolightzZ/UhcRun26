@@ -1,20 +1,20 @@
 import { system } from '@minecraft/server';
-import fillQueue from './BlockFillerFillQueue.js';
-import taskBuilder from './BlockFillerTaskBuilder.js';
-import util from './BlockFillerUtil.js';
+import BlockFillerFillQueue from './BlockFillerFillQueue.js';
+import BlockFillerTaskBuilder from './BlockFillerTaskBuilder.js';
+import BlockFillerUtil from './BlockFillerUtil.js';
 
 class BlockFillerPatternEnqueue {
    ACTIVE_LAYERED_TASKS = [];
 
-   enqueuePatternSegment(dim, segment, startY, endY, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
-      const segments = taskBuilder.createFillTask(dim, segment.x1, startY, segment.z1, segment.x2, endY, segment.z2, mode, yDirection, fillOptions);
+   enqueuePatternSegment(dim, segment, startY, endY, mode, yDirection = BlockFillerUtil.UPWARD_Y, fillOptions = {}) {
+      const segments = BlockFillerTaskBuilder.createFillTask(dim, segment.x1, startY, segment.z1, segment.x2, endY, segment.z2, mode, yDirection, fillOptions);
 
       if (!segments || segments.length === 0) return;
 
       for (let i = 0; i < segments.length; i++) {
          const seg = segments[i];
          if (!seg || typeof seg.task !== 'function') continue;
-         fillQueue.fillAddTask(seg.task, seg.blockCount);
+         BlockFillerFillQueue.fillAddTask(seg.task, seg.blockCount);
       }
    }
 
@@ -37,7 +37,7 @@ class BlockFillerPatternEnqueue {
       const len = this.ACTIVE_LAYERED_TASKS.length;
       if (len === 0) return;
 
-      // limit work per tick to prevent bottleneck
+      // จำกัดปริมาณงานต่อติ๊กเพื่อป้องกันปัญหาคอขวด
       const MAX_LAYERED_PER_TICK = Math.min(4, Math.max(1, Math.ceil(len / 4)));
       let processed = 0;
 
@@ -53,7 +53,7 @@ class BlockFillerPatternEnqueue {
          if (system.currentTick % lt.delay !== 0) continue;
 
          const y = lt.baseY - lt.layer;
-         if (y < util.WORLD_MIN_Y) {
+         if (y < BlockFillerUtil.WORLD_MIN_Y) {
             lt.stopped = true;
             continue;
          }
@@ -92,7 +92,7 @@ class BlockFillerPatternEnqueue {
          stopped: false,
       });
 
-      fillQueue.startFillLoopIfNeeded();
+      BlockFillerFillQueue.startFillLoopIfNeeded();
    }
 
    cleanupDeadTasks() {

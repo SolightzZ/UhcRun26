@@ -1,8 +1,8 @@
-import { EquipmentSlot, ItemStack, world } from '@minecraft/server';
-import { getPlayerTeam } from '../../features/team/TeamActions.js';
+import { EquipmentSlot, ItemStack } from '@minecraft/server';
+import { getCachedPlayers, getPlayerTeam } from '../../features/team/TeamActions.js';
 import { COMPASS_ITEM, logError, setAdventure, setSpectator } from '../../shared/Util.js';
 import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
-import { allPlayersCache, uhcPlayerIds } from '../cache/State_Cache.js';
+import { uhcPlayerIds } from '../cache/State_Cache.js';
 
 const UHC_EFFECTS = ['regeneration', 'blindness', 'invisibility', 'resistance', 'conduit_power', 'slow_falling'];
 
@@ -75,7 +75,7 @@ class UtilUhcMatchManager {
    }
 
    playerSetupClearItemsKeepCompass(targetPlayer) {
-      const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : getCachedPlayers();
       const total = players.length;
       if (total === 0) return;
 

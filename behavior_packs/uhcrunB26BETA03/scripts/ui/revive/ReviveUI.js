@@ -9,7 +9,7 @@ import { deathLocation } from '../../features/team/State_Team.js';
 import { getPlayerTeam } from '../../features/team/TeamActions.js';
 import { logError, SND_BASS, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
 
-export function openReviveUI(player, deadList) {
+function openReviveUI(player, deadList) {
    if (!player?.isValid) return;
 
    const targetIds = deadList.map((target) => target.id);

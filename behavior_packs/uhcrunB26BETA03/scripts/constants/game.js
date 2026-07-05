@@ -8,7 +8,7 @@ export const CONFIG = Object.freeze({
    maxTotalPlayers: 54,
 });
 
-// Hardcoded numeric limits extracted for maintainability
+// ขีดจำกัดตัวเลขที่กำหนดไว้ตายตัวเพื่อความสะดวกในการบำรุงรักษา
 export const DP_SIZE_LIMIT = 900000;
 export const GLOBAL_BORDER_LIMIT = 500;
 export const PLACE_BLOCK_LOCK_RADIUS = 16;

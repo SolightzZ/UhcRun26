@@ -2,7 +2,7 @@ import { system } from '@minecraft/server';
 import model from './Model.js';
 import service from './Service.js';
 
-// Pre-cache air block permutation at startup
+// แคชรูปแบบบล็อกอากาศ (Air Block Permutation) ล่วงหน้าตอนเริ่มต้นระบบ
 system.run(() => {
    model.getAir();
 });

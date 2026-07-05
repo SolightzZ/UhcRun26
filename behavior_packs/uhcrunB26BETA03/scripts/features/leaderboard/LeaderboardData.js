@@ -1,4 +1,4 @@
-import { world } from '@minecraft/server';
+import { system, world } from '@minecraft/server';
 import { TEAMS } from '../../constants/game.js';
 import { lbCache, MAX_TEAMS } from '../../constants/leaderboard.js';
 import { logError } from '../../shared/Util.js';
@@ -8,10 +8,21 @@ import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { getPlayersByTeam } from '../team/TeamActions.js';
 import { buildTeamText } from './LeaderboardFormat.js';
 
-function buildScoreLookup(obj) {
-   const map = new Map();
+// แคชการค้นหาคะแนนด้วย TTL เพื่อหลีกเลี่ยงการวนลูปประมวลผลผู้เล่นที่ซ้ำซ้อนในแต่ละรอบการเรนเดอร์
+const _lookupCache = new Map();
+const LOOKUP_CACHE_TTL = 2;
 
-   if (!obj) return map;
+function buildScoreLookup(obj) {
+   if (!obj) return new Map();
+
+   const cacheKey = obj.id ?? '';
+   const now = system.currentTick;
+   const cached = _lookupCache.get(cacheKey);
+   if (cached && now - cached.tick < LOOKUP_CACHE_TTL) {
+      return cached.map;
+   }
+
+   const map = new Map();
 
    try {
       for (const p of obj.getParticipants()) {
@@ -21,7 +32,13 @@ function buildScoreLookup(obj) {
    } catch (error) {
       logError('LeaderboardData', 'buildScoreLookup error', error);
    }
+
+   _lookupCache.set(cacheKey, { tick: now, map });
    return map;
+}
+
+export function clearLookupCache() {
+   _lookupCache.clear();
 }
 
 export function getStats() {

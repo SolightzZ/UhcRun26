@@ -12,7 +12,7 @@ export const isValidTool = (tool, action) => {
    return Model.PICKAXES.has(tool);
 };
 
-// Spawn items stacked at 64 per stack to handle large quantities
+// สร้างไอเทมซ้อนกันเป็นกองละ 64 ชิ้นเพื่อรองรับปริมาณจำนวนมาก
 const spawnStacked = (dimension, typeId, amount, pos, loreFn) => {
    let remaining = Math.max(1, amount);
    while (remaining > 0) {
@@ -33,7 +33,7 @@ const spawnLoc = (loc) => ({
 });
 
 class Service {
-   // Caches held tool for 1 tick to avoid redundant inventory reads
+   // แคชไอเทมอุปกรณ์ที่ถืออยู่เป็นเวลา 1 ติ๊กเพื่อหลีกเลี่ยงการอ่านช่องเก็บของซ้ำซ้อน
    getCachedTool = (player) => {
       if (!player?.isValid) return null;
       const playerId = player.id;
@@ -130,7 +130,7 @@ class Service {
       return 0;
    };
 
-   // 30% chance for Haste II 5s when mining diamond / obsidian
+   // โอกาส 30% ที่จะได้รับเอฟเฟกต์ Haste II เป็นเวลา 5 วินาทีเมื่อขุดเพชรหรือบล็อกออบซิเดียน
    handlePremiumBlockEffect = (player) => {
       if (!isValidEntity(player)) return;
       if (randomInt(0, 99) >= Model.CONFIG.chance.premiumBlock) return;
@@ -140,7 +140,7 @@ class Service {
       player.playSound(Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
    };
 
-   // Fortune-scaled book chance on lapis; always drops 1 lapis
+   // โอกาสได้รับหนังสือตามระดับของมนต์สะกด Fortune บนแร่ลาปิส; โดยจะดรอปแร่ลาปิส 1 ชิ้นเสมอ
    spawnLapisRewards = (player, dimension, lapisData) => {
       if (!lapisData.total) return;
 
@@ -160,7 +160,7 @@ class Service {
       spawnStacked(dimension, 'minecraft:lapis_lazuli', 1, pos, (s) => s.setLore(['§7uhc']));
    };
 
-   // Batches jobs per dimension then flushes after 2 ticks to reduce overhead
+   // จัดกลุ่มงาน (Batches) ตามมิติโลกแล้วล้างข้อมูลออกหลังจากผ่านไป 2 ติ๊กเพื่อลดภาระการประมวลผล
    scheduleBatch = (player, location, action, dimension) => {
       const dimId = dimension.id;
       if (!Model.pendingJobs.has(dimId)) Model.pendingJobs.set(dimId, []);
@@ -226,7 +226,7 @@ class Service {
          return;
       }
 
-      // Compute bounding box from multiple jobs for single scan
+      // คำนวณขอบเขตกล่องปะทะ (Bounding Box) จากงานหลายชิ้นเพื่อสแกนในครั้งเดียว
       let minX = Infinity,
          minY = Infinity,
          minZ = Infinity;

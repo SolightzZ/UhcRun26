@@ -25,14 +25,14 @@ import {
 
 const PLAYER_TYPE = 'minecraft:player';
 
-// burst processing when queue is backed up
+// การประมวลผลแบบรวดเร็ว (Burst Processing) เมื่อมีข้อมูลค้างในคิวจำนวนมาก
 const DEATH_BATCH_SIZE = Object.freeze({
    NORMAL: 5,
    BURST: 10,
    BURST_THRESHOLD: 20,
 });
 
-// Extracted deferred cleanup to reduce nesting in processVictimDeath
+// แยกการล้างข้อมูลที่ล่าช้า (Deferred Cleanup) ออกมาเพื่อลดความซับซ้อนของโค้ดที่ซ้อนกันใน processVictimDeath
 function deferredDeathCleanup(player, snapX, snapY, snapZ) {
    try {
       if (!player || !player.isValid) return;
@@ -105,7 +105,7 @@ function processDeathBatch() {
    system.runTimeout(processDeathBatch, 1);
 }
 
-export function showDeathScreenshot(player) {
+function showDeathScreenshot(player) {
    if (!player?.isValid) return;
 
    enqueueDeath({ player });
@@ -121,7 +121,6 @@ function processVictimDeath(player, victimTeamId, loc) {
 
    removePlayerFromAliveRuntimeState(id, victimTeamId);
 
-   // if team has 0 remaining, this player was the last survivor
    if (victimTeamId) {
       const teamMembers = teamPlayerIndex.get(victimTeamId);
       if (teamMembers && teamMembers.size === 0) {
@@ -137,38 +136,25 @@ function processVictimDeath(player, victimTeamId, loc) {
    setDeathLocation(id, { x: loc.x, y: loc.y, z: loc.z });
 
    const pLoc = { x: loc.x, y: loc.y + 4.5, z: loc.z };
-   try {
-      dim.spawnParticle('so:light2', pLoc);
-   } catch (error) {
-      logError('DeathManager', 'Failed to spawn light2 particle', error);
-   }
-
+   dim.spawnParticle('so:light2', pLoc);
    pLoc.y = loc.y + 6.5;
-   try {
-      dim.spawnParticle('so:light5', pLoc);
-   } catch (error) {
-      logError('DeathManager', 'Failed to spawn light5 particle', error);
-   }
+   dim.spawnParticle('so:light5', pLoc);
 
    const snapX = loc.x;
    const snapY = loc.y;
    const snapZ = loc.z;
 
-   try {
-      player.removeTag('uhc');
-   } catch (error) {
-      logError('DeathManager', 'Failed to remove UHC tag', error);
-   }
+   player.removeTag('uhc');
 
-   try {
-      setSpectator(player);
-   } catch (error) {
-      logError('DeathManager', 'Failed to set game mode to Spectator', error);
-   }
+   setSpectator(player);
 
    system.runTimeout(() => {
       deferredDeathCleanup(player, snapX, snapY, snapZ);
    }, 1);
+
+   system.runTimeout(() => {
+      player.addEffect('conduit_power', 999999, { amplifier: 0, showParticles: false });
+   }, 20);
 
    const victimPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
    victimPs.deaths++;
@@ -185,8 +171,6 @@ function processVictimDeath(player, victimTeamId, loc) {
    if (teamEntry) {
       teamEntry.deaths++;
    }
-
-   scheduleSaveStats();
 }
 
 function processKillerRewards(killer, victimPlayer, victimTeamId) {
@@ -227,8 +211,6 @@ function processKillerRewards(killer, victimPlayer, victimTeamId) {
       }
    }
 
-   scheduleSaveStats();
-
    handleFirstBlood(killer, victimPlayer);
    handleMultiKill(killer);
    handleKillStreak(killer);
@@ -236,19 +218,18 @@ function processKillerRewards(killer, victimPlayer, victimTeamId) {
 
 export function handleDeath(player) {
    if (!player || !player.isValid) return;
-   const id = player.id;
 
-   cancelReviveForPlayer(id);
+   cancelReviveForPlayer(player.id);
 
-   const victimTeamId = playerTeamCache.get(id);
-   const killer = resolveKiller(id);
-   const cause = resolveDeathCause(id);
+   const victimTeamId = playerTeamCache.get(player.id);
+   const killer = resolveKiller(player.id);
+   const cause = resolveDeathCause(player.id);
 
    if (isUHC(player)) {
       processVictimDeath(player, victimTeamId, player.location);
       mergePlayerStats(player.name, { deaths: 1, teamId: victimTeamId });
-      killStreak.set(id, 0);
-      multiKill.delete(id);
+      killStreak.set(player.id, 0);
+      multiKill.delete(player.id);
       showDeathScreenshot(player);
    }
 
@@ -256,7 +237,10 @@ export function handleDeath(player) {
       processKillerRewards(killer, player, victimTeamId);
    }
 
-   hitRegistry.delete(id);
+   // แฟล็กแสดงข้อมูลที่มีการเปลี่ยนแปลงตัวเดียว — แทนที่การแยกเรียก scheduleSaveStats ใน processVictimDeath และ processKillerRewards
+   scheduleSaveStats();
+
+   hitRegistry.delete(player.id);
 }
 
 export function HandlerOnHurt(ev) {

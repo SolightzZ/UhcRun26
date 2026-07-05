@@ -1,11 +1,11 @@
 import { system, world } from '@minecraft/server';
-import { CONFIG } from '../../constants/game.js';
+import { CONFIG, TEAMS } from '../../constants/game.js';
 import { COMPASS_ITEM, createLoc, freeLoc, getSafeDimension, logError, logWarn, setAdventure, setSpectator } from '../../shared/Util.js';
 import { openMainMenu } from '../../ui/menu/MenuMain.js';
 import { onUseReviveItem } from '../../ui/revive/ReviveUI.js';
 import { purgePlayerCacheOnLeave, rebuildTeamRuntimeState } from '../cache/CacheManager.js';
 import { allPlayersCache, allPlayersCacheIds, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
-import utilUmm from '../match/MatchUtil.js';
+import MatchUtil from '../match/MatchUtil.js';
 import { isGameRunning, setKdHistoryObj, setTeamKillObj, setUhcDeathsObj, setUhcKillsObj } from '../match/State_Game.js';
 import { cancelReviveForPlayer } from '../revive/ReviveManager.js';
 import { REVIVE_ITEM_ID } from '../revive/State_Revive.js';
@@ -13,13 +13,13 @@ import { handleDeath } from '../stats/DeathManager.js';
 import { ensureObjective, refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { scheduleSaveStats } from '../stats/StatsManager.js';
 import { addToTeamIndex, deathLocation, playerStats, setPlayerStats, setTeamCount, TEAM_LOOKUP, teamCounts, teamStats } from './State_Team.js';
-import { setTeam } from './TeamActions.js';
+import { getCachedPlayers, setTeam } from './TeamActions.js';
 import { teleportToSpawn } from './TeleportManager.js';
 
-export function clearAllPlayerNametags() {
+function clearAllPlayerNametags() {
    let index = 0;
    const task = system.runInterval(() => {
-      const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = getCachedPlayers();
       const total = players.length;
       if (index >= total) {
          system.clearRun(task);
@@ -82,7 +82,7 @@ export function HandlerOnSpawn(ev) {
    const propTeamId = typeof dynamicProp === 'string' ? dynamicProp : null;
    const spawnTeamId = cachedTeamId ?? propTeamId;
 
-   // Capture before playerStats entry is created below (line 90)
+   // จับภาพ/บันทึกสถานะก่อนที่จะสร้างข้อมูล playerStats ด้านล่าง (บรรทัดที่ 90)
    const hasStats = playerStats.size > 0;
 
    const spawnPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
@@ -104,7 +104,7 @@ export function HandlerOnSpawn(ev) {
       uhcPlayerIds.add(id);
    }
 
-   // if not initial spawn, teleport to last death location
+   // หากไม่ใช่การเกิดครั้งแรก ให้เทเลพอร์ตไปยังตำแหน่งที่เสียชีวิตล่าสุด
    if (!ev.initialSpawn) {
       const loc = deathLocation.get(id);
       if (loc) {
@@ -127,7 +127,7 @@ export function HandlerOnSpawn(ev) {
    if (ev.initialSpawn && !isGameRunning) {
       teleportToSpawn(player);
       setAdventure(player);
-      utilUmm.playerSetupClearItemsKeepCompass(player);
+      MatchUtil.playerSetupClearItemsKeepCompass(player);
    }
 
    if (!dynamicTeam) {
@@ -137,7 +137,7 @@ export function HandlerOnSpawn(ev) {
 
    const inCache = playerTeamCache.has(id);
 
-   // Only restore team counts/index if reset has NOT been run (hasStats = false after reset)
+   // คืนค่าจำนวนทีม/ดัชนีเฉพาะกรณีที่ไม่ได้รันการรีเซ็ตเท่านั้น (hasStats จะเป็นเท็จหลังจากรีเซ็ต)
    if ((!inCache && !isGameRunning && hasStats) || uhcPlayerIds.has(player.id)) {
       const before = teamCounts.get(dynamicTeam) ?? 0;
       setTeamCount(dynamicTeam, before + 1);
@@ -148,7 +148,7 @@ export function HandlerOnSpawn(ev) {
       setTeam(player, dynamicTeam, { scheduleSave: false });
       scheduleSaveStats();
    } else {
-      // After reset: clear stale DP, remove entity tag, reset nametag
+      // หลังจากรีเซ็ต: ล้างคุณสมบัติไดนามิกที่ค้างอยู่ ลบแท็กเอนทิตี และรีเซ็ตป้ายชื่อ
       for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
          const tid = TEAMS[ti].id;
          if (player.hasTag(tid)) player.removeTag(tid);
@@ -181,10 +181,10 @@ export function HandlerRevive(ev) {
    system.run(() => openMainMenu(source));
 }
 
-// init: cache + scoreboard + objectives (consolidated from 3 system.run() into 1)
+// เริ่มต้นระบบ: แคช + สกอร์บอร์ด + เป้าหมายคะแนน (ยุบรวมจากการเรียกระบบ 3 ครั้งให้เหลือ 1 ครั้ง)
 export function HandlerStartupTeam() {
    try {
-      const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = getCachedPlayers();
       for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
          const p = players[pi];
          if (!p?.isValid) continue;
@@ -252,7 +252,7 @@ export function HandlerStartupStats() {
    }
 }
 
-// Map is serialized as object via JSON
+// แปลง Map เป็นออบเจ็กต์ผ่านการแปลง JSON
 function safeParseDynamicMap(rawValue, label) {
    if (typeof rawValue !== 'string' || rawValue.length === 0) return null;
    try {

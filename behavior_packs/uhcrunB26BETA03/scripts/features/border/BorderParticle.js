@@ -1,10 +1,9 @@
 import { MolangVariableMap } from '@minecraft/server';
-import { wrapTick } from '../../shared/profiler/index.js';
 import { logError } from '../../shared/Util.js';
-import { ctx } from './BorderManager.js';
+import { ctx } from './BorderState.js';
 
 const BORDER_RENDER = Object.freeze({
-   VIEW_DISTANCE: 35, // base — auto-reduces when many players
+   VIEW_DISTANCE: 35, // ค่าพื้นฐาน — ลดลงโดยอัตโนมัติเมื่อมีผู้เล่นออนไลน์จำนวนมาก
    PARTICLE_Y: 100,
 });
 
@@ -47,7 +46,7 @@ class BorderManagerParticle {
       return molang;
    }
 
-   // group players by grid cell to reduce iteration
+   // จัดกลุ่มผู้เล่นตามเซลล์กริดเพื่อลดรอบการวนลูปประมวลผล
    particleRendererGroupByCell(players) {
       this.groupMaps.clear();
       this.groupsLen = 0;
@@ -136,7 +135,7 @@ class BorderManagerParticle {
       }
    }
 
-   // small border (<100) still spawns 4 points
+   // ขอบเขตขนาดเล็ก (<100) ยังคงสร้างจุดแสดงผล 4 จุด
    particleRendererRenderSmall(dim) {
       const radius = ctx.borderRadius;
       const molang = this.particleRendererGetMolang(radius);
@@ -195,6 +194,4 @@ class BorderManagerParticle {
 }
 
 const _particleInstance = new BorderManagerParticle();
-const _boundParticleTick = _particleInstance.particleRendererTick.bind(_particleInstance);
-_particleInstance.particleRendererTick = wrapTick('particleRender', _boundParticleTick);
 export default _particleInstance;

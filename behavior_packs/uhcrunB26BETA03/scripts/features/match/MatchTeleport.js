@@ -1,8 +1,9 @@
 import { system, world } from '@minecraft/server';
+import { ctx } from '../../features/border/BorderState.js';
 import { logError } from '../../shared/Util.js';
-import { center, ctx, MinecraftColor } from '../border/BorderManager.js';
-import { allPlayersCache, uhcPlayerIds } from '../cache/State_Cache.js';
-import { getPlayerTeam } from '../team/TeamActions.js';
+import { center, MinecraftColor } from '../border/BorderState.js';
+import { uhcPlayerIds } from '../cache/State_Cache.js';
+import { getCachedPlayers, getPlayerTeam } from '../team/TeamActions.js';
 
 const TELEPORT_CONFIG = Object.freeze({
    PRELOAD_Y: 200,
@@ -27,9 +28,9 @@ class UhcMatchManagerTeleport {
       if (this.safeYCache.has(key)) return this.safeYCache.get(key);
 
       try {
-         // getTopmostBlock + block property access all in one try to guard against
-         // LocationInUnloadedChunkError when block.typeId / block.y fails
-         // despite getTopmostBlock succeeding (chunk partially loaded)
+         // ตรวจสอบ getTopmostBlock และการเข้าถึงคุณสมบัติของบล็อกในบล็อก try เดียวกันเพื่อป้องกัน
+         // ข้อผิดพลาด LocationInUnloadedChunkError เมื่อ block.typeId หรือ block.y ล้มเหลว
+         // แม้ว่า getTopmostBlock จะดำเนินการสำเร็จ (เนื่องจากโหลดบล็อกในชังก์เพียงบางส่วน)
          try {
             const block = dimension.getTopmostBlock({ x, z });
             if (!block) {
@@ -60,7 +61,7 @@ class UhcMatchManagerTeleport {
             this.safeYCache.set(key, y);
             return y;
          } catch (error) {
-            // chunk not loaded or block property access failed; cache default Y to prevent retry spam
+            // ชังก์ยังไม่ได้ถูกโหลดหรือการเข้าถึงคุณสมบัติของบล็อกล้มเหลว แคชค่า Y เริ่มต้นไว้เพื่อป้องกันการพยายามเรียกซ้ำซ้อน
             if (this.safeYCache.size >= 256) {
                this.safeYCache.delete(this.safeYCache.keys().next().value);
             }
@@ -75,7 +76,7 @@ class UhcMatchManagerTeleport {
 
    teleportManagerGroupByTeam() {
       const teamMap = new Map();
-      const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+      const players = getCachedPlayers();
 
       for (let i = 0; i < players.length; i++) {
          const player = players[i];

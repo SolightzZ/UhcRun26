@@ -3,7 +3,7 @@ import { logError, logWarn } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
-    // buf stores low 8 bits of tick → reconstruct full tick from base
+   // บัฟเฟอร์เก็บข้อมูล 8 บิตต่ำสุดของติ๊ก → ประกอบติ๊กเต็มรูปแบบใหม่จากฐาน
    countRecentHits = (data, currentTick) => {
       const cutoff = currentTick - model.WINDOW_TICKS;
       const baseTick = currentTick & 0xffffff00;
@@ -11,7 +11,8 @@ class Service {
       for (let i = 0; i < data.count; i++) {
          const idx = (data.head - 1 - i + model.BUF_SIZE) % model.BUF_SIZE;
          let tickVal = baseTick | data.buf[idx];
-         // Wrap correction: if tickVal overshoots currentTick by ≥128, subtract 256
+
+         // การแก้ไขค่าเมื่อเกิดการวนทับ: หาก tickVal เกินกว่า currentTick ตั้งแต่ 128 ขึ้นไป ให้หักออก 256
          if (tickVal > currentTick && tickVal - currentTick >= 128) tickVal -= 256;
          if (tickVal > cutoff) validCount++;
          else break;

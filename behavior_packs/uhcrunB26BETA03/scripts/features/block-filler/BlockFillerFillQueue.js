@@ -1,7 +1,6 @@
 import { system } from '@minecraft/server';
-import { wrapTick } from '../../shared/profiler/index.js';
 import { logError } from '../../shared/Util.js';
-import util from './BlockFillerUtil.js';
+import BlockFillerUtil from './BlockFillerUtil.js';
 
 class BlockFillerFillQueue {
    TASK_QUEUE = [];
@@ -22,7 +21,7 @@ class BlockFillerFillQueue {
       this.isEndgameHandler = typeof handler === 'function' ? handler : () => false;
    }
 
-   // time-budgeted processing using tick boundary instead of Date.now()
+   // การประมวลผลแบบจำกัดเวลาต่อติ๊กโดยใช้ขอบเขตติ๊กแทน Date.now()
    processFillQueue() {
       const isEndgame = this.isEndgameHandler();
       if (!isEndgame && system.currentTick % 2 !== 0) return 0;
@@ -68,15 +67,15 @@ class BlockFillerFillQueue {
       }
 
       this.queueHead = head;
-      if (this.queueHead > util.COMPACT_THRESHOLD) this.compactQueue();
+      if (this.queueHead > BlockFillerUtil.COMPACT_THRESHOLD) this.compactQueue();
 
       return processed;
    }
 
    canQueueTask(blockCount) {
-      if (blockCount > util.MAX_BLOCKS_PER_TASK) return false;
-      if (this.TASK_QUEUE.length - this.queueHead >= util.TASK_QUEUE_HARD_CAP) return false;
-      if (this.pendingBlocks + blockCount >= util.MAX_PENDING_BLOCKS) return false;
+      if (blockCount > BlockFillerUtil.MAX_BLOCKS_PER_TASK) return false;
+      if (this.TASK_QUEUE.length - this.queueHead >= BlockFillerUtil.TASK_QUEUE_HARD_CAP) return false;
+      if (this.pendingBlocks + blockCount >= BlockFillerUtil.MAX_PENDING_BLOCKS) return false;
       return true;
    }
 
@@ -88,8 +87,8 @@ class BlockFillerFillQueue {
       this.TASK_QUEUE.push(task);
 
       this.pendingBlocks += blockCount;
-      if (this.pendingBlocks > util.MAX_PENDING_BLOCKS) {
-         this.pendingBlocks = util.MAX_PENDING_BLOCKS;
+      if (this.pendingBlocks > BlockFillerUtil.MAX_PENDING_BLOCKS) {
+         this.pendingBlocks = BlockFillerUtil.MAX_PENDING_BLOCKS;
       }
 
       this.startFillLoopIfNeeded();
@@ -118,10 +117,10 @@ class BlockFillerFillQueue {
    pushRetry(task, blockCount) {
       if (blockCount <= 0 || !Number.isFinite(blockCount)) return;
 
-      const headroom = util.MAX_PENDING_BLOCKS - this.pendingBlocks;
+      const headroom = BlockFillerUtil.MAX_PENDING_BLOCKS - this.pendingBlocks;
       const clampedCount = Math.min(blockCount, Math.max(0, headroom));
 
-      if (this.RETRY_QUEUE.length >= util.RETRY_QUEUE_LIMIT) {
+      if (this.RETRY_QUEUE.length >= BlockFillerUtil.RETRY_QUEUE_LIMIT) {
          const removed = this.RETRY_QUEUE.shift();
          if (removed) {
             this.pendingBlocks -= removed.blockCount;
@@ -134,7 +133,7 @@ class BlockFillerFillQueue {
       this.RETRY_QUEUE.push({
          task,
          blockCount: clampedCount,
-         nextTryTick: system.currentTick + util.RETRY_BASE_DELAY_TICKS,
+         nextTryTick: system.currentTick + BlockFillerUtil.RETRY_BASE_DELAY_TICKS,
          attempts: 0,
       });
    }
@@ -170,13 +169,13 @@ class BlockFillerFillQueue {
          }
 
          entry.attempts = (entry.attempts + 1) | 0;
-         entry.nextTryTick = now + Math.min(util.RETRY_BASE_DELAY_TICKS * entry.attempts, 60);
+         entry.nextTryTick = now + Math.min(BlockFillerUtil.RETRY_BASE_DELAY_TICKS * entry.attempts, 60);
 
          i++;
       }
    }
 
-   // runTimeout instead of interval to save CPU
+   // เรียกใช้งาน runTimeout แทน interval เพื่อประหยัดพลังงานการประมวลผลของ CPU
    startFillLoopIfNeeded() {
       if (this.fillIntervalId !== null) return;
 
@@ -186,7 +185,7 @@ class BlockFillerFillQueue {
          this.mainTickHandler?.();
       };
 
-      this.fillIntervalId = system.runTimeout(tick, util.FILL_INTERVAL_TICKS);
+      this.fillIntervalId = system.runTimeout(tick, BlockFillerUtil.FILL_INTERVAL_TICKS);
    }
 
    _rescheduleIfNeeded() {
@@ -197,7 +196,7 @@ class BlockFillerFillQueue {
          this.fillIntervalId = null;
          this.mainTickHandler?.();
       };
-      this.fillIntervalId = system.runTimeout(tick, util.FILL_INTERVAL_TICKS);
+      this.fillIntervalId = system.runTimeout(tick, BlockFillerUtil.FILL_INTERVAL_TICKS);
    }
 
    fillIsIdle() {
@@ -226,6 +225,4 @@ class BlockFillerFillQueue {
 }
 
 const _fillQueue = new BlockFillerFillQueue();
-const _boundProcess = _fillQueue.processFillQueue.bind(_fillQueue);
-_fillQueue.processFillQueue = wrapTick('fillProcess', _boundProcess);
 export default _fillQueue;

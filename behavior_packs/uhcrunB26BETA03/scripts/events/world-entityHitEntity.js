@@ -5,5 +5,5 @@ import { runEventHandlers } from '../shared/Util.js';
 const afterEvents = [(ev) => anticheatCps.onEntityHitEntity(ev)];
 
 world.afterEvents.entityHitEntity.subscribe((event) => {
-   runEventHandlers('EntityHitEntity', afterEvents, event);
+   runEventHandlers(afterEvents, event);
 });

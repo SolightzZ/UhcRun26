@@ -1,10 +1,12 @@
+import { system } from '@minecraft/server';
+
 export let isGameRunning = false;
 
 export function setGameRunningState(state) {
    isGameRunning = state;
 }
 
-export const KD = Object.freeze({
+const KD = Object.freeze({
    SCORE_HISTORY_OBJECTIVE: 'kdhistory',
    HIT_TIMEOUT_SECONDS: 8,
 });
@@ -29,7 +31,7 @@ export function setUhcKillsObj(obj) {
 export function setUhcDeathsObj(obj) {
    uhcDeathsObj = obj;
 }
-// dirty flag + save task for stats persistence
+// แฟล็กแสดงข้อมูลที่มีการเปลี่ยนแปลง (Dirty Flag) และงานบันทึกสำหรับข้อมูลสถิติที่บันทึกถาวร
 export let statsDirty = false;
 export let statsSaveTask = null;
 
@@ -44,3 +46,11 @@ export let firstBloodDone = false;
 export function setFirstBloodDone(val) {
    firstBloodDone = val;
 }
+// — สถานะร่วมสำหรับการชนะการแข่งขัน (แยกมาจาก MatchVictory เพื่อทำลายวงจรพึ่งพาระหว่าง MatchManager และ MatchVictory) —
+
+export let countdownRunning = false;
+
+export function setCountdownRunning(val) {
+   countdownRunning = val;
+}
+

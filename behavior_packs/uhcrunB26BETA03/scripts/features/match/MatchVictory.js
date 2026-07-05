@@ -1,33 +1,34 @@
 import { system, world } from '@minecraft/server';
 import { showVictoryMessage } from '../../features/team/TeamManager.js';
 import { SND_PLING, logError } from '../../shared/Util.js';
-import bm, { MinecraftColor, ctx, icons } from '../border/BorderManager.js';
+import BorderManager from '../border/BorderManager.js';
+import { MinecraftColor, ctx, icons } from '../border/BorderState.js';
 import { recordGamesPlayed, recordPlacement, recordWin } from '../rank/RankData.js';
 import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { getCachedPlayers, getPlayerTeam, getPlayersByTeam } from '../team/TeamActions.js';
-import matchManager from './MatchManager.js';
+import MatchManager from './MatchManager.js';
+import { countdownRunning, setCountdownRunning } from './State_Game.js';
 
 class UhcMatchManagerVictory {
-   countdownRunning = false;
    aliveTeamsSet = new Set();
    _prevAliveTeams = new Set();
 
    victoryManagerTriggerDraw() {
       if (!ctx.isRunning) return;
       ctx.isRunning = false;
-      matchManager.stopGameLoop();
+      MatchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      const allPlayerNames = matchManager.getUhcPlayersCached().map((p) => p.name);
+      const allPlayerNames = MatchManager.getUhcPlayersCached().map((p) => p.name);
       recordGamesPlayed(allPlayerNames);
 
-      bm.broadcast(getCachedPlayers(), { message: '[x]: No Team Survived', sound: SND_PLING });
+      BorderManager.broadcast(getCachedPlayers(), { message: '[x]: No Team Survived', sound: SND_PLING });
       this.victoryManagerStartCountdown();
    }
 
    victoryManagerStartCountdown() {
-      if (this.countdownRunning) return;
-      this.countdownRunning = true;
+      if (countdownRunning) return;
+      setCountdownRunning(true);
 
       let time = 10;
 
@@ -43,9 +44,8 @@ class UhcMatchManagerVictory {
                system.clearRun(ctx.countdownIntervalId);
                ctx.countdownIntervalId = null;
             }
-
-            this.countdownRunning = false;
-            matchManager.endGameUhc();
+            setCountdownRunning(false);
+            MatchManager.endGameUhc();
          }
       }, 20);
    }
@@ -54,10 +54,10 @@ class UhcMatchManagerVictory {
       if (!ctx.isRunning) return;
 
       ctx.isRunning = false;
-      matchManager.stopGameLoop();
+      MatchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      const allPlayerNames = matchManager.getUhcPlayersCached().map((p) => p.name);
+      const allPlayerNames = MatchManager.getUhcPlayersCached().map((p) => p.name);
       const winPlayers = getPlayersByTeam(winTag).map((p) => p.name);
       recordWin(winTag, winPlayers);
       recordGamesPlayed(allPlayerNames);
@@ -90,7 +90,7 @@ class UhcMatchManagerVictory {
 
       showVictoryMessage(winTag, ctx.uhcTick);
 
-      bm.broadcast(players, {
+      BorderManager.broadcast(players, {
          title: MinecraftColor.white + 'VICTORY',
          subtitle: `${teamName} Wins`,
          sound: 'win',
@@ -102,7 +102,7 @@ class UhcMatchManagerVictory {
    victoryManagerCheck() {
       if (!ctx.isRunning) return;
 
-      const players = matchManager.getUhcPlayersCached();
+      const players = MatchManager.getUhcPlayersCached();
 
       if (!players.length) {
          this.victoryManagerTriggerDraw();
@@ -135,7 +135,7 @@ class UhcMatchManagerVictory {
       this.victoryManagerTriggerDraw();
    }
 
-   // detect newly eliminated teams (in prev but not in curr)
+   // ตรวจจับทีมที่เพิ่งถูกคัดออกใหม่ (มีอยู่ในก่อนหน้า แต่ไม่มีในปัจจุบัน)
    _detectEliminatedTeams() {
       if (this._prevAliveTeams.size === 0) return;
 
@@ -145,14 +145,6 @@ class UhcMatchManagerVictory {
             recordPlacement(teamId, placement);
          }
       }
-   }
-
-   resetCountdownRunning() {
-      if (ctx.countdownIntervalId !== null) {
-         system.clearRun(ctx.countdownIntervalId);
-         ctx.countdownIntervalId = null;
-      }
-      this.countdownRunning = false;
    }
 }
 

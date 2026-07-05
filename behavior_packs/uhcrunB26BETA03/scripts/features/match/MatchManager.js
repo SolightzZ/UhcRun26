@@ -1,21 +1,21 @@
 import { Difficulty, InputPermissionCategory, system, world } from '@minecraft/server';
-import { spawnLeaderboardNPC } from '../../features/leaderboard/LeaderboardManager.js';
-import { wrapTick } from '../../shared/profiler/index.js';
-import { dynamicToast, getOverworld, logError, setAdventure, setSurvival, SND_PLING } from '../../shared/Util.js';
 import { PVP_DELAY, PVP_TICK_BASE } from '../../constants/game.js';
+import { ctx } from '../../features/border/BorderState.js';
+import { spawnLeaderboardNPC } from '../../features/leaderboard/LeaderboardManager.js';
+import { dynamicToast, getOverworld, logError, setAdventure, setSurvival, SND_PLING } from '../../shared/Util.js';
 import BlockFiller from '../block-filler/BlockFiller.js';
-import BorderManager, { ctx, icons, MinecraftColor, renderCache, ticks } from '../border/BorderManager.js';
+import BorderManager from '../border/BorderManager.js';
+import { icons, MinecraftColor, renderCache, ticks } from '../border/BorderState.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
 import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
 import { flushIfDirty } from '../rank/RankData.js';
 import { refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { resetAnnouncer } from '../stats/StatsManager.js';
 import { setAliveTeamDirtyHandler } from '../team/State_Team.js';
-import { clearAllTaguhcAndDynamicProperty, getPlayerTeam } from '../team/TeamActions.js';
-import tlm from './MatchTeleport.js';
-import utilUmm from './MatchUtil.js';
-import vic from './MatchVictory.js';
-import { setGameRunningState } from './State_Game.js';
+import { clearAllTaguhcAndDynamicProperty, getCachedPlayers, getPlayerTeam } from '../team/TeamActions.js';
+import MatchTeleport from './MatchTeleport.js';
+import MatchUtil from './MatchUtil.js';
+import { setCountdownRunning, setGameRunningState } from './State_Game.js';
 
 const PVP_TICK = PVP_TICK_BASE + PVP_DELAY;
 const PVP_WARN = PVP_TICK - 20;
@@ -29,10 +29,6 @@ const explosionLocPool = { x: 0, y: 0, z: 0 };
 const soundOptionsStart = { volume: 0.8, pitch: 1 };
 const soundOptionsPlayers = { volume: 1, pitch: 1 };
 const soundOptionsExplode = { volume: 0.7, pitch: 0.9 };
-
-function getAllPlayers() {
-   return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
-}
 
 class UhcMatchManager {
    startBars;
@@ -49,9 +45,19 @@ class UhcMatchManager {
       this.startBars = bars;
 
       setAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
+
+      // ฟังก์ชันเรียกกลับ (Callbacks) ที่ผูกไว้ล่วงหน้าสำหรับส่วนที่ทำงานบ่อย — หลีกเลี่ยงการจองพื้นที่หน่วยความจำของ Arrow Function ในแต่ละติ๊ก (เพื่อลดภาระ Garbage Collection)
+      this._borderTick = () => BorderManager.borderManagerTick();
+      this._borderShrink = () => BorderManager.borderManagerTickShrink();
+      this._scoreboardUpdate = () => {
+         BorderManager.scoreboardUpdate(ctx.objective, uhcPlayersCache);
+      };
+      this._borderDamage = (player) => {
+         BorderManager.borderManagerApplyDamage(player);
+      };
    }
 
-   // stop game if server empty
+   // หยุดการทำงานของเกมหากไม่มีผู้เล่นในเซิร์ฟเวอร์
    handlePlayerLeave() {
       system.run(() => {
          if (ctx.isDestroyed) return;
@@ -61,7 +67,7 @@ class UhcMatchManager {
       });
    }
 
-   // restart game loop if players return
+   // เริ่มการทำงานของลูปเกมใหม่อีกครั้งหากผู้เล่นกลับมา
    handlePlayerSpawn(event) {
       if (ctx.isDestroyed) return;
       if (ctx.isRunning && ctx.checkInterval === null) {
@@ -155,7 +161,7 @@ class UhcMatchManager {
 
       switch (tick) {
          case 1:
-            tlm.teleportManagerTeleportTeam(undefined, () => {
+            MatchTeleport.teleportManagerTeleportTeam(undefined, () => {
                ctx.teleportComplete = true;
                ctx.countdownTicks = -1;
                world.gameRules.showCoordinates = true;
@@ -163,7 +169,7 @@ class UhcMatchManager {
                world.sendMessage('[UHC] Good Luck, Have Fun');
                const uhcPlayers = uhcPlayersCache;
                for (let i = 0; i < uhcPlayers.length; i++) {
-                  if (uhcPlayers[i]?.isValid) utilUmm.playerSetupAddItems(uhcPlayers[i]);
+                  if (uhcPlayers[i]?.isValid) MatchUtil.playerSetupAddItems(uhcPlayers[i]);
                }
             });
             break;
@@ -215,13 +221,8 @@ class UhcMatchManager {
    }
 
    gameLoopWorld(uhcPlayers) {
-      wrapTick('borderTick', () => {
-         BorderManager.borderManagerTick();
-      })();
-
-      wrapTick('borderShrink', () => {
-         BorderManager.borderManagerTickShrink();
-      })();
+      this._borderTick();
+      this._borderShrink();
 
       if (ctx.isRunning && ctx.uhcTick <= PVP_TICK) {
          this.gameLoopHandleWorldStart(ctx.uhcTick, uhcPlayers);
@@ -229,20 +230,14 @@ class UhcMatchManager {
 
       renderCache.scoreboardUpdateThrottle++;
       if (ctx.objective && ctx.uhcTick && renderCache.scoreboardUpdateThrottle % 2 === 0) {
-         wrapTick('scoreboardUpdate', () => {
-            BorderManager.scoreboardUpdate(ctx.objective, uhcPlayers);
-         })();
+         this._scoreboardUpdate();
       }
 
       if (uhcPlayers.length > 0) {
          const DAMAGE_BATCH = Math.max(1, Math.ceil(uhcPlayers.length / 5));
-         const _applyDamage = wrapTick('borderDamage', (player) => {
-            BorderManager.borderManagerApplyDamage(player);
-         });
-
          for (let i = 0; i < DAMAGE_BATCH; i++) {
             if (ctx.borderDamageIndex >= uhcPlayers.length) ctx.borderDamageIndex = 0;
-            _applyDamage(uhcPlayers[ctx.borderDamageIndex]);
+            this._borderDamage(uhcPlayers[ctx.borderDamageIndex]);
             ctx.borderDamageIndex++;
          }
       }
@@ -250,50 +245,60 @@ class UhcMatchManager {
       BorderManager.particleRendererTick(uhcPlayers);
    }
 
+   #gameLoopGuard() {
+      return !ctx.isRunning || ctx.isDestroyed;
+   }
+
    gameLoopRun() {
-      ctx.checkInterval = system.runInterval(
-         wrapTick('gameLoop', () => {
-            try {
-               if (!ctx.isRunning || ctx.isDestroyed) return;
-               ctx.uhcTick++;
+      ctx.checkInterval = system.runInterval(() => {
+         try {
+            if (this.#gameLoopGuard()) return;
+            ctx.uhcTick++;
 
-               if (ctx.teleportComplete) {
-                  ctx.countdownTicks++;
-               }
-
-               const uhcPlayers = uhcPlayersCache;
-               wrapTick('gameLoopWorld', () => {
-                  this.gameLoopWorld(uhcPlayers);
-               })();
-
-               if (ctx.countdownTicks <= 26) {
-                  wrapTick('playersTick', () => {
-                     this.gameLoopPlayersTick(uhcPlayers);
-                  })();
-               }
-            } catch (error) {
-               logError('UHC', 'Game loop error at tick ' + ctx.uhcTick, error);
+            if (ctx.teleportComplete) {
+               ctx.countdownTicks++;
             }
-         }),
-         ticks,
-      );
+
+            const uhcPlayers = uhcPlayersCache;
+            this.gameLoopWorld(uhcPlayers);
+
+            if (ctx.countdownTicks <= 26) {
+               this.gameLoopPlayersTick(uhcPlayers);
+            }
+         } catch (error) {
+            logError('UHC', 'Game loop error at tick ' + ctx.uhcTick, error);
+         }
+      }, ticks);
    }
 
    markAliveTeamDirty() {
       ctx.aliveTeamDirty = true;
    }
 
+   #clearUhcCountdown() {
+      if (ctx.countdownIntervalId !== null) {
+         system.clearRun(ctx.countdownIntervalId);
+         ctx.countdownIntervalId = null;
+      }
+      setCountdownRunning(false);
+   }
+
+   // ── เริ่มการแข่งขัน (ฟังก์ชันย่อยเฉพาะ) ──
    startGameUhc() {
       if (ctx.isRunning) return;
 
-      vic.resetCountdownRunning();
+      this.#clearUhcCountdown();
       this.stopGameLoop();
-      this.initializeGameState();
+      this.#initMatchContext();
+      this.#initTeleport();
+      this.#initGameRunning();
+      this.#initBorderSystems();
+      this.#initScoreboard();
       this.setupPlayers();
       this.gameLoopRun();
    }
 
-   initializeGameState() {
+   #initMatchContext() {
       ctx.isDestroyed = false;
       ctx.isRunning = true;
       ctx.prevShowCoordinates = world.gameRules.showCoordinates;
@@ -306,19 +311,29 @@ class UhcMatchManager {
          logError('UHC', 'Failed to get overworld dimension', error);
          ctx.cachedDimension = null;
       }
+   }
 
-      tlm.safeYCache.clear();
-      tlm.abortAllTeleportQueues();
+   #initTeleport() {
+      MatchTeleport.safeYCache.clear();
+      MatchTeleport.abortAllTeleportQueues();
+   }
 
+   #initGameRunning() {
       setGameRunningState(true);
+   }
+
+   #initBorderSystems() {
       BorderManager.init();
       BorderManager.resetBorderState();
       BorderManager.resetUiState();
+   }
+
+   #initScoreboard() {
       BorderManager.scoreboardInit();
    }
 
    setupPlayers() {
-      const players = getAllPlayers();
+      const players = getCachedPlayers();
       if (!players.length) return;
       this._batchSetupPlayers(players, 0, 6);
    }
@@ -327,8 +342,8 @@ class UhcMatchManager {
       for (let i = 0; i < batchSize && index < players.length; i++, index++) {
          const player = players[index];
          if (!player?.isValid) continue;
-         utilUmm.playerSetupClearItemsKeepCompass(player);
-         utilUmm.playerSetupApplyStartState(player);
+         MatchUtil.playerSetupClearItemsKeepCompass(player);
+         MatchUtil.playerSetupApplyStartState(player);
       }
       if (index < players.length) {
          system.runTimeout(() => this._batchSetupPlayers(players, index, batchSize), 1);
@@ -342,9 +357,9 @@ class UhcMatchManager {
       const prevShowCoordinates = ctx.prevShowCoordinates;
 
       this.stopGameLoop();
-      vic.resetCountdownRunning();
+      this.#clearUhcCountdown();
 
-      // flush rank data before cleanup
+      // บันทึกข้อมูลอันดับ (Rank) ลงพื้นที่จัดเก็บข้อมูลก่อนการล้างข้อมูล
       flushIfDirty();
 
       this.cleanupGameState();
@@ -353,7 +368,7 @@ class UhcMatchManager {
    }
 
    cleanupGameState() {
-      tlm.abortAllTeleportQueues();
+      MatchTeleport.abortAllTeleportQueues();
       BlockFiller.fillReset();
       BorderManager.endSequenceReset();
       BorderManager.scoreboardClear();
@@ -371,7 +386,7 @@ class UhcMatchManager {
 
    _batchResetPlayerStates(players, index, batchSize) {
       for (let i = 0; i < batchSize && index < players.length; i++, index++) {
-         utilUmm.playerSetupApplyEndState(players[index]);
+         MatchUtil.playerSetupApplyEndState(players[index]);
       }
       if (index < players.length) {
          system.runTimeout(() => this._batchResetPlayerStates(players, index, batchSize), 1);
@@ -387,7 +402,7 @@ class UhcMatchManager {
       world.setDifficulty(Difficulty.Peaceful);
       const prevShowCoordinates = ctx.prevShowCoordinates;
 
-      vic.resetCountdownRunning();
+      this.#clearUhcCountdown();
       this.stopGameLoop();
       this.cleanupResetState();
       this.resetAllPlayers();
@@ -396,11 +411,11 @@ class UhcMatchManager {
    }
 
    cleanupResetState() {
-      tlm.safeYCache.clear();
+      MatchTeleport.safeYCache.clear();
       BlockFiller.fillReset();
       BorderManager.resetContext(ctx);
       BorderManager.endSequenceReset();
-      tlm.abortAllTeleportQueues();
+      MatchTeleport.abortAllTeleportQueues();
 
       setGameRunningState(false);
       BorderManager.scoreboardClear();
@@ -409,7 +424,7 @@ class UhcMatchManager {
    }
 
    resetAllPlayers() {
-      const players = getAllPlayers();
+      const players = getCachedPlayers();
       if (!players.length) return;
       this._batchResetAllPlayers(players, 0, 6);
    }
@@ -419,9 +434,9 @@ class UhcMatchManager {
          const p = players[index];
          if (!p?.isValid) continue;
 
-         utilUmm.playerSetupClearEffects(p);
-         utilUmm.playerSetupApplyEndState(p);
-         utilUmm.playerSetupClearItemsKeepCompass(p);
+         MatchUtil.playerSetupClearEffects(p);
+         MatchUtil.playerSetupApplyEndState(p);
+         MatchUtil.playerSetupClearItemsKeepCompass(p);
       }
       if (index < players.length) {
          system.runTimeout(() => this._batchResetAllPlayers(players, index, batchSize), 1);

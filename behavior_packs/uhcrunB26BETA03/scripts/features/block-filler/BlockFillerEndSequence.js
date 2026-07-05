@@ -1,8 +1,8 @@
 import { BlockVolume, system } from '@minecraft/server';
 import { getOverworld, logError, TEX_BARRIER } from '../../shared/Util.js';
 import { END_SEQUENCE_STATE } from './BlockFillerConstants.js';
-import patternEnqueue from './BlockFillerPatternEnqueue.js';
-import util from './BlockFillerUtil.js';
+import BlockFillerPatternEnqueue from './BlockFillerPatternEnqueue.js';
+import BlockFillerUtil from './BlockFillerUtil.js';
 
 const END_SEQUENCE_STEPS = Object.freeze([
    { nextState: END_SEQUENCE_STATE.PATTERN3, labelKey: 'pattern3', message: 'Nether wall border', icon: 'textures/blocks/nether_brick', runKey: 'runEndPattern3' },
@@ -96,16 +96,16 @@ class BlockFillerEndSequence {
 
          let layersFed = 0;
 
-         while (y >= util.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
+         while (y >= BlockFillerUtil.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
             for (let i = 0; i < pattern.segments.length; i++) {
-               patternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, util.DOWNWARD_Y, {});
+               BlockFillerPatternEnqueue.enqueuePatternSegment(dim, pattern.segments[i], y, y, pattern.mode, BlockFillerUtil.DOWNWARD_Y, {});
             }
 
             y--;
 
             layersFed++;
          }
-         if (y >= util.WORLD_MIN_Y) {
+         if (y >= BlockFillerUtil.WORLD_MIN_Y) {
             system.runTimeout(feedFn, 1);
          }
       };
@@ -113,7 +113,7 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // uses fillBlocks directly (not queue) for performance
+   // เรียกใช้งาน fillBlocks โดยตรง (ไม่ผ่านคิว) เพื่อประสิทธิภาพการทำงาน
    runEndPattern1(player) {
       if (this.pattern1Queued) return;
       if (!player?.isValid) return;
@@ -121,7 +121,7 @@ class BlockFillerEndSequence {
 
       const dim = player.dimension;
       const segments = this.PATTERN_1_TASK.segments;
-      let y = util.WORLD_MAX_Y;
+      let y = BlockFillerUtil.WORLD_MAX_Y;
       let stopped = false;
       const LAYERS_PER_TICK = 5;
 
@@ -132,7 +132,7 @@ class BlockFillerEndSequence {
          }
          try {
             let layersFed = 0;
-            while (y >= util.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
+            while (y >= BlockFillerUtil.WORLD_MIN_Y && layersFed < LAYERS_PER_TICK) {
                for (let i = 0; i < segments.length; i++) {
                   const s = segments[i];
                   dim.fillBlocks(new BlockVolume({ x: s.x1, y, z: s.z1 }, { x: s.x2, y, z: s.z2 }), 'minecraft:air');
@@ -144,7 +144,7 @@ class BlockFillerEndSequence {
             logError('BlockFillerEndSequence', 'runEndPattern1 fillBlocks failed', error);
             stopped = true;
          }
-         if (y >= util.WORLD_MIN_Y) {
+         if (y >= BlockFillerUtil.WORLD_MIN_Y) {
             system.runTimeout(feedFn, 1);
          }
       };
@@ -152,7 +152,7 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // uses fillBlocks directly (not queue), bottom-up
+   // เรียกใช้งาน fillBlocks โดยตรง (ไม่ผ่านคิว) จากล่างขึ้นบน
    runEndPattern2(player) {
       if (this.pattern2Queued) return;
       if (!player?.isValid) return;
@@ -160,7 +160,7 @@ class BlockFillerEndSequence {
 
       const dim = player.dimension;
       const segments = this.PATTERN_2_TASK.segments;
-      let y = util.WORLD_MIN_Y;
+      let y = BlockFillerUtil.WORLD_MIN_Y;
       let stopped = false;
       const LAYERS_PER_TICK = 10;
 
@@ -171,7 +171,7 @@ class BlockFillerEndSequence {
          }
          try {
             let layersFed = 0;
-            while (y <= util.WORLD_MAX_Y && layersFed < LAYERS_PER_TICK) {
+            while (y <= BlockFillerUtil.WORLD_MAX_Y && layersFed < LAYERS_PER_TICK) {
                for (let i = 0; i < segments.length; i++) {
                   const s = segments[i];
                   dim.fillBlocks(new BlockVolume({ x: s.x1, y, z: s.z1 }, { x: s.x2, y, z: s.z2 }), 'minecraft:air');
@@ -183,7 +183,7 @@ class BlockFillerEndSequence {
             logError('BlockFillerEndSequence', 'runEndPattern2 fillBlocks failed', error);
             stopped = true;
          }
-         if (y <= util.WORLD_MAX_Y) {
+         if (y <= BlockFillerUtil.WORLD_MAX_Y) {
             system.runTimeout(feedFn, 1);
          }
       };

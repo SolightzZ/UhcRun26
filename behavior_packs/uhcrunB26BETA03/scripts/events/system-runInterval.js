@@ -5,45 +5,34 @@ import anticheatCpsModel from '../plugin/anticheat-cps/Model.js';
 import autoSmeltModel from '../plugin/auto-smelt/Model.js';
 import enchantModel from '../plugin/enchant/Model.js';
 import knockbackModel from '../plugin/knockback/Model.js';
-import { wrapTick } from '../shared/profiler/index.js';
+import cacheRegistry from '../shared/CacheRegistry.js';
 import { logError } from '../shared/Util.js';
 
-system.runInterval(wrapTick('handlerHit', handlerHit), 200);
+// ลงทะเบียนหน่วยความจำแคชของปลั๊กอินกับระบบลงทะเบียนส่วนกลางเมื่อนำเข้าครั้งแรก
+cacheRegistry.register('anticheat-cps', anticheatCpsModel.playerState);
+cacheRegistry.register('auto-smelt', autoSmeltModel.toolCache);
+cacheRegistry.register('enchant', enchantModel.lastEnchantTick);
+cacheRegistry.register('knockback', knockbackModel.kbThrottle);
 
-system.runInterval(
-   wrapTick('cleanupAll', () => {
-      try {
-         autoSmeltModel.toolCache.cleanup(system.currentTick);
-      } catch (e) {
-         logError('AutoSmelt', 'Failed to cleanup toolCache', e);
-      }
-      try {
-         enchantModel.lastEnchantTick.cleanup(system.currentTick);
-      } catch (e) {
-         logError('Enchant', 'Failed to cleanup lastEnchantTick', e);
-      }
-      try {
-         anticheatCpsModel.playerState.cleanup(system.currentTick);
-      } catch (e) {
-         logError('AnticheatCps', 'Failed to cleanup playerState', e);
-      }
-      try {
-         knockbackModel.kbThrottle.cleanup(system.currentTick);
-      } catch (e) {
-         logError('Knockback', 'Failed to cleanup kbThrottle', e);
-      }
+system.runInterval(handlerHit, 200);
 
-      try {
-         purgeOrphanInventoryCache();
-      } catch (e) {
-         logError('Cache', 'Failed to purge orphan inventory cache', e);
-      }
+// ล้างข้อมูลหน่วยความจำแคชของปลั๊กอินส่วนกลางผ่าน CacheRegistry
+system.runInterval(() => {
+   try {
+      cacheRegistry.cleanupAll(system.currentTick);
+   } catch (e) {
+      logError('CacheRegistry', 'Failed to cleanupAll', e);
+   }
 
-      try {
-         purgeOrphanPlayerCache();
-      } catch (e) {
-         logError('Cache', 'Failed to purge orphan player cache', e);
-      }
-   }),
-   100,
-);
+   try {
+      purgeOrphanInventoryCache();
+   } catch (e) {
+      logError('Cache', 'Failed to purge orphan inventory cache', e);
+   }
+
+   try {
+      purgeOrphanPlayerCache();
+   } catch (e) {
+      logError('Cache', 'Failed to purge orphan player cache', e);
+   }
+}, 100);

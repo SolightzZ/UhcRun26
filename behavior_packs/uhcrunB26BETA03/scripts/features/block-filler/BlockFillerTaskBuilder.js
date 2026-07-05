@@ -1,7 +1,7 @@
 import { BlockVolume } from '@minecraft/server';
 import { logError } from '../../shared/Util.js';
 import { MODE } from './BlockFillerConstants.js';
-import util from './BlockFillerUtil.js';
+import BlockFillerUtil from './BlockFillerUtil.js';
 
 let sharedChunkCache = Object.create(null);
 
@@ -10,16 +10,16 @@ class BlockFillerTaskBuilder {
       sharedChunkCache = Object.create(null);
    }
 
-   createBoundsTask(dim, bounds, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
+   createBoundsTask(dim, bounds, mode, yDirection = BlockFillerUtil.UPWARD_Y, fillOptions = {}) {
       let x = bounds.minX;
-      let y = yDirection === util.DOWNWARD_Y ? bounds.maxY : bounds.minY;
+      let y = yDirection === BlockFillerUtil.DOWNWARD_Y ? bounds.maxY : bounds.minY;
       let z = bounds.minZ;
 
-      const totalBlockCount = util.calculateBlockCount(bounds);
+      const totalBlockCount = BlockFillerUtil.calculateBlockCount(bounds);
 
       let remaining = totalBlockCount;
 
-      const resolvePermutation = util.createBlockResolver(mode, fillOptions);
+      const resolvePermutation = BlockFillerUtil.createBlockResolver(mode, fillOptions);
       const isStatic = !fillOptions.randomize && !fillOptions.blockId && mode !== MODE.NETHER;
       const staticPerm = isStatic ? resolvePermutation() : null;
       const staticPermTypeId = staticPerm ? (staticPerm.typeId ?? staticPerm?.type?.id ?? '') : null;
@@ -34,7 +34,7 @@ class BlockFillerTaskBuilder {
          maxZ = bounds.maxZ;
 
       return (limit) => {
-         // native fillBlocks shortcut for static fills — first call only
+         // ทางลัด fillBlocks ดั้งเดิมสำหรับการเติมบล็อกแบบคงที่ — เฉพาะการเรียกใช้งานครั้งแรกเท่านั้น
          if (isStatic && staticPerm && remaining === totalBlockCount) {
             try {
                const volume = new BlockVolume({ x: minX, y: minY, z: minZ }, { x: maxX, y: maxY, z: maxZ });
@@ -47,12 +47,12 @@ class BlockFillerTaskBuilder {
          }
 
          let consumed = 0;
-         if ((yDirection === util.DOWNWARD_Y && y < minY) || (yDirection !== util.DOWNWARD_Y && y > maxY)) {
+         if ((yDirection === BlockFillerUtil.DOWNWARD_Y && y < minY) || (yDirection !== BlockFillerUtil.DOWNWARD_Y && y > maxY)) {
             return { consumed: 0, done: true };
          }
 
          while (consumed < limit) {
-            if (y >= util.WORLD_MIN_Y && y <= util.WORLD_MAX_Y) {
+            if (y >= BlockFillerUtil.WORLD_MIN_Y && y <= BlockFillerUtil.WORLD_MAX_Y) {
                const chunkKey = ((x >> 4) << 16) | ((z >> 4) & 0xffff);
                let chunkOk = sharedChunkCache[chunkKey];
                if (chunkOk === undefined) {
@@ -97,7 +97,7 @@ class BlockFillerTaskBuilder {
             if (z <= maxZ) continue;
             z = minZ;
             y += yDirection;
-            if ((yDirection === util.DOWNWARD_Y && y < minY) || (yDirection !== util.DOWNWARD_Y && y > maxY)) {
+            if ((yDirection === BlockFillerUtil.DOWNWARD_Y && y < minY) || (yDirection !== BlockFillerUtil.DOWNWARD_Y && y > maxY)) {
                return { consumed, done: true };
             }
          }
@@ -105,17 +105,17 @@ class BlockFillerTaskBuilder {
       };
    }
 
-   createFillTask(dim, x1, y1, z1, x2, y2, z2, mode, yDirection = util.UPWARD_Y, fillOptions = {}) {
-      util.initPermutations();
-      const initialBounds = util.calculateBounds(x1, y1, z1, x2, y2, z2);
+   createFillTask(dim, x1, y1, z1, x2, y2, z2, mode, yDirection = BlockFillerUtil.UPWARD_Y, fillOptions = {}) {
+      BlockFillerUtil.initPermutations();
+      const initialBounds = BlockFillerUtil.calculateBounds(x1, y1, z1, x2, y2, z2);
       if (!initialBounds) return [];
       const pendingBounds = [initialBounds];
       const segments = [];
       while (pendingBounds.length) {
          const bounds = pendingBounds.pop();
-         const blockCount = util.calculateBlockCount(bounds);
-         if (blockCount > util.MAX_BLOCKS_PER_TASK) {
-            util.splitBounds(bounds, pendingBounds, yDirection);
+         const blockCount = BlockFillerUtil.calculateBlockCount(bounds);
+         if (blockCount > BlockFillerUtil.MAX_BLOCKS_PER_TASK) {
+            BlockFillerUtil.splitBounds(bounds, pendingBounds, yDirection);
             continue;
          }
          segments.push({
@@ -158,7 +158,7 @@ class BlockFillerTaskBuilder {
          name,
          mode,
          segments,
-         yDirection: options.yDirection ?? util.UPWARD_Y,
+         yDirection: options.yDirection ?? BlockFillerUtil.UPWARD_Y,
          delay: options.delay ?? 20,
          fillBottomY: options.fillBottomY ?? null,
          startTopY: options.startTopY ?? null,

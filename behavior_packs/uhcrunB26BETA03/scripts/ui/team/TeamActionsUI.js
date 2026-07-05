@@ -6,7 +6,7 @@ import { isGameRunning } from '../../features/match/State_Game.js';
 import { TEAM_LOOKUP } from '../../features/team/State_Team.js';
 import { getPlayerTeam, getTeamPlayerCount, getTotalTeamPlayers, joinTeam, leaveTeam } from '../../features/team/TeamActions.js';
 import { createLoc, dynamicToast, freeLoc, logError, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
-import { openMainMenu } from '../menu/MenuMain.js';
+import { go, setNav } from '../MenuRouter.js';
 
 export function openTeamMenu(player) {
    if (isGameRunning && uhcPlayerIds.has(player.id) && !player.hasTag(CONFIG.adminTag)) {
@@ -93,8 +93,10 @@ export function openTeamMenu(player) {
             system.run(() => openTeamMenu(player));
             return;
          case 2:
-            system.run(() => openMainMenu(player));
+            system.run(() => go(player, 'main'));
             return;
       }
    });
 }
+
+setNav('team', openTeamMenu);

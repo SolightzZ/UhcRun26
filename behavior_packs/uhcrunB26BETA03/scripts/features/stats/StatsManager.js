@@ -1,6 +1,9 @@
 import { system, world } from '@minecraft/server';
 import { DP_SIZE_LIMIT, TEAMS } from '../../constants/game.js';
 import { dynamicToast, logError, logWarn } from '../../shared/Util.js';
+import { allPlayersCache, allPlayersCacheIds, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache } from '../cache/State_Cache.js';
+import { HIT_TIMEOUT_TICKS, MULTI_TIMEOUT_TICKS, firstBloodDone, kdHistoryObj, setFirstBloodDone, setStatsDirty, setStatsSaveTask, statsDirty, statsSaveTask } from '../match/State_Game.js';
+import { TEAM_LOOKUP, clearPlayerStats, playerStats, setTeamStats, teamStats } from '../team/State_Team.js';
 
 const MULTI_KILL_DATA = Object.freeze([
    null,
@@ -10,10 +13,6 @@ const MULTI_KILL_DATA = Object.freeze([
    { text: '§5QUADRA KILL', sound: 'kill4' },
    { text: '§4ACE', sound: 'kill5' },
 ]);
-
-import { allPlayersCache, allPlayersCacheIds, hitRegistry, killStreak, multiKill, playerCache, playerTeamCache } from '../cache/State_Cache.js';
-import { HIT_TIMEOUT_TICKS, MULTI_TIMEOUT_TICKS, firstBloodDone, kdHistoryObj, setFirstBloodDone, setStatsDirty, setStatsSaveTask, statsDirty, statsSaveTask } from '../match/State_Game.js';
-import { TEAM_LOOKUP, clearPlayerStats, playerStats, setTeamStats, teamStats } from '../team/State_Team.js';
 
 const PN_MAP_KEY = 'uhc_playerNames';
 let _pnCache = null;
@@ -49,7 +48,7 @@ export function recordPlayerName(player) {
    persistPlayerNames(map);
 }
 
-export function getStoredPlayerName(id) {
+function getStoredPlayerName(id) {
    const map = loadPlayerNames();
    return map[id] || null;
 }
@@ -81,11 +80,11 @@ export function resolveParticipantName(participant) {
    return dn || null;
 }
 
-export function clearSbIdCache() {
+function clearSbIdCache() {
    _sbIdToUuid.clear();
 }
 
-export function clearStatsDynamicProperties() {
+function clearStatsDynamicProperties() {
    world.setDynamicProperty('uhc_teamStats', undefined);
    world.setDynamicProperty('uhc_playerStats', undefined);
 }
@@ -98,20 +97,20 @@ export function resetAllStats() {
    clearStatsDynamicProperties();
 }
 
-// debounce save 60 ticks
+// ชะลอการบันทึก (Debounce Save) 60 ติ๊ก
 export function scheduleSaveStats() {
    setStatsDirty(true);
    if (statsSaveTask !== null) return;
    setStatsSaveTask(system.runTimeout(runSaveStats, 60));
 }
 
-// save team then player, guard race with flags
+// บันทึกแบบอะตอมิก (Atomic Save): เขียนข้อมูลสถิติของทั้งทีมและผู้เล่นในติ๊กเดียวกัน
 function runSaveStats() {
    setStatsSaveTask(null);
    if (!statsDirty) return;
    setStatsDirty(false);
    saveTeamStats();
-   system.runTimeout(savePlayerStats, 2);
+   savePlayerStats();
    if (statsDirty) {
       scheduleSaveStats();
    }
@@ -126,7 +125,7 @@ function safeStringify(data, label) {
    }
 }
 
-// Pure-JS UTF-8 byte length (no TextEncoder in Bedrock JS engine)
+// คำนวณความยาวไบต์ UTF-8 ด้วย JavaScript แท้ (เนื่องจากไม่มี TextEncoder ในเครื่องมือรันไทม์ Bedrock JS)
 function utf8ByteLength(str) {
    let len = 0;
    for (let i = 0; i < str.length; i++) {
@@ -470,16 +469,4 @@ function sendDeathMessage(player, deathInfo) {
    }
 }
 
-export {
-   getDeathDisplayInfo,
-   getEnvironmentDeath,
-   getKillerDisplay,
-   handleFirstBlood,
-   handleKillStreak,
-   handleMultiKill,
-   incrementPairHistory,
-   resolveDeathCause,
-   resolveKiller,
-   sendDeathMessage,
-   showDeathUI,
-};
+export { getDeathDisplayInfo, handleFirstBlood, handleKillStreak, handleMultiKill, incrementPairHistory, resolveDeathCause, resolveKiller, sendDeathMessage, showDeathUI };

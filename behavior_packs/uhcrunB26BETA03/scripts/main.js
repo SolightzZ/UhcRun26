@@ -18,3 +18,10 @@ import './events/world-playerPlaceBlockAfter.js';
 import './events/world-playerSpawn.js';
 import './events/world-pressurePlatePush.js';
 import './events/world-projectileHitEntity.js';
+
+import './ui/menu/MenuAdmin.js';
+import './ui/menu/MenuInfo.js';
+import './ui/menu/MenuMain.js';
+import './ui/menu/MenuTeleport.js';
+import './ui/rank/RankUI.js';
+import './ui/team/TeamActionsUI.js';

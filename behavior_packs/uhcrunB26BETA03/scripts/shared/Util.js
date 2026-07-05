@@ -21,8 +21,7 @@ export const KB = Object.freeze({
    maxHorizontal: 1.2,
 });
 
-
-export function clamp(v, max) {
+function clamp(v, max) {
    return v > max ? max : v < -max ? -max : v;
 }
 
@@ -58,12 +57,12 @@ export function isValidEntity(entity) {
    }
 }
 
-export function runEventHandlers(tag, handlers, event) {
+export function runEventHandlers(handlers, event) {
    for (let i = 0; i < handlers.length; i++) {
       try {
          handlers[i](event);
       } catch (error) {
-         logError(tag, 'handler ' + i + ' error', error);
+         logError('EventHandler', 'handler ' + i + ' error', error);
       }
    }
 }
@@ -80,7 +79,7 @@ function padTo(text, total = 100) {
    return safe + '\t'.repeat(rem);
 }
 
-// toast hack: uses §N§O§T§I§F§I§C§A§T§I§O§N to trigger vanilla toast UI
+// วิธีลัดส่งข้อความแจ้งเตือน (Toast Hack): ใช้คีย์เวิร์ด §N§O§T§I§F§I§C§A§T§I§O§N เพื่อเรียกใช้งานหน้าจอแจ้งเตือน (Toast UI) ดั้งเดิมของเกม
 export function dynamicToast(msg = '', icon = '', bg = 'textures/ui/greyBorder') {
    return TOAST_PREFIX + padTo(msg, 500) + padTo(icon, 100) + padTo(bg, 100);
 }
@@ -117,7 +116,7 @@ export function logWarn(tag, message) {
 
 export function setSurvival(player) {
    try {
-      player.setGameMode(GameMode.survival);
+      player.setGameMode(GameMode.Survival);
    } catch (error) {
       logError('Util', 'setSurvival failed', error);
    }
@@ -125,7 +124,7 @@ export function setSurvival(player) {
 
 export function setAdventure(player) {
    try {
-      player.setGameMode(GameMode.adventure);
+      player.setGameMode(GameMode.Adventure);
    } catch (error) {
       logError('Util', 'setAdventure failed', error);
    }
@@ -133,7 +132,7 @@ export function setAdventure(player) {
 
 export function setSpectator(player) {
    try {
-      player.setGameMode(GameMode.spectator);
+      player.setGameMode(GameMode.Spectator);
    } catch (error) {
       logError('Util', 'setSpectator failed', error);
    }

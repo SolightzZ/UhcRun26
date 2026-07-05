@@ -3,9 +3,7 @@ import { CONFIG, MENU_MSG } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
 import { teleportToSpawn } from '../../features/team/TeleportManager.js';
 import { logError } from '../../shared/Util.js';
-import { openTeamMenu } from '../../ui/team/TeamActionsUI.js';
-import { AdminMenu } from './MenuAdmin.js';
-import { Credits, Features, Ranks } from './MenuInfo.js';
+import { go, setNav } from '../MenuRouter.js';
 
 export function openMainMenu(player) {
    if (!player?.isValid) return;
@@ -33,19 +31,19 @@ export function openMainMenu(player) {
                teleportToSpawn(player);
                break;
             case 1:
-               openTeamMenu(player);
+               go(player, 'team');
                break;
             case 2:
-               Features(player);
+               go(player, 'features');
                break;
             case 3:
-               Credits(player);
+               go(player, 'credits');
                break;
             case 4:
-               Ranks(player);
+               go(player, 'ranks');
                break;
             case 5:
-               if (player.hasTag(CONFIG.adminTag)) AdminMenu(player);
+               if (player.hasTag(CONFIG.adminTag)) go(player, 'admin');
                break;
          }
       })
@@ -53,3 +51,5 @@ export function openMainMenu(player) {
          logError('Menu', 'openMainMenu form error', error);
       });
 }
+
+setNav('main', openMainMenu);
