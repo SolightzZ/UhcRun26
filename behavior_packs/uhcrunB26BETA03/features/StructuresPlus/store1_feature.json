@@ -1,0 +1,18 @@
+{
+    "format_version": "1.13.0",
+    "minecraft:structure_template_feature": {
+        "description": {
+            "identifier": "sp:store1_feature"
+        },
+        "structure_name": "sp:store1",
+        "adjustment_radius": 16,
+        "facing_direction": "random",
+        "constraints": {
+            "block_intersection": {
+                "block_allowlist": [
+                    "minecraft:stone"
+                ]
+            }
+        }
+    }
+}

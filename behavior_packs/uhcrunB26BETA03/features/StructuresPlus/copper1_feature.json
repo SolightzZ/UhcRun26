@@ -1,0 +1,18 @@
+{
+    "format_version": "1.13.0",
+    "minecraft:structure_template_feature": {
+        "description": {
+            "identifier": "sp:copper1_feature"
+        },
+        "structure_name": "sp:copper1",
+        "adjustment_radius": 16,
+        "facing_direction": "random",
+        "constraints": {
+            "block_intersection": {
+                "block_allowlist": [
+                    "minecraft:stone"
+                ]
+            }
+        }
+    }
+}

@@ -1,7 +1,7 @@
 {
    "format_version": 2,
    "header": {
-      "name": "UHCRun Bedrock [B26BETA04]",
+      "name": "UHCRun Bedrock [26BETA06]",
       "description": "By https://github.com/SolightzZ",
       "min_engine_version": [1, 26, 30],
       "uuid": "c336df36-6023-4f77-8dce-9ff86ef835b3",

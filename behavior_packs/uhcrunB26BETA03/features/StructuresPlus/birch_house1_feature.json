@@ -1,0 +1,37 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:structure_template_feature": {
+    "description": {
+      "identifier": "sp:birch_house1_feature"
+    },
+    "structure_name": "sp:birch_house1",
+    "adjustment_radius": 16,
+    "facing_direction": "random",
+    "constraints": {
+      "grounded": {},
+      "unburied": {},
+      "block_intersection": {
+        "block_allowlist": [
+          "minecraft:air",
+          "minecraft:dirt",
+          "minecraft:grass_block",
+          "minecraft:stone",
+          "minecraft:sand",
+          "minecraft:sandstone",
+          "minecraft:planks",
+          "minecraft:log",
+          "minecraft:leaves",
+          "minecraft:gravel",
+          "minecraft:clay",
+          "minecraft:podzol",
+          "minecraft:mycelium",
+          "minecraft:bedrock",
+          "minecraft:stone_bricks",
+          "minecraft:water",
+          "minecraft:cobblestone",
+          "minecraft:snow"
+        ]
+      }
+    }
+  }
+}
