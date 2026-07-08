@@ -3,21 +3,22 @@ import { CONFIG, TEAM_MENU, TEAMS } from '../../constants/game.js';
 import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { dynamicToast, logError, logWarn, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
 import { clearTeamRuntimeState, refreshPlayerCaches, removePlayerFromRuntimeState } from '../cache/CacheManager.js';
-import { allPlayersCache, allPlayersCacheIds, hitRegistry, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
+import { allPlayersCache, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
+import { hitRegistry } from '../kill/HitTracker.js';
 import { isGameRunning, teamKillObj } from '../match/State_Game.js';
 import { clearAllReviveRuntime } from '../revive/State_Revive.js';
-import { resetAllStats, resetAnnouncer, scheduleSaveStats } from '../stats/StatsManager.js';
+import { resetAllStats, scheduleSaveStats } from '../stats/StatsManager.js';
+import { resetAnnouncer } from '../kill/KillAnnouncer.js';
 import {
    addToTeamIndex,
    aliveTeamDirtyHandler,
    clearDeathLocations,
+   getTeamCount,
    playerStats,
    removeFromTeamIndex,
    setPlayerStats,
-   setTeamCount,
    TEAM_INDEX_MAP,
    TEAM_LOOKUP,
-   teamCounts,
    teamPlayerIndex,
 } from './State_Team.js';
 
@@ -63,8 +64,8 @@ function markNametagDirty(playerId) {
 
 export function getTotalTeamPlayers() {
    let total = 0;
-   for (const count of teamCounts.values()) {
-      total += count;
+   for (const set of teamPlayerIndex.values()) {
+      total += set.size;
    }
    return total;
 }
@@ -75,14 +76,13 @@ function canJoinTeam(newTeamId) {
 }
 
 export function getTeamPlayerCount(teamId) {
-   return teamCounts.get(teamId) ?? 0;
+   return getTeamCount(teamId);
 }
 
 export function getCachedPlayers() {
-   return allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+   return allPlayersCache;
 }
 
-// ดำเนินการกับหน่วยความจำแคชก่อน จากนั้นจึงดำเนินการกับคุณสมบัติไดนามิก (Dynamic Property)
 export function getPlayerTeam(player) {
    if (!player?.isValid) return null;
    const cachedTeamId = playerTeamCache.get(player.id);
@@ -157,16 +157,6 @@ export function joinTeam(player, newTeamId) {
       return;
    }
 
-   if (shouldTrack && oldTeam) {
-      const oldCount = teamCounts.get(oldTeam) ?? 0;
-      setTeamCount(oldTeam, oldCount > 0 ? oldCount - 1 : 0);
-   }
-
-   if (shouldTrack) {
-      const newCount = teamCounts.get(newTeamId) ?? 0;
-      setTeamCount(newTeamId, newCount + 1);
-   }
-
    setTeam(player, newTeamId);
 }
 
@@ -176,14 +166,9 @@ export function leaveTeam(player) {
 
    const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
 
-   if (shouldTrack) {
-      const current = teamCounts.get(oldTeam) ?? 0;
-      setTeamCount(oldTeam, current > 0 ? current - 1 : 0);
-   }
    setTeam(player, null);
 }
 
-// ล้างข้อมูลทีม แต่คงแท็ก UHC ไว้
 export function clearAllTeams(executor) {
    if (executor && !executor.hasTag(CONFIG.adminTag)) return;
    refreshPlayerCaches();
@@ -218,54 +203,26 @@ export function clearAllTeams(executor) {
    }
 }
 
-// ล้างสถานะรันไทม์ — ลบแท็ก ชื่อแท็ก และคุณสมบัติแบบไดนามิก
-// ข้ามผู้เล่นที่มีแท็กทีมอยู่แล้ว (ข้อมูลทีมของผู้เล่นเดิมจะถูกเก็บรักษาไว้)
-export function clearAllTaguhcAndDynamicProperty(executor) {
-   if (executor && !executor.hasTag(CONFIG.adminTag)) return;
-
-   const freshPlayers = world.getPlayers();
-
-   for (let pi = 0, pLen = freshPlayers.length; pi < pLen; pi++) {
-      const p = freshPlayers[pi];
-      if (!p?.isValid) continue;
-
-      // ข้ามผู้เล่นที่สังกัดทีมอยู่แล้ว
-      let hasTeam = false;
-      for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
-         if (p.hasTag(TEAMS[ti].id)) {
-            hasTeam = true;
-            break;
-         }
-      }
-
-      if (hasTeam) continue;
-
-      if (p.getDynamicProperty(CONFIG.key)) {
-         p.setDynamicProperty(CONFIG.key, undefined);
-      }
-
-      p.nameTag = p.name;
-   }
-
-   // ยกเลิกการอัปเดตป้ายชื่อที่ค้างอยู่ก่อนที่จะทำการล้างหน่วยความจำแคช
+export function resetStatePreserveTeams() {
    if (nametagFlushTask !== null) {
       system.clearRun(nametagFlushTask);
       nametagFlushTask = null;
    }
-
    dirtyNametagIds.clear();
 
    clearAllReviveRuntime();
+
+   const prevPlayers = allPlayersCache;
+   for (let pi = 0, pLen = prevPlayers.length; pi < pLen; pi++) {
+      const p = prevPlayers[pi];
+      if (!p?.isValid) continue;
+      p.nameTag = p.name;
+   }
+
    refreshPlayerCaches();
-   clearTeamRuntimeState();
 
    hitRegistry.clear();
    clearDeathLocations();
-   allPlayersCache.length = 0;
-   uhcPlayersCache.length = 0;
-   allPlayersCacheIds.clear();
-   playerTeamCache.clear();
-
    resetAnnouncer();
    resetAllStats();
 
@@ -275,12 +232,10 @@ export function clearAllTaguhcAndDynamicProperty(executor) {
          try {
             teamKillObj.removeParticipant(label);
          } catch (error) {
-            logError('TeamActions', 'Failed to remove team kill participant on clear', error);
+            logError('TeamActions', 'Failed to remove team kill participant on reset', error);
          }
       }
    }
-
-   logWarn('UHC', 'Runtime state cleared (player teams preserved).');
 }
 
 export function getPlayersByTeam(teamId) {

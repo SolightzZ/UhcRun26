@@ -1,6 +1,6 @@
 import { DisplaySlotId, ObjectiveSortOrder, world } from '@minecraft/server';
 import BlockFiller from '../block-filler/BlockFiller.js';
-import { getPlayerTeam } from '../team/TeamActions.js';
+import { playerTeamCache } from '../cache/State_Cache.js';
 import BorderShrink from './BorderShrink.js';
 import { borderEnd, CHECKPOINTS, ctx, getGameState, icons, MinecraftColor, renderCache } from './BorderState.js';
 
@@ -32,6 +32,7 @@ class BorderManagerScoreboard {
       ctx.objective = obj;
 
       this.scoreCache.clear();
+      renderCache.lastLabel = null;
    }
 
    scoreboardClear() {
@@ -44,6 +45,7 @@ class BorderManagerScoreboard {
       if (obj) sb.removeObjective(obj);
 
       this.scoreCache.clear();
+      renderCache.lastLabel = null;
 
       ctx.objective = null;
    }
@@ -90,9 +92,8 @@ class BorderManagerScoreboard {
       _aliveTeams.clear();
 
       for (let i = 0, len = players.length; i < len; i++) {
-         const player = players[i];
-         const teamId = getPlayerTeam(player);
-
+         // [ปรับปรุงประสิทธิภาพ 4] ค้นหาจากแคชโดยตรง — หลีกเลี่ยงการดึงค่าจาก Dynamic Property ใน getPlayerTeam()
+         const teamId = playerTeamCache.get(players[i].id);
          if (teamId) _aliveTeams.add(teamId);
       }
 
@@ -140,7 +141,12 @@ class BorderManagerScoreboard {
          renderCache.lastTargetRadius = ctx.targetRadius;
       }
 
-      this.scoreboardUpdateLine(obj, 1, `${color}${this.scoreboardComputeNextLabel()}`);
+      // [ปรับปรุงประสิทธิภาพ 5] แคชข้อความแสดงผลเวลา — ฟังก์ชัน scoreboardComputeNextLabel เปลี่ยนแปลงอย่างมากสุดวินาทีละครั้ง
+      const nextLabel = `${color}${this.scoreboardComputeNextLabel()}`;
+      if (nextLabel !== renderCache.lastLabel) {
+         this.scoreboardUpdateLine(obj, 1, nextLabel);
+         renderCache.lastLabel = nextLabel;
+      }
 
       if (pCount !== renderCache.lastPlayerCount) {
          this.scoreboardUpdateLine(obj, 2, `${color}${icons.Bot} ${MinecraftColor.white}${pCount}`);

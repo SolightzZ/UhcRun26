@@ -37,9 +37,9 @@ class Model {
    LEAF_SCAN_BATCH_SIZE = 50;
    ITEM_BATCH_THRESHOLD = 8;
 
-   lastFellTick = new LRUMap(50);
-   playerJobCount = new LRUMap(50);
-   lastEnqueueTick = new LRUMap(50);
+   lastFellTick = new LRUMap(70);
+   playerJobCount = new LRUMap(70);
+   lastEnqueueTick = new LRUMap(70);
    jobQueue = [];
    activeJobs = 0;
    schedulerPending = false;

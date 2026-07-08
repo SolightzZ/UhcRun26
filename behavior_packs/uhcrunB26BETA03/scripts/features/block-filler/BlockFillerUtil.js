@@ -1,5 +1,5 @@
 import { BlockPermutation } from '@minecraft/server';
-import { logWarn } from '../../shared/Util.js';
+import { logError } from '../../shared/Util.js';
 import { BLOCK_CATEGORIES, MODE } from './BlockFillerConstants.js';
 
 class BlockFillerUtility {
@@ -57,7 +57,7 @@ class BlockFillerUtility {
                const perm = this.resolveBlock(blockIds[j]);
                if (perm) permutations.push(perm);
             } catch (error) {
-               logWarn('BlockFiller', `Skipping invalid block: ${blockIds[j]} ${error}`);
+               logError('BlockFiller', `Skipping invalid block: ${blockIds[j]} ${error}`);
             }
          }
 

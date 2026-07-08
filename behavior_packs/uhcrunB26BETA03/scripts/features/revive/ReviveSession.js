@@ -1,10 +1,11 @@
 import { system } from '@minecraft/server';
 import { REVIVE_MSG } from '../../constants/game.js';
-import { dynamicToast, logError, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
+import { dynamicToast, logError, TEX_CANCEL } from '../../shared/Util.js';
 import { uhcPlayerIds } from '../cache/State_Cache.js';
 import { deathLocation } from '../team/State_Team.js';
 import { getPlayerTeam } from '../team/TeamActions.js';
 import { hasReviveItem, resolvePlayer, sendReviveTeamActionBar } from './ReviveUtil.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { REVIVE_ACTIONBAR_INTERVAL, REVIVE_CANCEL_MOVE_DISTANCE, REVIVE_DURATION_TICKS } from './State_Revive.js';
 
 export default class ReviveSession {
@@ -15,6 +16,7 @@ export default class ReviveSession {
       this.teamId = teamId;
       this.endTick = system.currentTick + REVIVE_DURATION_TICKS;
       this.lastUiTick = -REVIVE_ACTIONBAR_INTERVAL;
+      this.lastSoundTick = -20;
       this.anchorX = loc.x;
       this.anchorY = loc.y;
       this.anchorZ = loc.z;
@@ -96,6 +98,11 @@ export default class ReviveSession {
          sendReviveTeamActionBar(this.teamId, REVIVE_MSG.progress(target.name, seconds));
       }
 
+      if (system.currentTick - this.lastSoundTick >= 20) {
+         this.lastSoundTick = system.currentTick;
+         enqueuePlayerSound(reviver, 'fortnite-Bandage', { volume: 1, pitch: 1 });
+      }
+
       return { ok: true };
    }
 
@@ -107,7 +114,7 @@ export default class ReviveSession {
       if (reviver) {
          try {
             reviver.sendMessage(dynamicToast(reason, TEX_CANCEL));
-            reviver.playSound(SND_BASS);
+            enqueuePlayerSound(reviver, 'note.bassattack');
          } catch (error) {
             logError('ReviveSession', 'Failed to notify reviver', error);
          }

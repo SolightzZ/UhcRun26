@@ -1,5 +1,5 @@
 import { world } from '@minecraft/server';
-import { logError, logWarn } from '../../shared/Util.js';
+import { logError, logWarn, utf8ByteLength } from '../../shared/Util.js';
 import { resolveParticipantName } from '../stats/StatsManager.js';
 import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { calcKD, calcPlacementPoints } from './RankTiers.js';
@@ -69,14 +69,15 @@ function loadRankData() {
    }
 }
 
-const MAX_RANK_SIZE = 900 * 1024;
+const MAX_RANK_SIZE = 900000;
 
 function saveRankData(data) {
    if (!data) return;
    try {
       const raw = JSON.stringify(data);
-      if (raw.length > MAX_RANK_SIZE) {
-         logWarn('RankData', `Rank data too large (${raw.length} bytes), skipping save`);
+      const bytes = utf8ByteLength(raw);
+      if (bytes > MAX_RANK_SIZE) {
+         logWarn('RankData', `Rank data too large (${bytes}B), skipping save`);
          return;
       }
       world.setDynamicProperty(RANK_KEY, raw);
@@ -108,7 +109,6 @@ export function mergePlayerStats(name, { kills = 0, deaths = 0, teamId = null } 
    markDirty();
 }
 
-// คะแนนอันดับเท่านั้น — ไม่นับจำนวนการเล่นเกมเพิ่ม
 export function recordPlacement(teamId, placement) {
    if (!teamId || placement <= 0) return;
    const data = loadRankData();
@@ -154,7 +154,6 @@ export function recordSurvivedLast(playerName) {
    markDirty();
 }
 
-// อันดับและการชนะเท่านั้น — ไม่นับจำนวนการเล่นเกมเพิ่ม
 export function recordWin(teamId, playerNames) {
    recordPlacement(teamId, 1);
    const data = loadRankData();

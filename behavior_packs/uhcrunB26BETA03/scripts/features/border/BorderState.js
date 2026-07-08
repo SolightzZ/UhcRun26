@@ -1,4 +1,3 @@
-import { world } from '@minecraft/server';
 import { enqueuePlayerBroadcast } from '../../shared/MessageBatcher.js';
 import { getCachedPlayers } from '../team/TeamActions.js';
 
@@ -33,8 +32,6 @@ export const borderColors = {
 export const ticks = 20;
 export const center = { x: 0, z: 0 };
 
-//ฟังก์ชันสร้างบริบทเกม (Game Context Factory)
-
 export function GameContext() {
    return {
       isRunning: false,
@@ -59,12 +56,12 @@ export function GameContext() {
       borderDamageIndex: 0,
       cacheRetryTick: 0,
       countdownIntervalId: null,
+      pvpEnabled: false,
    };
 }
 
 export const ctx = GameContext();
 
-// แคชสำหรับการเรนเดอร์
 export const renderCache = {
    aliveTeamBarCache: MinecraftColor.gray + '-',
    aliveTeamDirty: true,
@@ -73,9 +70,9 @@ export const renderCache = {
    lastTargetRadius: null,
    borderMolang: null,
    scoreboardUpdateThrottle: 0,
+   lastLabel: null,
 };
 
-// ส่งข้อความ/ชื่อเรื่อง/เสียงไปยังผู้เล่นทุกคน (ผ่าน MessageBatcher แบบ Async)
 export function broadcast(targetOrPayload, maybePayload) {
    let targets, payload;
 
@@ -100,12 +97,10 @@ export function broadcast(targetOrPayload, maybePayload) {
    enqueuePlayerBroadcast(targets, { message, title, subtitle, sound, soundOptions });
 }
 
-// ส่งคืนไอคอนสถานะเกมในรูปแบบที่อ่านง่าย
 export function getGameState(state) {
    if (!state.isRunning) return `${icons.Hourglass}`;
    if (state.uhcTick < 30) return `?`;
-   if (!world.gameRules) return `?`;
-   if (!world.gameRules.pvp) return `${icons.shield}`;
+   if (!state.pvpEnabled) return `${icons.shield}`;
    if (state.nextShrinkIndex < CHECKPOINTS.length) return `${icons.Sword}`;
    return `?`;
 }

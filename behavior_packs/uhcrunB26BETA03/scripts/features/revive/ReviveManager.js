@@ -1,11 +1,12 @@
 import { system } from '@minecraft/server';
 import { REVIVE_MSG } from '../../constants/game.js';
-import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
+import { enqueueAddEffect, enqueueRemoveEffect } from '../../shared/AddEffectBatcher.js';
+import { enqueueBroadcast, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { createLoc, dynamicToast, freeLoc, logError, setSurvival, TEX_CANCEL, TEX_HEART } from '../../shared/Util.js';
 import { uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
 import { isGameRunning } from '../match/State_Game.js';
 import { scheduleSaveStats } from '../stats/StatsManager.js';
-import { addToTeamIndex, aliveTeamDirtyHandler, deathLocation, deleteDeathLocation, playerStats, setPlayerStats, setTeamCount, teamCounts } from '../team/State_Team.js';
+import { addToTeamIndex, aliveTeamDirtyHandler, deathLocation, deleteDeathLocation, playerStats, setPlayerStats } from '../team/State_Team.js';
 import { getPlayerTeam } from '../team/TeamActions.js';
 import { notifyReviverCooldown } from './ReviveCooldown.js';
 import ReviveSession from './ReviveSession.js';
@@ -53,10 +54,11 @@ function finishRevive(targetId) {
       });
       freeLoc(rLoc);
       setSurvival(target);
+
       target.addTag('uhc');
-      target.removeEffect('conduit_power');
-      target.addEffect('regeneration', 200, { amplifier: 2, showParticles: false });
-      target.addEffect('resistance', 100, { amplifier: 4, showParticles: false });
+      enqueueRemoveEffect(target, 'conduit_power');
+      enqueueAddEffect(target, 'regeneration', 200, { amplifier: 2, showParticles: false });
+      enqueueAddEffect(target, 'resistance', 100, { amplifier: 4, showParticles: false });
    } catch (error) {
       logError('Revive', 'Failed to apply revive state for ' + target.name, error);
       return;
@@ -68,8 +70,6 @@ function finishRevive(targetId) {
    }
 
    if (teamId) {
-      const before = teamCounts.get(teamId) ?? 0;
-      setTeamCount(teamId, before + 1);
       addToTeamIndex(teamId, targetId);
    }
 
@@ -87,8 +87,8 @@ function finishRevive(targetId) {
    sendReviveTeamActionBar(teamId, reviveMessage);
    try {
       enqueueBroadcast(dynamicToast(reviveMessage, TEX_HEART));
-      reviver.playSound('random.levelup');
-      target.playSound('random.totem');
+      enqueuePlayerSound(reviver, 'warzone-Player-Revived');
+      enqueuePlayerSound(target, 'warzone-Player-Revived');
    } catch (error) {
       logError('Revive', 'Failed to broadcast revive', error);
    }
@@ -109,12 +109,10 @@ function updateRevives() {
          const result = session.tick();
 
          if (result.finished) {
-            // สิ้นสุดเวลาเซสชัน — ReviveSession จะเรียกใช้ onComplete -> finishRevive
             continue;
          }
 
          if (result.sessionDone) {
-            // ยกเลิกเซสชัน (สาเหตุถูกกำหนดเป็นการภายในโดย ReviveSession)
             reviveSessions.delete(targetId);
             reviverSessions.delete(session.reviverId);
             stopReviveTickIfIdle();
@@ -167,7 +165,6 @@ export function tryStartRevive(reviver, target) {
    startRevive(reviver, target);
 }
 
-// ตรวจสอบความถูกต้องแบบอินไลน์ (Inline Validation) — เก็บไว้เป็นฟังก์ชันตัวช่วยสำหรับ tryStartRevive และการใช้งานในอนาคต
 function validateReviveStart(reviver, target) {
    if (!reviver?.isValid || !target?.isValid) return REVIVE_MSG.cancel;
 

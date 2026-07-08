@@ -1,4 +1,5 @@
 import { logError } from '../../shared/Util.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 
 class Service {
    resolveShooter = (ev) => {
@@ -25,11 +26,7 @@ class Service {
       if (!shooter?.isValid) return;
       if (!target?.isValid) return;
       const pitch = Math.min(1.5, 0.5 + (dist / 10) * 0.05);
-      shooter.playSound('random.orb', {
-         location: shooter.location,
-         volume: 0.7,
-         pitch: pitch,
-      });
+      enqueuePlayerSound(shooter, 'random.orb', { volume: 0.7, pitch });
       if (target.typeId === 'minecraft:player') {
          shooter.onScreenDisplay.setActionBar(`${target.name} §7(§b${dist.toFixed(1)}m§7)`);
       }
@@ -37,11 +34,7 @@ class Service {
 
    playMissSound = (shooter) => {
       if (!shooter?.isValid) return;
-      shooter.playSound('random.orb', {
-         location: shooter.location,
-         volume: 0.7,
-         pitch: 0.5,
-      });
+      enqueuePlayerSound(shooter, 'random.orb', { volume: 0.7, pitch: 0.5 });
    };
 }
 

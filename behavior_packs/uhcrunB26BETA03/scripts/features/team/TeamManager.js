@@ -1,19 +1,20 @@
 import { system, world } from '@minecraft/server';
 import { CONFIG, TEAMS } from '../../constants/game.js';
+import { enqueueAddEffect } from '../../shared/AddEffectBatcher.js';
 import { enqueueBroadcast } from '../../shared/MessageBatcher.js';
 import { COMPASS_ITEM, createLoc, freeLoc, getSafeDimension, logError, logWarn, setAdventure, setSpectator } from '../../shared/Util.js';
 import { openMainMenu } from '../../ui/menu/MenuMain.js';
 import { onUseReviveItem } from '../../ui/revive/ReviveUI.js';
 import { purgePlayerCacheOnLeave, rebuildTeamRuntimeState } from '../cache/CacheManager.js';
-import { allPlayersCache, allPlayersCacheIds, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
+import { allPlayersCache, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
 import MatchUtil from '../match/MatchUtil.js';
 import { isGameRunning, setKdHistoryObj, setTeamKillObj, setUhcDeathsObj, setUhcKillsObj } from '../match/State_Game.js';
 import { cancelReviveForPlayer } from '../revive/ReviveManager.js';
 import { REVIVE_ITEM_ID } from '../revive/State_Revive.js';
-import { handleDeath } from '../stats/DeathManager.js';
+import { handleDeath } from '../death/DeathManager.js';
 import { ensureObjective, refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { scheduleSaveStats } from '../stats/StatsManager.js';
-import { addToTeamIndex, deathLocation, playerStats, setPlayerStats, setTeamCount, TEAM_LOOKUP, teamCounts, teamStats } from './State_Team.js';
+import { addToTeamIndex, deathLocation, playerStats, setPlayerStats, TEAM_LOOKUP, teamStats } from './State_Team.js';
 import { getCachedPlayers, setTeam } from './TeamActions.js';
 import { teleportToSpawn } from './TeleportManager.js';
 
@@ -83,7 +84,6 @@ export function HandlerOnSpawn(ev) {
    const propTeamId = typeof dynamicProp === 'string' ? dynamicProp : null;
    const spawnTeamId = cachedTeamId ?? propTeamId;
 
-   // จับภาพ/บันทึกสถานะก่อนที่จะสร้างข้อมูล playerStats ด้านล่าง (บรรทัดที่ 90)
    const hasStats = playerStats.size > 0;
 
    const spawnPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
@@ -91,13 +91,14 @@ export function HandlerOnSpawn(ev) {
    if (spawnTeamId) spawnPs.teamId = spawnTeamId;
    setPlayerStats(id, spawnPs);
 
-   if (!allPlayersCacheIds.has(id)) {
+   if (!playerCache.has(id)) {
       allPlayersCache.push(player);
-      allPlayersCacheIds.add(id);
+      playerCache.set(id, player);
    }
 
-   if (!isGameRunning && player.hasTag('uhc')) {
+   if (!isGameRunning && uhcPlayerIds.has(id)) {
       player.removeTag('uhc');
+      uhcPlayerIds.delete(id);
    }
 
    if (player.hasTag('uhc') && !uhcPlayerIds.has(id)) {
@@ -105,7 +106,6 @@ export function HandlerOnSpawn(ev) {
       uhcPlayerIds.add(id);
    }
 
-   // หากไม่ใช่การเกิดครั้งแรก ให้เทเลพอร์ตไปยังตำแหน่งที่เสียชีวิตล่าสุด
    if (!ev.initialSpawn) {
       const loc = deathLocation.get(id);
       if (loc) {
@@ -120,7 +120,7 @@ export function HandlerOnSpawn(ev) {
 
    if (isGameRunning && !uhcPlayerIds.has(player.id)) {
       setSpectator(player);
-      player.addEffect('conduit_power', 1, { amplifier: 255, showParticles: false });
+      enqueueAddEffect(player, 'conduit_power', 1, { amplifier: 255, showParticles: false });
       scheduleSaveStats();
       return;
    }
@@ -138,10 +138,7 @@ export function HandlerOnSpawn(ev) {
 
    const inCache = playerTeamCache.has(id);
 
-   // คืนค่าจำนวนทีม/ดัชนีเฉพาะกรณีที่ไม่ได้รันการรีเซ็ตเท่านั้น (hasStats จะเป็นเท็จหลังจากรีเซ็ต)
    if ((!inCache && !isGameRunning && hasStats) || uhcPlayerIds.has(player.id)) {
-      const before = teamCounts.get(dynamicTeam) ?? 0;
-      setTeamCount(dynamicTeam, before + 1);
       addToTeamIndex(dynamicTeam, id);
    }
 
@@ -149,7 +146,6 @@ export function HandlerOnSpawn(ev) {
       setTeam(player, dynamicTeam, { scheduleSave: false });
       scheduleSaveStats();
    } else {
-      // หลังจากรีเซ็ต: ล้างคุณสมบัติไดนามิกที่ค้างอยู่ ลบแท็กเอนทิตี และรีเซ็ตป้ายชื่อ
       for (let ti = 0, tLen = TEAMS.length; ti < tLen; ti++) {
          const tid = TEAMS[ti].id;
          if (player.hasTag(tid)) player.removeTag(tid);
@@ -163,6 +159,7 @@ export function HandlerOnLeave(ev) {
    const id = ev.playerId;
    if (!id) return;
    cancelReviveForPlayer(id);
+   scheduleSaveStats();
    purgePlayerCacheOnLeave(id);
 }
 
@@ -182,7 +179,6 @@ export function HandlerRevive(ev) {
    system.run(() => openMainMenu(source));
 }
 
-// เริ่มต้นระบบ: แคช + สกอร์บอร์ด + เป้าหมายคะแนน (ยุบรวมจากการเรียกระบบ 3 ครั้งให้เหลือ 1 ครั้ง)
 export function HandlerStartupTeam() {
    try {
       const players = getCachedPlayers();
@@ -253,7 +249,6 @@ export function HandlerStartupStats() {
    }
 }
 
-// แปลง Map เป็นออบเจ็กต์ผ่านการแปลง JSON
 function safeParseDynamicMap(rawValue, label) {
    if (typeof rawValue !== 'string' || rawValue.length === 0) return null;
    try {

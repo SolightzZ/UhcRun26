@@ -25,7 +25,6 @@ class CacheRegistry {
    }
 
    // ลบรหัสผู้เล่น (Player ID) ออกจากแคชทั้งหมดที่มีการกำหนดเมธอด delete() ไว้
-   // จะถูกเรียกใช้เพียงครั้งเดียวเมื่อผู้เล่นออกจากเกม แทนที่จะต้องล้างข้อมูลด้วยตนเองในแต่ละปลั๊กอิน
    purgePlayer(id) {
       for (let i = 0; i < this.#entries.length; i++) {
          const { name, cache } = this.#entries[i];

@@ -1,4 +1,5 @@
 import { ItemStack, system } from '@minecraft/server';
+import { enqueueAddEffect } from '../../shared/AddEffectBatcher.js';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
 import { enqueuePlayerMessage, enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { dynamicToast, isValidEntity, logError, randomInt } from '../../shared/Util.js';
@@ -136,7 +137,7 @@ class Service {
       if (!isValidEntity(player)) return;
       if (randomInt(0, 99) >= Model.CONFIG.chance.premiumBlock) return;
 
-      player.addEffect('haste', 100, { amplifier: 1, showParticles: false });
+      enqueueAddEffect(player, 'haste', 100, { amplifier: 1, showParticles: false });
       enqueuePlayerSetActionBar(player, '§bMining Boost II (5s)');
       enqueuePlayerSound(player, Model.CONFIG.sounds.level, Model.SOUND_OPTIONS.level);
    };
@@ -323,7 +324,7 @@ class Service {
       if (!isValidEntity(player)) return false;
       if (randomInt(0, 99) >= Model.CONFIG.chance.absorption) return false;
 
-      player.addEffect('absorption', Model.CONFIG.redstone.absorptionDuration, {
+      enqueueAddEffect(player, 'absorption', Model.CONFIG.redstone.absorptionDuration, {
          amplifier: 0,
          showParticles: false,
       });

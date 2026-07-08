@@ -1,4 +1,5 @@
 import { EquipmentSlot, ItemStack } from '@minecraft/server';
+import { enqueueAddEffect, enqueueRemoveEffect } from '../../shared/AddEffectBatcher.js';
 import { getCachedPlayers, getPlayerTeam } from '../../features/team/TeamActions.js';
 import { COMPASS_ITEM, logError, setAdventure, setSpectator } from '../../shared/Util.js';
 import { getPlayerInventoryContainer } from '../cache/CacheManager.js';
@@ -30,24 +31,21 @@ class UtilUhcMatchManager {
    playerSetupClearEffects(player) {
       if (!player?.isValid) return;
       for (let i = 0; i < UHC_EFFECTS.length; i++) {
-         try {
-            player.removeEffect(UHC_EFFECTS[i]);
-         } catch (error) {
-            logError('UtilUHC', 'Failed to remove effect ' + UHC_EFFECTS[i], error);
-         }
+         enqueueRemoveEffect(player, UHC_EFFECTS[i]);
       }
    }
 
    playerSetupApplyEndState(player) {
       if (!player?.isValid) return;
       try {
-         if (getPlayerTeam(player)) {
-            player.removeTag('uhc');
-            player.addEffect('regeneration', 26 * 20, EFFECT_HIDDEN);
+          if (getPlayerTeam(player)) {
+             player.removeTag('uhc');
+             uhcPlayerIds.delete(player.id);
+             enqueueAddEffect(player, 'regeneration', 26 * 20, EFFECT_HIDDEN);
             return;
          }
          setAdventure(player);
-         player.removeEffect('conduit_power');
+          enqueueRemoveEffect(player, 'conduit_power');
       } catch (error) {
          logError('UtilUHC', 'Failed to apply end state for ' + player.name, error);
       }
@@ -58,17 +56,18 @@ class UtilUhcMatchManager {
 
       try {
          if (getPlayerTeam(player)) {
-            if (!uhcPlayerIds.has(player.id)) {
-               player.addTag('uhc');
-            }
+             if (!uhcPlayerIds.has(player.id)) {
+                player.addTag('uhc');
+                uhcPlayerIds.add(player.id);
+             }
             for (const [effect, seconds] of START_EFFECTS) {
-               player.addEffect(effect, seconds * 20, EFFECT_HIDDEN);
+                enqueueAddEffect(player, effect, seconds * 20, EFFECT_HIDDEN);
             }
-            player.addEffect('conduit_power', 250 * 20, { amplifier: 0, showParticles: false });
+            enqueueAddEffect(player, 'conduit_power', 250 * 20, { amplifier: 0, showParticles: false });
             return;
          }
-         setSpectator(player);
-         player.addEffect('conduit_power', 9999, { amplifier: 0, showParticles: false });
+          setSpectator(player);
+          enqueueAddEffect(player, 'conduit_power', 9999, { amplifier: 0, showParticles: false });
       } catch (error) {
          logError('UtilUHC', 'Failed to apply start state for ' + player.name, error);
       }

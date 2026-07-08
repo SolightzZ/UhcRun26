@@ -1,6 +1,7 @@
 import { KB, applyKnockbackXZ, normalizeXZ } from '../../shared/Util.js';
 import model from './Model.js';
 import service from './Service.js';
+import { enqueueDimensionSound } from '../../shared/MessageBatcher.js';
 
 class Controller {
     onPressurePlatePush = ({ block, source: player }) => {
@@ -10,7 +11,7 @@ class Controller {
       const dir = player.getViewDirection();
       const { nx, nz } = normalizeXZ(dir.x, dir.z);
       applyKnockbackXZ(player, nx, nz, model.PLATE.horizontal, model.PLATE.vertical, KB.maxHorizontal);
-      block.dimension.playSound(service.nextSound(), player.location);
+      enqueueDimensionSound(block.dimension, service.nextSound(), player.location);
    };
 }
 

@@ -2,8 +2,9 @@ import { Difficulty, InputPermissionCategory, system, world } from '@minecraft/s
 import { PVP_DELAY, PVP_TICK_BASE } from '../../constants/game.js';
 import { ctx } from '../../features/border/BorderState.js';
 import { spawnLeaderboardNPC } from '../../features/leaderboard/LeaderboardManager.js';
-import { enqueueBroadcast, enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
+import { enqueueBroadcast, enqueuePlayerSetActionBar, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { dynamicToast, getOverworld, logError, setAdventure, setSurvival, SND_PLING } from '../../shared/Util.js';
+import { enqueueRemoveEffect } from '../../shared/AddEffectBatcher.js';
 import BlockFiller from '../block-filler/BlockFiller.js';
 import BorderManager from '../border/BorderManager.js';
 import { icons, MinecraftColor, renderCache, ticks } from '../border/BorderState.js';
@@ -11,9 +12,9 @@ import { refreshPlayerCaches } from '../cache/CacheManager.js';
 import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
 import { flushIfDirty } from '../rank/RankData.js';
 import { refreshScoreboardUI } from '../stats/ScoreboardManager.js';
-import { resetAnnouncer } from '../stats/StatsManager.js';
+import { resetAnnouncer } from '../kill/KillAnnouncer.js';
 import { setAliveTeamDirtyHandler } from '../team/State_Team.js';
-import { clearAllTaguhcAndDynamicProperty, getCachedPlayers, getPlayerTeam } from '../team/TeamActions.js';
+import { getCachedPlayers, getPlayerTeam, resetStatePreserveTeams } from '../team/TeamActions.js';
 import MatchTeleport from './MatchTeleport.js';
 import MatchUtil from './MatchUtil.js';
 import { setCountdownRunning, setGameRunningState } from './State_Game.js';
@@ -47,7 +48,6 @@ class UhcMatchManager {
 
       setAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
 
-      // ฟังก์ชันเรียกกลับ (Callbacks) ที่ผูกไว้ล่วงหน้าสำหรับส่วนที่ทำงานบ่อย — หลีกเลี่ยงการจองพื้นที่หน่วยความจำของ Arrow Function ในแต่ละติ๊ก (เพื่อลดภาระ Garbage Collection)
       this._borderTick = () => BorderManager.borderManagerTick();
       this._borderShrink = () => BorderManager.borderManagerTickShrink();
       this._scoreboardUpdate = () => {
@@ -58,7 +58,6 @@ class UhcMatchManager {
       };
    }
 
-   // หยุดการทำงานของเกมหากไม่มีผู้เล่นในเซิร์ฟเวอร์
    handlePlayerLeave() {
       system.run(() => {
          if (ctx.isDestroyed) return;
@@ -68,7 +67,6 @@ class UhcMatchManager {
       });
    }
 
-   // เริ่มการทำงานของลูปเกมใหม่อีกครั้งหากผู้เล่นกลับมา
    handlePlayerSpawn(event) {
       if (ctx.isDestroyed) return;
       if (ctx.isRunning && ctx.checkInterval === null) {
@@ -118,25 +116,18 @@ class UhcMatchManager {
             break;
 
          case 2:
-            enqueuePlayerSound(players, 'start', soundOptionsStart);
-            break;
-
-         case 4:
             enqueuePlayerSound(players, 'players', soundOptionsPlayers);
-            break;
-
-         case 24:
-            enqueuePlayerSound(players, 'startPlayer', soundOptionsStart);
             break;
 
          case 26:
             for (let i = 0; i < players.length; i++) {
                players[i].inputPermissions?.setPermissionCategory(InputPermissionCategory.Movement, true);
                setSurvival(players[i]);
-               players[i].removeEffect('invisibility');
+                enqueueRemoveEffect(players[i], 'invisibility');
                players[i].onScreenDisplay.setTitle('Good Luck, Have Fun');
                this.playerSetupSpawnParticles(players[i]);
             }
+
             enqueuePlayerSound(players, 'random.explode', soundOptionsExplode);
             break;
       }
@@ -149,7 +140,7 @@ class UhcMatchManager {
       const remaining = actionBar - tick,
          playSound = remaining === 20 || remaining === 10 || remaining <= 5;
       enqueuePlayerSetActionBar(players, this.startBars[tick]);
-      if (playSound) enqueuePlayerSound(players, SND_PLING, { volume: 1, pitch: 1 });
+      if (playSound) enqueuePlayerSound(players, SND_PLING);
    }
 
    stopGameLoop() {
@@ -186,16 +177,17 @@ class UhcMatchManager {
          case PVP_CD2:
          case PVP_CD1:
             BorderManager.broadcast({
-               message: dynamicToast(`PVP in ${MinecraftColor.red}${PVP_TICK - tick}`),
+               message: dynamicToast(`PVP ในอีก ${MinecraftColor.red}${PVP_TICK - tick}`),
                sound: SND_PLING,
             });
             break;
          case PVP_TICK:
             world.gameRules.pvp = true;
+            ctx.pvpEnabled = true;
             BorderManager.broadcast({
-               message: dynamicToast('PVP enabled!!', 'textures/ui/strength_effect'),
+               message: dynamicToast('เปิดใช้งาน PVP!!', 'textures/ui/strength_effect'),
                title: icons.Sword,
-               subtitle: MinecraftColor.green + 'PVP enabled!!',
+               subtitle: MinecraftColor.green + 'เปิดใช้งาน PVP!!',
                sound: 'world_noti',
             });
             break;
@@ -208,7 +200,6 @@ class UhcMatchManager {
       const tick = ctx.countdownTicks;
       const isSetupTick = tick === 1 || tick === 2 || tick === 4 || tick === 24 || tick === 26;
 
-      // กรองผู้เล่นที่ valid เพียงครั้งเดียวสำหรับ batch
       const validPlayers = [];
       for (let i = 0; i < players.length; i++) {
          if (players[i]?.isValid) validPlayers.push(players[i]);
@@ -285,7 +276,6 @@ class UhcMatchManager {
       setCountdownRunning(false);
    }
 
-   // ── เริ่มการแข่งขัน (ฟังก์ชันย่อยเฉพาะ) ──
    startGameUhc() {
       if (ctx.isRunning) return;
 
@@ -308,6 +298,7 @@ class UhcMatchManager {
       ctx.teleportComplete = false;
       ctx.countdownTicks = -1;
       ctx.cachedDimension = getOverworld();
+      ctx.pvpEnabled = false;
    }
 
    #initTeleport() {
@@ -356,7 +347,6 @@ class UhcMatchManager {
       this.stopGameLoop();
       this.#clearUhcCountdown();
 
-      // บันทึกข้อมูลอันดับ (Rank) ลงพื้นที่จัดเก็บข้อมูลก่อนการล้างข้อมูล
       flushIfDirty();
 
       this.cleanupGameState();
@@ -416,7 +406,7 @@ class UhcMatchManager {
 
       setGameRunningState(false);
       BorderManager.scoreboardClear();
-      clearAllTaguhcAndDynamicProperty();
+      resetStatePreserveTeams();
       refreshScoreboardUI();
    }
 

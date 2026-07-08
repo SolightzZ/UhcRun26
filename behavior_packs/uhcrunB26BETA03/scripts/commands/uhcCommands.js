@@ -4,7 +4,6 @@ import { spawnLeaderboardNPC, updateLeaderboard } from '../features/leaderboard/
 import MatchManager from '../features/match/MatchManager.js';
 import { enqueueBroadcast } from '../shared/MessageBatcher.js';
 import { logError } from '../shared/Util.js';
-
 import { confirmAction } from './confirmAction.js';
 import { beginLifecycle, endLifecycle } from './lifecycle.js';
 import { batch, cmd, end, setupOrReset } from './playerUtil.js';

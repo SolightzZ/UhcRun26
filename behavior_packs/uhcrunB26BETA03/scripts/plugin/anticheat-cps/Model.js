@@ -1,16 +1,14 @@
 import { LRUMap } from '../../shared/LRUMap.js';
 
-// หน่วยความจำแคช LRU พร้อมการล้างข้อมูลตามอายุขัย (TTL) สำหรับเก็บสถานะผู้เล่น; เขียนทับฟังก์ชันล้างข้อมูลสำหรับออบเจ็กต์ lastWarnTick
 class Model {
    MAX_CPS = 18;
    HARD_LIMIT = 24;
    WINDOW_TICKS = 20;
    BUF_SIZE = this.HARD_LIMIT;
 
-   // แคชแผนผัง id → ผู้เล่นเพื่อหลีกเลี่ยงการเรียกใช้ world.getPlayers()
    adminPlayers = new Map();
 
-   playerState = Object.assign(new LRUMap(Infinity, 200), {
+   playerState = Object.assign(new LRUMap(80, 200), {
       cleanup(currentTick) {
          if (this._ttl <= 0) return;
          for (const [key, val] of this._m) {
@@ -26,7 +24,6 @@ class Model {
       },
    });
 
-   // บัฟเฟอร์แบบวงกลม (Circular Buffer) เก็บข้อมูล 8 บิตต่ำสุดของติ๊กที่เกิดการโจมตี; ติ๊กเต็มรูปแบบ = (currentTick & 0xFFFFFF00) | storedByte พร้อมการแก้ไขค่าเมื่อเกิดการวนทับ
    createPlayerData = () => ({
       buf: new Uint8Array(this.BUF_SIZE),
       head: 0,

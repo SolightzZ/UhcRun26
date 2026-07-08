@@ -1,5 +1,6 @@
 import { system } from '@minecraft/server';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import model from './Model.js';
 import service from './Service.js';
 
@@ -25,7 +26,7 @@ class Controller {
       if (dur.damage >= dur.maxDurability) {
          inv.setItem(slot, undefined);
 
-         source.playSound('random.break', { location: source.location });
+         enqueuePlayerSound(source, 'random.break');
       } else if (dur.damage !== prev) {
          inv.setItem(slot, item);
       }
@@ -43,7 +44,7 @@ class Controller {
 
       this.applyRodDurabilityWear(source);
 
-      source.playSound(model.CAST_SOUND, model.SOUND_OPTS);
+      enqueuePlayerSound(source, model.CAST_SOUND, model.SOUND_OPTS);
 
       system.run(() => {
          if (proj?.isValid) proj.remove();

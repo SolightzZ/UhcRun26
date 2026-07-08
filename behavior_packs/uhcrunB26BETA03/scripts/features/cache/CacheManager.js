@@ -1,7 +1,7 @@
 import { world } from '@minecraft/server';
-import { enqueueBroadcast, enqueuePlayerMessage } from '../../shared/MessageBatcher.js';
 import { CONFIG, TEAMS } from '../../constants/game.js';
 import cacheRegistry from '../../shared/CacheRegistry.js';
+import { enqueuePlayerMessage } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import { isGameRunning } from '../match/State_Game.js';
 import {
@@ -12,13 +12,13 @@ import {
    deletePlayerStats,
    playerStats,
    removeFromTeamIndex,
-   setTeamCount,
    TEAM_LOOKUP,
-   teamCounts,
    teamPlayerIndex,
    teamStats,
 } from '../team/State_Team.js';
-import { allPlayersCache, allPlayersCacheIds, hitRegistry, inventoryCache, killStreak, multiKill, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from './State_Cache.js';
+import { allPlayersCache, inventoryCache, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from './State_Cache.js';
+import { hitRegistry } from '../kill/HitTracker.js';
+import { killStreak, multiKill } from '../kill/KillAnnouncer.js';
 
 function removeCachedPlayerById(list, id) {
    if (!list || list.length === 0) return;
@@ -33,7 +33,6 @@ function removeCachedPlayerById(list, id) {
 
 export function clearTeamRuntimeState() {
    for (const team of TEAMS) {
-      setTeamCount(team.id, 0);
       teamPlayerIndex.set(team.id, new Set());
    }
 }
@@ -54,13 +53,6 @@ export function rebuildTeamRuntimeState(players) {
 
       if (isGameRunning && !uhcPlayerIds.has(p.id)) continue;
 
-      let count = teamCounts.get(teamId);
-      if (!Number.isFinite(count)) {
-         count = 0;
-      }
-      count = count + 1;
-      setTeamCount(teamId, count);
-
       const set = teamPlayerIndex.get(teamId);
       if (set) {
          set.add(p.id);
@@ -71,10 +63,8 @@ export function rebuildTeamRuntimeState(players) {
 export function refreshPlayerCaches() {
    const players = world.getPlayers();
 
-   // ปรับแต่งโดยตรงในตำแหน่งเดิม (in-place) เพื่อคงความสมบูรณ์ของการอ้างอิงในการนำเข้าต่าง ๆ
    allPlayersCache.length = 0;
    uhcPlayersCache.length = 0;
-   allPlayersCacheIds.clear();
    uhcPlayerIds.clear();
    playerCache.clear();
 
@@ -82,7 +72,6 @@ export function refreshPlayerCaches() {
       if (!p?.isValid) continue;
 
       allPlayersCache.push(p);
-      allPlayersCacheIds.add(p.id);
       playerCache.set(p.id, p);
 
       if (p.hasTag('uhc')) {
@@ -101,23 +90,11 @@ export function removePlayerFromRuntimeState(id, teamId) {
 
    if (teamId && TEAM_LOOKUP.has(teamId)) {
       removeFromTeamIndex(teamId, id);
-
-      let count = teamCounts.get(teamId);
-      if (!Number.isFinite(count)) {
-         count = 0;
-      }
-
-      count = count - 1;
-      if (count < 0) {
-         count = 0;
-      }
-      setTeamCount(teamId, count);
    }
 
    playerTeamCache.delete(id);
 }
 
-// ฟังก์ชันการล้างข้อมูลแบบสมบูรณ์ — ล้างทั้งหน่วยความจำแคช, ข้อมูลการโจมตีล่าสุด และสถานะ UHC
 function removePlayerFromRuntimeStateFull(id, teamId) {
    removePlayerFromRuntimeState(id, teamId);
    playerCache.delete(id);
@@ -125,6 +102,7 @@ function removePlayerFromRuntimeStateFull(id, teamId) {
    deleteDeathLocation(id);
    multiKill.delete(id);
    killStreak.delete(id);
+   inventoryCache.delete(id);
    uhcPlayerIds.delete(id);
 }
 
@@ -141,8 +119,6 @@ export function removePlayerFromAliveRuntimeState(id, teamId) {
       return;
    }
 
-   const count = teamCounts.get(resolvedTeamId) ?? 0;
-   setTeamCount(resolvedTeamId, count > 0 ? count - 1 : 0);
    removeFromTeamIndex(resolvedTeamId, id);
    aliveTeamDirtyHandler();
 }
@@ -171,7 +147,6 @@ export function purgePlayerCacheOnLeave(id) {
    removePlayerFromRuntimeStateFull(id, countedTeamId);
 
    removeCachedPlayerById(allPlayersCache, id);
-   allPlayersCacheIds.delete(id);
    removeCachedPlayerById(uhcPlayersCache, id);
 
    inventoryCache.delete(id);
@@ -180,7 +155,6 @@ export function purgePlayerCacheOnLeave(id) {
 
    aliveTeamDirtyHandler();
 
-   // การล้างหน่วยความจำแคชของปลั๊กอินส่วนกลาง — แทนที่การล้างข้อมูลตอนผู้เล่นออกของแต่ละปลั๊กอิน
    cacheRegistry.purgePlayer(id);
 }
 
@@ -189,7 +163,6 @@ export function dumpCacheInfo(player) {
       `§b[UHC Cache] Current Sizes:\n` +
       `§7allPlayersCache: §f${allPlayersCache.length}\n` +
       `§7uhcPlayersCache: §f${uhcPlayersCache.length}\n` +
-      `§7allPlayersCacheIds: §f${allPlayersCacheIds.size}\n` +
       `§7playerCache: §f${playerCache.size}\n` +
       `§7playerTeamCache: §f${playerTeamCache.size}\n` +
       `§7hitRegistry: §f${hitRegistry.size}\n` +

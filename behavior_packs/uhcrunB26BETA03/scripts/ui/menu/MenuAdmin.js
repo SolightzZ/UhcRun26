@@ -1,8 +1,10 @@
 import { ActionFormData } from '@minecraft/server-ui';
 import { CONFIG, MENU_MSG, TEAMS } from '../../constants/game.js';
 import { refreshPlayerCaches } from '../../features/cache/CacheManager.js';
-import { hitRegistry, killStreak, multiKill, playerCache, playerTeamCache, uhcPlayersCache } from '../../features/cache/State_Cache.js';
-import { TEAM_LOOKUP, deathLocation, playerStats, teamCounts, teamStats } from '../../features/team/State_Team.js';
+import { playerCache, playerTeamCache, uhcPlayersCache } from '../../features/cache/State_Cache.js';
+import { hitRegistry } from '../../features/kill/HitTracker.js';
+import { killStreak, multiKill } from '../../features/kill/KillAnnouncer.js';
+import { TEAM_LOOKUP, deathLocation, getTeamCount, playerStats, teamPlayerIndex, teamStats } from '../../features/team/State_Team.js';
 import { getCachedPlayers, getPlayersByTeam } from '../../features/team/TeamActions.js';
 import { logError, logWarn } from '../../shared/Util.js';
 import { go, setNav } from '../MenuRouter.js';
@@ -41,7 +43,7 @@ function viewDynamicProperty(admin) {
    const players = getCachedPlayers();
    const body = players
       .filter((p) => p?.isValid)
-      .map((p) => `§7${p.name} §8= §c${p.getDynamicProperty(CONFIG.key) ?? 'null'}`)
+      .map((p) => `§7${p.name} §8= §c${playerTeamCache.get(p.id) ?? 'null'}`)
       .join('\\n');
    showDumpViewer(admin, 'Dynamic Properties', body, 'DYNAMIC PROPERTY DUMP');
 }
@@ -80,7 +82,7 @@ function viewAllMaps(admin) {
 
    const resolveName = (id) => playerCache.get(id)?.name ?? id;
 
-   dumpMap('teamCounts', teamCounts, (k, v) => ` §7${k} §8: §c${v}\\n`);
+   dumpMap('teamPlayerIndex', teamPlayerIndex, (k, v) => ` §7${k} §8: §e${v.size}\\n`);
    dumpMap('playerTeamCache', playerTeamCache, (k, v) => ` §7${resolveName(k)} §8: §c${v}\\n`);
    dumpMap('teamStats', teamStats, (k, v) => ` §7${k} §8: §cK:${v.kills} D:${v.deaths}\\n`);
    dumpMap('playerStats', playerStats, (k, v) => ` §7${k} §8: §cK:${v.kills} D:${v.deaths}\\n`);
@@ -122,7 +124,7 @@ function viewTeamStats(admin) {
    let body = '';
    for (const team of TEAMS) {
       const stats = teamStats.get(team.id) ?? { kills: 0, deaths: 0 };
-      const alive = teamCounts.get(team.id) ?? 0;
+      const alive = getTeamCount(team.id);
       const players = getPlayersByTeam(team.id);
 
       body += `${team.color}${team.name} §8| Alive: §a${alive} §8| Kills: §c${stats.kills} §8| Deaths: §4${stats.deaths}\\n`;

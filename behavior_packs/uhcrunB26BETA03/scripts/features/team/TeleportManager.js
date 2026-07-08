@@ -63,7 +63,7 @@ export function teleportToSpawn(player) {
 
    system.runTimeout(() => {
       if (!player?.isValid) return;
-      enqueuePlayerSound(player, 'random.enderchestopen', { volume: 0.9, pitch: 0.95 });
+      enqueuePlayerSound(player, 'random.enderchestopen', { volume: 0.8, pitch: 0.95 });
 
       try {
          _spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
@@ -76,7 +76,7 @@ export function teleportToSpawn(player) {
 export const getOtherUhcPlayers = (excludeId) => uhcPlayersCache.filter((p) => p.id !== excludeId);
 
 export function teleportGetAllPlayers(player) {
-   const players = allPlayersCache.length > 0 ? allPlayersCache : world.getPlayers();
+   const players = allPlayersCache;
    const result = [];
    for (let pi = 0, pLen = players.length; pi < pLen; pi++) {
       const p = players[pi];

@@ -41,7 +41,6 @@ function doFlush() {
    if (messageQueue.length > 0) scheduleFlush();
 }
 
-// Per-player broadcast (message + title + sound)
 const playerOpQueue = [];
 let playerFlushTask = null;
 const MAX_PLAYER_OPS = 8;
@@ -92,7 +91,6 @@ function doPlayerFlush() {
 
       const finalSoundOptions = soundOptions ?? soundConfig;
 
-      // strip location property — แต่ละ player จะได้ยินเสียงที่ตำแหน่งของตัวเอง
       const { location: _loc, ...soundOptsNoLoc } = finalSoundOptions;
       const playerSoundOpts = _loc !== undefined ? soundOptsNoLoc : finalSoundOptions;
 
@@ -113,7 +111,6 @@ function doPlayerFlush() {
    if (playerOpQueue.length > 0) schedulePlayerFlush();
 }
 
-// Per-player action bars
 const actionBarQueue = [];
 let abFlushTask = null;
 const MAX_AB_OPS = 8;
@@ -155,7 +152,6 @@ function doABFlush() {
    if (actionBarQueue.length > 0) scheduleABFlush();
 }
 
-// Multiplayer
 function resolveTargets(player) {
    if (Array.isArray(player)) {
       return player.filter((p) => p?.isValid);
@@ -189,4 +185,33 @@ export function enqueuePlayerSetActionBar(player, msg) {
    const targets = resolveTargets(player);
    if (targets.length === 0) return;
    enqueuePlayerActionBar(targets, msg);
+}
+
+const dimensionSoundQueue = [];
+let dsFlushTask = null;
+const MAX_DS_OPS = 6;
+
+export function enqueueDimensionSound(dimension, sound, location) {
+   if (!dimension || !sound || !location) return;
+   dimensionSoundQueue.push({ dimension, sound, location });
+   scheduleDSFlush();
+}
+
+function scheduleDSFlush() {
+   if (dsFlushTask !== null) return;
+   dsFlushTask = system.run(doDSFlush);
+}
+
+function doDSFlush() {
+   dsFlushTask = null;
+   const ops = dimensionSoundQueue.splice(0, MAX_DS_OPS);
+   for (let oi = 0; oi < ops.length; oi++) {
+      const { dimension, sound, location } = ops[oi];
+      try {
+         dimension.playSound(sound, location);
+      } catch (error) {
+         logError('DimSound', 'Dimension playSound failed', error);
+      }
+   }
+   if (dimensionSoundQueue.length > 0) scheduleDSFlush();
 }

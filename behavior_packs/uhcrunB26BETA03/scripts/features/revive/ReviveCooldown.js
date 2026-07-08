@@ -1,6 +1,7 @@
 import { system } from '@minecraft/server';
 import { REVIVE_MSG } from '../../constants/game.js';
-import { dynamicToast, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
+import { dynamicToast, TEX_CANCEL } from '../../shared/Util.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { reviverCooldown } from './State_Revive.js';
 
 function getRemainingReviveCooldown(playerId) {
@@ -32,7 +33,7 @@ export function notifyReviverCooldown(reviver, playSound = false) {
 
    reviver.sendMessage(dynamicToast(REVIVE_MSG.cooldown(seconds), TEX_CANCEL));
 
-   if (playSound) reviver.playSound(SND_BASS);
+   if (playSound) enqueuePlayerSound(reviver, 'note.bassattack');
 
    return true;
 }

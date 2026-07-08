@@ -94,7 +94,7 @@ class UhcMatchManagerVictory {
       BorderManager.broadcast(players, {
          title: MinecraftColor.white + 'VICTORY',
          subtitle: `${teamName} Wins`,
-         sound: 'win',
+         sound: 'warzone-Plunder-You-Placed-1st',
       });
 
       this.victoryManagerStartCountdown();

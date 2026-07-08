@@ -5,13 +5,14 @@
       "name": "UHCRun Bedrock [R26BETA04]",
       "description": "By https://github.com/SolightzZ",
       "uuid": "08b80ad8-636f-4fe9-b318-62e61770812a",
-      "version": [1, 0, 5],
+      "version": [1, 0, 6],
       "min_engine_version": [1, 26, 30],
       "pack_scope": "world"
    },
 
    "modules": [
       {
+         "description": "UHCRUN JS26BETA6",
          "type": "resources",
          "uuid": "a6dae7e9-343d-4da3-ade6-2aa2b38eff27",
          "version": [1, 0, 5]

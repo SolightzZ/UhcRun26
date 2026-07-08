@@ -1,3 +1,4 @@
+import { enqueueAddEffect } from '../../shared/AddEffectBatcher.js';
 import { enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
@@ -10,14 +11,10 @@ class Service {
 
    applyCookedEffect = (player) => {
       if (!player?.isValid) return;
-      try {
-         const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
-         player.addEffect(id, duration, { amplifier, showParticles });
-         enqueuePlayerSetActionBar(player, '§a[+] Regeneration II (10s)');
-         enqueuePlayerSound(player, 'random.orb', { volume: 0.5, pitch: 1.5 });
-      } catch (error) {
-         logError('ItemConsume', 'Failed to apply cooked effect', error);
-      }
+      const { id, duration, amplifier, showParticles } = model.COOKED_FOOD.effect;
+      enqueueAddEffect(player, id, duration, { amplifier, showParticles });
+      enqueuePlayerSetActionBar(player, '§a[+] Regeneration II (10s)');
+      enqueuePlayerSound(player, 'fortnite-Slurp-Mushroom', { volume: 0.8, pitch: 1 });
    };
 
    handleConsume = (player, item) => {

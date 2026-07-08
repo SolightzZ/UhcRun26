@@ -1,38 +1,30 @@
 import { ItemStack, system } from '@minecraft/server';
+import { enqueueAddEffect } from '../../shared/AddEffectBatcher.js';
 import { deathBatchRunning, deathQueue, enqueueDeath, setDeathBatchRunning } from '../../shared/State_Queue.js';
 import { createItemQueryOptions, createLoc, freeLoc, logError, setSpectator } from '../../shared/Util.js';
 import { removePlayerFromAliveRuntimeState } from '../cache/CacheManager.js';
 import { enqueueItemVacuum } from '../cache/ItemVacuum.js';
-import { hitRegistry, isUHC, killStreak, multiKill, playerTeamCache } from '../cache/State_Cache.js';
+import { isUHC, playerTeamCache, uhcPlayerIds } from '../cache/State_Cache.js';
+import { hitRegistry } from '../kill/HitTracker.js';
+import { killStreak, multiKill } from '../kill/KillAnnouncer.js';
+import { resolveKiller, trackHit } from '../kill/HitTracker.js';
+import { handleFirstBlood, handleKillStreak, handleMultiKill, incrementPairHistory } from '../kill/KillAnnouncer.js';
 import { teamKillObj, uhcDeathsObj, uhcKillsObj } from '../match/State_Game.js';
 import { mergePlayerStats, recordSurvivedLast } from '../rank/RankData.js';
 import { cancelReviveForPlayer } from '../revive/ReviveManager.js';
 import { REVIVE_ITEM_ID } from '../revive/State_Revive.js';
+import { scheduleSaveStats } from '../stats/StatsManager.js';
 import { playerStats, setDeathLocation, setPlayerStats, TEAM_LOOKUP, teamPlayerIndex, teamStats } from '../team/State_Team.js';
-import {
-   getDeathDisplayInfo,
-   handleFirstBlood,
-   handleKillStreak,
-   handleMultiKill,
-   incrementPairHistory,
-   resolveDeathCause,
-   resolveKiller,
-   scheduleSaveStats,
-   sendDeathMessage,
-   showDeathUI,
-   trackHit,
-} from './StatsManager.js';
+import { getDeathDisplayInfo, resolveDeathCause, sendDeathMessage } from './DeathUI.js';
 
 const PLAYER_TYPE = 'minecraft:player';
 
-// การประมวลผลแบบรวดเร็ว (Burst Processing) เมื่อมีข้อมูลค้างในคิวจำนวนมาก
 const DEATH_BATCH_SIZE = Object.freeze({
    NORMAL: 5,
    BURST: 10,
    BURST_THRESHOLD: 20,
 });
 
-// แยกการล้างข้อมูลที่ล่าช้า (Deferred Cleanup) ออกมาเพื่อลดความซับซ้อนของโค้ดที่ซ้อนกันใน processVictimDeath
 function deferredDeathCleanup(player, snapX, snapY, snapZ) {
    try {
       if (!player || !player.isValid) return;
@@ -92,7 +84,6 @@ function processDeathBatch() {
       const player = entry.player;
       if (!player?.isValid) continue;
       const deathInfo = getDeathDisplayInfo(player);
-      showDeathUI(player, deathInfo);
       sendDeathMessage(player, deathInfo);
       count++;
    }
@@ -133,7 +124,7 @@ function processVictimDeath(player, victimTeamId, loc) {
    const dim = player.dimension;
    if (!dim) return;
 
-   setDeathLocation(id, { x: loc.x, y: loc.y, z: loc.z });
+   setDeathLocation(id, loc);
 
    const pLoc = { x: loc.x, y: loc.y + 4.5, z: loc.z };
    dim.spawnParticle('so:light2', pLoc);
@@ -145,6 +136,7 @@ function processVictimDeath(player, victimTeamId, loc) {
    const snapZ = loc.z;
 
    player.removeTag('uhc');
+   uhcPlayerIds.delete(player.id);
 
    setSpectator(player);
 
@@ -153,7 +145,7 @@ function processVictimDeath(player, victimTeamId, loc) {
    }, 1);
 
    system.runTimeout(() => {
-      player.addEffect('conduit_power', 999999, { amplifier: 0, showParticles: false });
+      enqueueAddEffect(player, 'conduit_power', 999999, { amplifier: 0, showParticles: false });
    }, 20);
 
    const victimPs = playerStats.get(id) ?? { kills: 0, deaths: 0 };
@@ -165,7 +157,7 @@ function processVictimDeath(player, victimTeamId, loc) {
    }
 
    setPlayerStats(id, victimPs);
-   if (uhcDeathsObj) uhcDeathsObj.setScore(player.name, victimPs.deaths);
+   if (uhcDeathsObj && player.scoreboardIdentity) uhcDeathsObj.setScore(player.scoreboardIdentity, victimPs.deaths);
 
    const teamEntry = teamStats.get(victimTeamId);
    if (teamEntry) {
@@ -193,7 +185,7 @@ function processKillerRewards(killer, victimPlayer, victimTeamId) {
    }
 
    setPlayerStats(killerId, killerPs);
-   if (uhcKillsObj) uhcKillsObj.setScore(killer.name, killerPs.kills);
+   if (uhcKillsObj && killer.scoreboardIdentity) uhcKillsObj.setScore(killer.scoreboardIdentity, killerPs.kills);
 
    mergePlayerStats(killer.name, { kills: 1, teamId: killerTeamId });
 
@@ -237,7 +229,6 @@ export function handleDeath(player) {
       processKillerRewards(killer, player, victimTeamId);
    }
 
-   // แฟล็กแสดงข้อมูลที่มีการเปลี่ยนแปลงตัวเดียว — แทนที่การแยกเรียก scheduleSaveStats ใน processVictimDeath และ processKillerRewards
    scheduleSaveStats();
 
    hitRegistry.delete(player.id);

@@ -1,18 +1,28 @@
 {
-  	"kill": {"_use_legacy_max_distance": "true", "category": "player", "max_distance": 512,"sounds": [ "sounds/kill/k1", "sounds/kill/k2", "sounds/kill/k3","sounds/kill/k4", "sounds/kill/k5" ] },
+   "kill": { "_use_legacy_max_distance": "true", "category": "player", "max_distance": 512, "sounds": ["sounds/kill/k1", "sounds/kill/k2", "sounds/kill/k3", "sounds/kill/k4", "sounds/kill/k5"] },
 
-	"kill1": { "category": "music", "sounds": [{ "name": "sounds/kill/k1", "stream": true }] },
-	"kill2": { "category": "music", "sounds": [{ "name": "sounds/kill/k2", "stream": true }] },
-	"kill3": { "category": "music", "sounds": [{ "name": "sounds/kill/k3", "stream": true }] },
-	"kill4": { "category": "music", "sounds": [{ "name": "sounds/kill/k4", "stream": true }] },
-	"kill5": { "category": "music", "sounds": [{ "name": "sounds/kill/k5", "stream": true }] },
+   "kill1": { "category": "music", "sounds": [{ "name": "sounds/kill/k1", "stream": true }] },
+   "kill2": { "category": "music", "sounds": [{ "name": "sounds/kill/k2", "stream": true }] },
+   "kill3": { "category": "music", "sounds": [{ "name": "sounds/kill/k3", "stream": true }] },
+   "kill4": { "category": "music", "sounds": [{ "name": "sounds/kill/k4", "stream": true }] },
+   "kill5": { "category": "music", "sounds": [{ "name": "sounds/kill/k5", "stream": true }] },
 
-  "players": { "category": "music", "sounds": [{ "name": "sounds/uhc/player", "stream": true }] },
-  "iphone": { "category": "music", "sounds": [{ "name": "sounds/uhc/iPhone", "stream": true }] },
-  "noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/noti", "stream": true }] },
-  "startPlayer": { "category": "music","sounds": [{ "name": "sounds/2025/go", "stream": true }]},
-  "spawn": { "category": "music", "sounds": [{ "name": "sounds/uhc/spawn", "stream": true }] },
-  "start": { "category": "music", "sounds": [{ "name": "sounds/2025/spawns", "stream": true }] },
-  "win": { "category": "music", "sounds": [{ "name": "sounds/2025/win", "stream": true }] },
-  "world_noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/world_noti", "stream": true }] }
+   "players": { "category": "music", "sounds": [{ "name": "sounds/uhc/player", "stream": true }] },
+   "noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/noti", "stream": true }] },
+   "world_noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/world_noti", "stream": true }] },
+   "spawn": { "category": "music", "sounds": [{ "name": "sounds/uhc/spawn", "stream": true }] },
+
+   "go": { "category": "music", "sounds": [{ "name": "sounds/2025/go", "stream": true }] },
+
+   "rd2_Low_honor": { "category": "music", "sounds": [{ "name": "sounds/2026/rd2_Low_honor", "stream": true }] },
+   "rocket-Start-Fortnite-Battle-Royale": { "category": "music", "sounds": [{ "name": "sounds/2026/Rocket-Start-Fortnite-Battle-Royale", "stream": true }] },
+   "warzone-Jailbreak-Imminent": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Jailbreak-Imminent", "stream": true }] },
+   "warzone-Jailbreak-is-Active": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Jailbreak-is-Active", "stream": true }] },
+   "warzone-Player-Revived": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Player-Revived", "stream": true }] },
+   "warzone-Plunder-You-Placed-1st": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Plunder-You-Placed-1st", "stream": true }] },
+   "warzone-Warzone-Defeat": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Warzone-Defeat", "stream": true }] },
+   "warzone-Warzone-Victory": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Warzone-Victory", "stream": true }] },
+   "fortnite-Slurp-Mushroom": { "category": "music", "sounds": [{ "name": "sounds/2026/Fortnite-Slurp-Mushroom", "stream": true }] },
+   "fortnite-Bandage": { "category": "music", "sounds": [{ "name": "sounds/2026/Fortnite-Bandage", "stream": true }] },
+   "firstblood": { "category": "music", "sounds": [{ "name": "sounds/2026/Tournaments-Firstblood", "stream": true }] }
 }

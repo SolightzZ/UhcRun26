@@ -44,6 +44,21 @@ export function applyKnockbackFromDelta(entity, fromX, fromZ, toX, toZ, horizont
    applyKnockbackXZ(entity, nx, nz, horizontal, vertical, maxHorizontal);
 }
 
+export function utf8ByteLength(str) {
+   let len = 0;
+   for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code < 0x80) len += 1;
+      else if (code < 0x800) len += 2;
+      else if (code < 0xd800 || code > 0xdfff) len += 3;
+      else {
+         i++;
+         len += 4;
+      }
+   }
+   return len;
+}
+
 export function randomInt(min, max) {
    return (Math.random() * (max - min + 1) + min) | 0;
 }
@@ -79,7 +94,6 @@ function padTo(text, total = 100) {
    return safe + '\t'.repeat(rem);
 }
 
-// วิธีลัดส่งข้อความแจ้งเตือน (Toast Hack): ใช้คีย์เวิร์ด §N§O§T§I§F§I§C§A§T§I§O§N เพื่อเรียกใช้งานหน้าจอแจ้งเตือน (Toast UI) ดั้งเดิมของเกม
 export function dynamicToast(msg = '', icon = '', bg = 'textures/ui/greyBorder') {
    return TOAST_PREFIX + padTo(msg, 500) + padTo(icon, 100) + padTo(bg, 100);
 }
@@ -94,7 +108,7 @@ export function createLoc(x = 0, y = 0, z = 0) {
    return loc;
 }
 export function freeLoc(loc) {
-   if (loc) locPool.push(loc);
+   if (loc && locPool.length < 32) locPool.push(loc);
 }
 
 export function createItemQueryOptions(x, y, z, maxDistance = 16) {

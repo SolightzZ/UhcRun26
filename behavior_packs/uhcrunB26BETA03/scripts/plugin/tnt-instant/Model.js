@@ -6,7 +6,7 @@ class Model {
    TNT_COOLDOWN_TICKS = 2;
    TNT_GLOBAL_PER_TICK = 8;
 
-   cdMap = new LRUMap(54);
+   cdMap = new LRUMap(70);
    tntGlobalTick = -1;
    tntGlobalCount = 0;
 }

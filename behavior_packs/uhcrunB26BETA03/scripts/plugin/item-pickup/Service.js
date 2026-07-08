@@ -1,6 +1,6 @@
 import { ItemStack, system } from '@minecraft/server';
-import { enqueuePlayerSound, enqueuePlayerSetActionBar } from '../../shared/MessageBatcher.js';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
+import { enqueuePlayerSetActionBar, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import model from './Model.js';
 
 class Service {
@@ -13,7 +13,7 @@ class Service {
       return null;
    };
 
-    smeltPlayer = (entry) => {
+   smeltPlayer = (entry) => {
       const { player, types } = entry;
       if (!player?.isValid) return;
       const container = this.getContainer(player);
@@ -62,7 +62,6 @@ class Service {
       const player = ev.entity;
       if (!player?.isValid || player.typeId !== 'minecraft:player') return;
 
-      // สภาพแวดล้อมรันไทม์ดั้งเดิมของ Bedrock ส่งคืนคอลเลกชันที่ไม่ได้เป็นมาตรฐาน — ให้ใช้ Array.from() เพื่อรองรับการวนลูปประมวลผลข้อมูล
       const items = Array.from(ev.items ?? []);
       if (!items.length) return;
 

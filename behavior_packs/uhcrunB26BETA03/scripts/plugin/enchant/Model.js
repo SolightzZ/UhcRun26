@@ -23,7 +23,7 @@ class Model {
    ]);
 
    ENCHANT_WINDOW_TICKS = 3;
-   lastEnchantTick = new LRUMap(54, 100);
+   lastEnchantTick = new LRUMap(70, 100);
 }
 
 export default new Model();

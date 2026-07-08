@@ -1,6 +1,6 @@
 import { ItemComponentTypes, ItemStack, system } from '@minecraft/server';
-import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { getPlayerInventoryContainer } from '../../features/cache/CacheManager.js';
+import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
@@ -288,7 +288,6 @@ class Service {
       if (dmg > 0 && player?.isValid) this.applyToolDamage(player, dmg, axeTypeId);
    }
 
-   // การจัดคิวงานอย่างเป็นธรรม (Fair Scheduling): เลือกงานจากผู้เล่นคนอื่นสลับจากผู้เล่นคนล่าสุดที่ถูกจัดคิว
    findFairJob = () => {
       if (model.jobQueue.length === 0) return null;
 

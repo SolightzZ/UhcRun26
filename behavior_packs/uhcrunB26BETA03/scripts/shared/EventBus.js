@@ -49,6 +49,7 @@ class EventBus {
             dead.push(handler);
          }
       }
+
       // ลบตัวจัดการประเภททำงานครั้งเดียวออกหลังจากจบลูปการทำงาน
       for (let i = 0; i < dead.length; i++) {
          this.off(type, dead[i]);

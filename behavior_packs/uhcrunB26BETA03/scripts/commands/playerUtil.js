@@ -2,6 +2,7 @@ import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/se
 import { SPAWN_CONFIG } from '../constants/game.js';
 import { getPlayerInventoryContainer } from '../features/cache/CacheManager.js';
 import { allPlayersCache } from '../features/cache/State_Cache.js';
+import { enqueueAddEffect } from '../shared/AddEffectBatcher.js';
 import { enqueuePlayerSound } from '../shared/MessageBatcher.js';
 import { COMPASS_ITEM, logError, setAdventure } from '../shared/Util.js';
 
@@ -66,14 +67,10 @@ function setItemPlayer(player) {
 function applyEffects(player, effects = []) {
    for (let ei = 0, eLen = effects.length; ei < eLen; ei++) {
       const { type, duration, amp = 0 } = effects[ei];
-      try {
-         player.addEffect(type, duration, {
-            amplifier: amp,
-            showParticles: false,
-         });
-      } catch (error) {
-         logError('Command', 'Failed to apply effect ' + type, error);
-      }
+      enqueueAddEffect(player, type, duration, {
+         amplifier: amp,
+         showParticles: false,
+      });
    }
 }
 
