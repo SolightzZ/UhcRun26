@@ -28,7 +28,6 @@ const actionBar = 25;
 const actionNum = 5;
 
 const explosionLocPool = { x: 0, y: 0, z: 0 };
-const soundOptionsStart = { volume: 0.8, pitch: 1 };
 const soundOptionsPlayers = { volume: 1, pitch: 1 };
 const soundOptionsExplode = { volume: 0.7, pitch: 0.9 };
 
@@ -49,10 +48,13 @@ class UhcMatchManager {
       setAliveTeamDirtyHandler(() => this.markAliveTeamDirty());
 
       this._borderTick = () => BorderManager.borderManagerTick();
+
       this._borderShrink = () => BorderManager.borderManagerTickShrink();
+
       this._scoreboardUpdate = () => {
          BorderManager.scoreboardUpdate(ctx.objective, uhcPlayersCache);
       };
+
       this._borderDamage = (player) => {
          BorderManager.borderManagerApplyDamage(player);
       };
@@ -123,7 +125,7 @@ class UhcMatchManager {
             for (let i = 0; i < players.length; i++) {
                players[i].inputPermissions?.setPermissionCategory(InputPermissionCategory.Movement, true);
                setSurvival(players[i]);
-                enqueueRemoveEffect(players[i], 'invisibility');
+               enqueueRemoveEffect(players[i], 'invisibility');
                players[i].onScreenDisplay.setTitle('Good Luck, Have Fun');
                this.playerSetupSpawnParticles(players[i]);
             }
@@ -137,6 +139,7 @@ class UhcMatchManager {
       const tick = ctx.countdownTicks;
       if (tick < 0 || tick > actionBar) return;
       if (players.length === 0) return;
+
       const remaining = actionBar - tick,
          playSound = remaining === 20 || remaining === 10 || remaining <= 5;
       enqueuePlayerSetActionBar(players, this.startBars[tick]);
@@ -204,8 +207,8 @@ class UhcMatchManager {
       for (let i = 0; i < players.length; i++) {
          if (players[i]?.isValid) validPlayers.push(players[i]);
       }
-      if (validPlayers.length === 0) return;
 
+      if (validPlayers.length === 0) return;
       if (isSetupTick) {
          this.playerSetupHandleGameStart(validPlayers, tick);
       }
@@ -222,7 +225,8 @@ class UhcMatchManager {
       }
 
       renderCache.scoreboardUpdateThrottle++;
-      if (ctx.objective && ctx.uhcTick && renderCache.scoreboardUpdateThrottle % 2 === 0) {
+
+      if (ctx.objective && ctx.uhcTick && renderCache.scoreboardUpdateThrottle) {
          this._scoreboardUpdate();
       }
 

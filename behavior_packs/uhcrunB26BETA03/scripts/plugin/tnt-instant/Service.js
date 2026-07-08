@@ -3,7 +3,7 @@ import { logError } from '../../shared/Util.js';
 import model from './Model.js';
 
 class Service {
-    placeTnt = (block, player) => {
+   placeTnt = (block, player) => {
       if (!player?.isValid) return;
 
       const now = system.currentTick;

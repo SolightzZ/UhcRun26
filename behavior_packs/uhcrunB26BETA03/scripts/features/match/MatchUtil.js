@@ -60,9 +60,11 @@ class UtilUhcMatchManager {
                 player.addTag('uhc');
                 uhcPlayerIds.add(player.id);
              }
-            for (const [effect, seconds] of START_EFFECTS) {
-                enqueueAddEffect(player, effect, seconds * 20, EFFECT_HIDDEN);
-            }
+         for (let si = 0; si < START_EFFECTS.length; si++) {
+            const effect = START_EFFECTS[si][0];
+            const seconds = START_EFFECTS[si][1];
+            enqueueAddEffect(player, effect, seconds * 20, EFFECT_HIDDEN);
+         }
             enqueueAddEffect(player, 'conduit_power', 250 * 20, { amplifier: 0, showParticles: false });
             return;
          }

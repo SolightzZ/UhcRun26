@@ -11,7 +11,7 @@
   {
     "test": "has_biome_tag",
     "operator": "==",
-    "value": "plains"
+    "value": "overworld"
   }
 ]
 
@@ -29,7 +29,7 @@
             },
             "scatter_chance": {
                 "numerator": 1,
-                "denominator": 1500
+                "denominator": 300
             }
         }
     }

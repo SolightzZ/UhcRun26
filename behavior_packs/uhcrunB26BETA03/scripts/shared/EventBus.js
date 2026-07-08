@@ -68,9 +68,9 @@ class EventBus {
 
    get handlerCount() {
       let count = 0;
-      for (const list of this.#handlers.values()) {
+      this.#handlers.forEach((list) => {
          count += list.length;
-      }
+      });
       return count;
    }
 }

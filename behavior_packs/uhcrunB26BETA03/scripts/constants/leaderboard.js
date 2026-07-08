@@ -47,8 +47,8 @@ export function getRankColor(index) {
 
 export function generateStatsHash(statsMap) {
    let hashString = '';
-   for (const [name, stats] of statsMap) {
+   statsMap.forEach((stats, name) => {
       hashString += `${name}${stats.kills}${stats.deaths}${stats.teamLabel || ''}`;
-   }
+   });
    return hashString;
 }

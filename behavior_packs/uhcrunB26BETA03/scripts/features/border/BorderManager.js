@@ -24,6 +24,7 @@ class BorderManager {
       ctx.shrinkDuration = 0;
       ctx.startRadius = CHECKPOINTS[0];
       ctx.currentBorderColor = borderColors.blue;
+
       this.endSequenceReset();
       BorderShrink.borderManagerSetRadius(CHECKPOINTS[0]);
       ctx.borderReady = true;
@@ -111,6 +112,10 @@ class BorderManager {
       renderCache.lastTargetRadius = null;
       renderCache.borderMolang = null;
       renderCache.scoreboardUpdateThrottle = 0;
+   }
+
+   broadcast(players, options) {
+      return broadcast(players, options);
    }
 
    scoreboardInit() {

@@ -29,18 +29,14 @@ export default class ReviveSession {
       return this._state;
    }
 
-   // กำหนดฟังก์ชันเรียกกลับ (Callbacks) สำหรับเหตุการณ์เมื่อเสร็จสิ้นหรือยกเลิก
    onComplete(fn) {
       this._onComplete = fn;
    }
+
    onCancel(fn) {
       this._onCancel = fn;
    }
 
-   // ตรวจสอบเงื่อนไขทั้งหมดและส่งคืนผลลัพธ์สถานะ
-   // ส่งคืน { ok: true } หากควรดำเนินการชุบชีวิตต่อไป
-   // ส่งคืน { ok: false, reason?: string, sessionDone: boolean } หากถูกยกเลิก
-   // ส่งคืน { ok: true, finished: true } หากเวลาของตัวนับหมดลงแล้ว
    tick() {
       if (this._state !== 'ACTIVE') return { ok: false, sessionDone: true };
 
@@ -74,7 +70,7 @@ export default class ReviveSession {
          return this.#cancel(REVIVE_MSG.wrongDimension);
       }
 
-      // ตรวจสอบการเคลื่อนไหว
+   
       const loc = reviver.location;
       const dx = loc.x - this.anchorX;
       const dy = loc.y - this.anchorY;
@@ -83,7 +79,7 @@ export default class ReviveSession {
          return this.#cancel(REVIVE_MSG.movedTooFar);
       }
 
-      // ตรวจสอบเวลานับถอยหลัง
+     
       const remaining = this.endTick - system.currentTick;
       if (remaining <= 0) {
          this._state = 'COMPLETED';
@@ -91,7 +87,7 @@ export default class ReviveSession {
          return { ok: true, finished: true };
       }
 
-      // จำกัดความถี่ในการอัปเดต UI (UI throttle)
+
       if (system.currentTick - this.lastUiTick >= REVIVE_ACTIONBAR_INTERVAL) {
          this.lastUiTick = system.currentTick;
          const seconds = Math.ceil(remaining / 20);

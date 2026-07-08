@@ -1,4 +1,4 @@
 gamerule doDaylightCycle false
 gamerule doWeatherCycle false
-gamerule mobSpawn false
+gamerule doMobSpawning false
 gamerule commandBlockOutput false

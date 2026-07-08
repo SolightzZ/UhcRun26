@@ -64,9 +64,9 @@ function markNametagDirty(playerId) {
 
 export function getTotalTeamPlayers() {
    let total = 0;
-   for (const set of teamPlayerIndex.values()) {
+   teamPlayerIndex.forEach((set) => {
       total += set.size;
-   }
+   });
    return total;
 }
 
@@ -164,8 +164,6 @@ export function leaveTeam(player) {
    const oldTeam = getPlayerTeam(player);
    if (!oldTeam) return;
 
-   const shouldTrack = !isGameRunning || uhcPlayerIds.has(player.id);
-
    setTeam(player, null);
 }
 
@@ -175,7 +173,6 @@ export function clearAllTeams(executor) {
    clearAllReviveRuntime();
 
    const players = getCachedPlayers();
-   const teamsLen = TEAMS.length;
 
    clearTeamRuntimeState();
 

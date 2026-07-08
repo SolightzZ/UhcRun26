@@ -23,9 +23,7 @@ export function incrementPairHistory(killer, victim) {
    if (!killer.isValid) return;
    if (!victim.isValid) return;
 
-   const killerName = killer.name;
-   const victimName = victim.name;
-   const historyKey = 'Kill: ' + killerName + ' | Victim : ' + victimName;
+   const historyKey = 'Kill: ' + killer.name + ' | Victim : ' + victim.name;
 
    kdHistoryObj.addScore(historyKey, 1);
 }

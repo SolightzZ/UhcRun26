@@ -69,7 +69,6 @@ class BlockFillerUtility {
       }
    }
 
-   // อัลกอริทึมการสุ่มเทียม (PRNG) แบบ xorshift
    fastRandomInt(max) {
       this.seed |= 0;
       this.seed = (this.seed + 0x6d2b79f5) | 0;

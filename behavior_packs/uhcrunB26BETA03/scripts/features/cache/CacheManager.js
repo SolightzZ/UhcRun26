@@ -32,8 +32,8 @@ function removeCachedPlayerById(list, id) {
 }
 
 export function clearTeamRuntimeState() {
-   for (const team of TEAMS) {
-      teamPlayerIndex.set(team.id, new Set());
+   for (let i = 0; i < TEAMS.length; i++) {
+      teamPlayerIndex.set(TEAMS[i].id, new Set());
    }
 }
 
@@ -41,7 +41,8 @@ export function rebuildTeamRuntimeState(players) {
    playerTeamCache.clear();
    clearTeamRuntimeState();
 
-   for (const p of players) {
+   for (let pi = 0; pi < players.length; pi++) {
+      const p = players[pi];
       if (!p) continue;
       if (!p.isValid) continue;
 
@@ -68,7 +69,8 @@ export function refreshPlayerCaches() {
    uhcPlayerIds.clear();
    playerCache.clear();
 
-   for (const p of players) {
+   for (let pi = 0; pi < players.length; pi++) {
+      const p = players[pi];
       if (!p?.isValid) continue;
 
       allPlayersCache.push(p);

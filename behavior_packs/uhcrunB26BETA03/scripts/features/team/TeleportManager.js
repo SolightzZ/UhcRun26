@@ -68,12 +68,19 @@ export function teleportToSpawn(player) {
       try {
          _spawnDim.spawnParticle('so:light2', { x: tx, y: ty + 5, z: tz });
       } catch {
-         // ชังก์ยังไม่ได้ถูกโหลด — การแสดงผลพาร์ติเคิลไม่ใช่ส่วนวิกฤต
+         // ignore
       }
    }, 5);
 }
 
-export const getOtherUhcPlayers = (excludeId) => uhcPlayersCache.filter((p) => p.id !== excludeId);
+export function getOtherUhcPlayers(excludeId) {
+   const result = [];
+   for (let oi = 0; oi < uhcPlayersCache.length; oi++) {
+      const p = uhcPlayersCache[oi];
+      if (p.id !== excludeId) result.push(p);
+   }
+   return result;
+}
 
 export function teleportGetAllPlayers(player) {
    const players = allPlayersCache;

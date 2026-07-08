@@ -54,11 +54,15 @@ function loadRankData() {
       _rankData = parsed;
       if (!_rankData.players) _rankData.players = {};
       if (!_rankData.teams) _rankData.teams = {};
-      for (const id of Object.keys(_rankData.players)) {
+      const playerKeys = Object.keys(_rankData.players);
+      for (let i = 0; i < playerKeys.length; i++) {
+         const id = playerKeys[i];
          _rankData.players[id] = sanitizePlayerEntry(_rankData.players[id]);
          _rankData.players[id].name = _rankData.players[id].name || id;
       }
-      for (const id of Object.keys(_rankData.teams)) {
+      const teamKeys = Object.keys(_rankData.teams);
+      for (let i = 0; i < teamKeys.length; i++) {
+         const id = teamKeys[i];
          _rankData.teams[id] = sanitizeTeamEntry(_rankData.teams[id]);
       }
       return _rankData;
@@ -202,7 +206,9 @@ export function getTeamKillStats() {
       if (!teamKillObj) return [];
 
       const result = [];
-      for (const participant of teamKillObj.getParticipants()) {
+      const killParticipants = teamKillObj.getParticipants();
+      for (let i = 0; i < killParticipants.length; i++) {
+         const participant = killParticipants[i];
          const name = resolveParticipantName(participant);
          const kills = teamKillObj.getScore(participant);
          if (name && kills > 0) {
@@ -224,7 +230,9 @@ export function getPlayerKillStats() {
 
       const result = [];
       const rankData = loadRankData();
-      for (const participant of killsObj.getParticipants()) {
+      const killParticipants = killsObj.getParticipants();
+      for (let i = 0; i < killParticipants.length; i++) {
+         const participant = killParticipants[i];
          const name = resolveParticipantName(participant);
          const kills = killsObj.getScore(participant);
          if (name && kills > 0) {
@@ -253,7 +261,9 @@ export function getPlayerDeathStats() {
 
       const result = [];
       const rankData = loadRankData();
-      for (const participant of deathsObj.getParticipants()) {
+      const deathParticipants = deathsObj.getParticipants();
+      for (let i = 0; i < deathParticipants.length; i++) {
+         const participant = deathParticipants[i];
          const name = resolveParticipantName(participant);
          const deaths = deathsObj.getScore(participant);
          if (name && deaths > 0) {

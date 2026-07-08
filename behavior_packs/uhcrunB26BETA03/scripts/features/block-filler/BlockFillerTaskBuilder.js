@@ -34,7 +34,6 @@ class BlockFillerTaskBuilder {
          maxZ = bounds.maxZ;
 
       return (limit) => {
-         // ทางลัด fillBlocks ดั้งเดิมสำหรับการเติมบล็อกแบบคงที่ — เฉพาะการเรียกใช้งานครั้งแรกเท่านั้น
          if (isStatic && staticPerm && remaining === totalBlockCount) {
             try {
                const volume = new BlockVolume({ x: minX, y: minY, z: minZ }, { x: maxX, y: maxY, z: maxZ });

@@ -10,7 +10,8 @@ function collectNpcsByTag(allNpcs) {
    const playerNpcs = [];
    const deathNpcs = [];
 
-   for (const npcEntity of allNpcs) {
+   for (let ni = 0; ni < allNpcs.length; ni++) {
+      const npcEntity = allNpcs[ni];
       if (!npcEntity?.isValid) continue;
       if (npcEntity.hasTag('lb:teams')) teamNpcs.push(npcEntity);
       else if (npcEntity.hasTag('lb:players')) playerNpcs.push(npcEntity);
@@ -37,7 +38,6 @@ export function renderBoard() {
 
    if (!teamNpcs.length && !playerNpcs.length && !deathNpcs.length) return;
 
-   // ล้างแคชการค้นหาตามติ๊กเพื่อให้แน่ใจว่าดึงข้อมูลใหม่ในแต่ละรอบของการเรนเดอร์กระดาน (renderBoard)
    clearLookupCache();
 
    const playerStats = getStats();
@@ -59,7 +59,8 @@ export function renderBoard() {
 }
 
 function updateNpcText(npcList, displayText) {
-   for (const npcEntity of npcList) {
+   for (let ni = 0; ni < npcList.length; ni++) {
+      const npcEntity = npcList[ni];
       if (!npcEntity?.isValid) continue;
       if (typeof npcEntity.nameTag !== 'string') continue;
       if (npcEntity.nameTag === displayText) continue;
@@ -72,9 +73,9 @@ function spawnLeaderboardNPCNow() {
       const overworldDimension = getOverworld();
 
       const existingNpcs = overworldDimension.getEntities(NPC_QUERY_OPTIONS);
-      for (const npc of existingNpcs) {
+      for (let ni = 0; ni < existingNpcs.length; ni++) {
          try {
-            npc.remove();
+            existingNpcs[ni].remove();
          } catch (error) {
             logError('LeaderboardNPC', 'Failed to remove existing NPC', error);
          }
@@ -100,7 +101,7 @@ function spawnLeaderboardNPCNow() {
                newNpcEntity.addTag('lb:deaths');
             }
          } catch (error) {
-            // ละเว้น
+            // ingnore
          }
       }
 

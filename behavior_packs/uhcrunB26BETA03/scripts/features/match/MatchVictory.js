@@ -20,7 +20,9 @@ class UhcMatchManagerVictory {
       MatchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      const allPlayerNames = MatchManager.getUhcPlayersCached().map((p) => p.name);
+      const uhcPlayers1 = MatchManager.getUhcPlayersCached();
+      const allPlayerNames = [];
+      for (let mi = 0; mi < uhcPlayers1.length; mi++) allPlayerNames.push(uhcPlayers1[mi].name);
       recordGamesPlayed(allPlayerNames);
 
       BorderManager.broadcast(getCachedPlayers(), { message: '[x]: No Team Survived', sound: SND_PLING });
@@ -58,8 +60,12 @@ class UhcMatchManagerVictory {
       MatchManager.stopGameLoop();
       world.gameRules.pvp = false;
 
-      const allPlayerNames = MatchManager.getUhcPlayersCached().map((p) => p.name);
-      const winPlayers = getPlayersByTeam(winTag).map((p) => p.name);
+      const uhcPlayers2 = MatchManager.getUhcPlayersCached();
+      const allPlayerNames = [];
+      for (let mi = 0; mi < uhcPlayers2.length; mi++) allPlayerNames.push(uhcPlayers2[mi].name);
+      const winPlayersArr = getPlayersByTeam(winTag);
+      const winPlayers = [];
+      for (let wi = 0; wi < winPlayersArr.length; wi++) winPlayers.push(winPlayersArr[wi].name);
       recordWin(winTag, winPlayers);
       recordGamesPlayed(allPlayerNames);
 
@@ -120,7 +126,7 @@ class UhcMatchManagerVictory {
          if (this.aliveTeamsSet.size > 1) {
             this._detectEliminatedTeams();
             this._prevAliveTeams.clear();
-            for (const t of this.aliveTeamsSet) this._prevAliveTeams.add(t);
+            this.aliveTeamsSet.forEach((t) => this._prevAliveTeams.add(t));
             return;
          }
       }
@@ -136,16 +142,15 @@ class UhcMatchManagerVictory {
       this.victoryManagerTriggerDraw();
    }
 
-   // ตรวจจับทีมที่เพิ่งถูกคัดออกใหม่ (มีอยู่ในก่อนหน้า แต่ไม่มีในปัจจุบัน)
    _detectEliminatedTeams() {
       if (this._prevAliveTeams.size === 0) return;
 
-      for (const teamId of this._prevAliveTeams) {
+      this._prevAliveTeams.forEach((teamId) => {
          if (!this.aliveTeamsSet.has(teamId)) {
             const placement = this.aliveTeamsSet.size + 1;
             recordPlacement(teamId, placement);
          }
-      }
+      });
    }
 }
 

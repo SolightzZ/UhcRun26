@@ -45,6 +45,7 @@ export function uhcSetup(source) {
 
             cmd('clearspawnpoint @a');
             cmd(`setworldspawn ${SPAWN_CONFIG.worldSpawn}`);
+            cmd('structure load uhc1 569 100 569');
 
             batch({
                step: setupOrReset,

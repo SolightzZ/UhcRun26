@@ -113,7 +113,6 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // เรียกใช้งาน fillBlocks โดยตรง (ไม่ผ่านคิว) เพื่อประสิทธิภาพการทำงาน
    runEndPattern1(player) {
       if (this.pattern1Queued) return;
       if (!player?.isValid) return;
@@ -152,7 +151,6 @@ class BlockFillerEndSequence {
       system.runTimeout(feedFn, 1);
    }
 
-   // เรียกใช้งาน fillBlocks โดยตรง (ไม่ผ่านคิว) จากล่างขึ้นบน
    runEndPattern2(player) {
       if (this.pattern2Queued) return;
       if (!player?.isValid) return;

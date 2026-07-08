@@ -57,13 +57,11 @@ class BorderEvents {
       return false;
    }
 
-   // ล็อคการวางบล็อกเมื่อขอบเขตมีขนาดเล็กและผ่านพ้นการรอเริ่มต้นแล้ว
    shouldLockPlaceBlock(player) {
       if (!ctx.isRunning) return false;
       if (ctx.borderRadius > PLACE_BLOCK_LOCK_RADIUS) return false;
-
-      // อนุญาตให้วางบล็อกได้ในระหว่าง INITIAL_WAIT และ PATTERN3 จนกว่า pattern 1 จะเคลียร์วงแหวนรอบนอก
       if (ctx.endSeqState !== undefined && ctx.endSeqState < END_SEQUENCE_STATE.PATTERN1) return false;
+
       return this.isUhcPlayer(player);
    }
 
@@ -86,10 +84,6 @@ class BorderEvents {
 
    handlePlayerBreakBlock(ev) {
       if (this.isOutsideGlobalLimit(ev.block, ev.player)) {
-         ev.cancel = true;
-         return;
-      }
-      if (this.shouldCancelBorderAction(ev.player, ev.block)) {
          ev.cancel = true;
       }
    }

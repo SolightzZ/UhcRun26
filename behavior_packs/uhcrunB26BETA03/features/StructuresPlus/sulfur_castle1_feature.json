@@ -15,8 +15,8 @@
                     "minecraft:tuff",
                     "minecraft:dirt",
                     "minecraft:gravel",
-                    "sp:sulfur",
-                    "sp:cinnabar"
+                    "minecraft:sulfur",
+                    "minecraft:cinnabar"
                 ]
             }
         }

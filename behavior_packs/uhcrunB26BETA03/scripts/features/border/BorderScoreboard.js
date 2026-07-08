@@ -92,7 +92,6 @@ class BorderManagerScoreboard {
       _aliveTeams.clear();
 
       for (let i = 0, len = players.length; i < len; i++) {
-         // [ปรับปรุงประสิทธิภาพ 4] ค้นหาจากแคชโดยตรง — หลีกเลี่ยงการดึงค่าจาก Dynamic Property ใน getPlayerTeam()
          const teamId = playerTeamCache.get(players[i].id);
          if (teamId) _aliveTeams.add(teamId);
       }
@@ -141,7 +140,6 @@ class BorderManagerScoreboard {
          renderCache.lastTargetRadius = ctx.targetRadius;
       }
 
-      // [ปรับปรุงประสิทธิภาพ 5] แคชข้อความแสดงผลเวลา — ฟังก์ชัน scoreboardComputeNextLabel เปลี่ยนแปลงอย่างมากสุดวินาทีละครั้ง
       const nextLabel = `${color}${this.scoreboardComputeNextLabel()}`;
       if (nextLabel !== renderCache.lastLabel) {
          this.scoreboardUpdateLine(obj, 1, nextLabel);

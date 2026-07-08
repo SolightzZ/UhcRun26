@@ -29,9 +29,6 @@ class UhcMatchManagerTeleport {
       if (this.safeYCache.has(key)) return this.safeYCache.get(key);
 
       try {
-         // ตรวจสอบ getTopmostBlock และการเข้าถึงคุณสมบัติของบล็อกในบล็อก try เดียวกันเพื่อป้องกัน
-         // ข้อผิดพลาด LocationInUnloadedChunkError เมื่อ block.typeId หรือ block.y ล้มเหลว
-         // แม้ว่า getTopmostBlock จะดำเนินการสำเร็จ (เนื่องจากโหลดบล็อกในชังก์เพียงบางส่วน)
          try {
             const block = dimension.getTopmostBlock({ x, z });
             if (!block) {
@@ -62,10 +59,10 @@ class UhcMatchManagerTeleport {
             this.safeYCache.set(key, y);
             return y;
          } catch (error) {
-            // ชังก์ยังไม่ได้ถูกโหลดหรือการเข้าถึงคุณสมบัติของบล็อกล้มเหลว แคชค่า Y เริ่มต้นไว้เพื่อป้องกันการพยายามเรียกซ้ำซ้อน
             if (this.safeYCache.size >= 256) {
                this.safeYCache.delete(this.safeYCache.keys().next().value);
             }
+
             this.safeYCache.set(key, TELEPORT_CONFIG.DEFAULT_Y);
             return TELEPORT_CONFIG.DEFAULT_Y;
          }
@@ -119,7 +116,11 @@ class UhcMatchManagerTeleport {
       const members = teamData[1];
       if (!members?.length) return null;
 
-      const snapshot = members.filter((p) => p?.isValid && uhcPlayerIds.has(p.id));
+      const snapshot = [];
+      for (let si = 0; si < members.length; si++) {
+         const p = members[si];
+         if (p?.isValid && uhcPlayerIds.has(p.id)) snapshot.push(p);
+      }
       if (!snapshot.length) return null;
 
       return {
@@ -143,7 +144,7 @@ class UhcMatchManagerTeleport {
    createMemberQueueEntry(player, loc) {
       return {
          player,
-         loc: { ...loc },
+         loc: { x: loc.x, y: loc.y, z: loc.z },
          retryCount: 0,
          maxRetries: TELEPORT_CONFIG.MAX_RETRIES,
       };
@@ -271,7 +272,9 @@ class UhcMatchManagerTeleport {
 
          if (qIdx >= memberQueue.length) {
             if (retryQueue.length > 0 && !processedRetries) {
-               memberQueue.push(...retryQueue);
+               for (let r = 0; r < retryQueue.length; r++) {
+                  memberQueue.push(retryQueue[r]);
+               }
                retryQueue.length = 0;
                processedRetries = true;
             } else {
@@ -288,7 +291,7 @@ class UhcMatchManagerTeleport {
          if (result.success) {
             onSuccess();
          } else if (result.shouldRetry && !processedRetries) {
-            const retryEntry = { ...entry, retryCount: entry.retryCount + 1 };
+            const retryEntry = { player: entry.player, loc: entry.loc, retryCount: entry.retryCount + 1, maxRetries: entry.maxRetries };
             retryQueue.push(retryEntry);
 
             if (entry.retryCount === 0) {

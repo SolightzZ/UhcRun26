@@ -1,35 +1,35 @@
 {
-    "format_version": "1.13.0",
-    "minecraft:feature_rules": {
-        "description": {
-            "identifier": "sp:cherry_camp1_feature",
-            "places_feature": "sp:cherry_camp1_feature"
-        },
-        "conditions": {
-            "placement_pass": "first_pass",
-            "minecraft:biome_filter": [
-                {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "cherry_grove"
-                }
-            ]
-        },
-        "distribution": {
-            "iterations": 1,
-            "x": {
-                "extent": [0, 16],
-                "distribution": "uniform"
-            },
-            "y": "q.heightmap(v.worldx, v.worldz)",
-            "z": {
-                "extent": [0, 16],
-                "distribution": "uniform"
-            },
-            "scatter_chance": {
-                "numerator": 1,
-                "denominator": 650
+   "format_version": "1.13.0",
+   "minecraft:feature_rules": {
+      "description": {
+         "identifier": "sp:cherry_camp1_feature",
+         "places_feature": "sp:cherry_camp1_feature"
+      },
+      "conditions": {
+         "placement_pass": "first_pass",
+         "minecraft:biome_filter": [
+            {
+               "test": "has_biome_tag",
+               "operator": "==",
+               "value": "overworld"
             }
-        }
-    }
+         ]
+      },
+      "distribution": {
+         "iterations": 1,
+         "x": {
+            "extent": [0, 16],
+            "distribution": "uniform"
+         },
+         "y": "q.heightmap(v.worldx, v.worldz)",
+         "z": {
+            "extent": [0, 16],
+            "distribution": "uniform"
+         },
+         "scatter_chance": {
+            "numerator": 1,
+            "denominator": 325
+         }
+      }
+   }
 }

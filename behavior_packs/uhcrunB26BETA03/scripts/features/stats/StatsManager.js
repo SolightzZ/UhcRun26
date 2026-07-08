@@ -16,7 +16,9 @@ function migrateLegacyPlayerDynamic() {
       if (!raw) return;
       const names = JSON.parse(raw);
       let migrated = 0;
-      for (const [id, name] of Object.entries(names)) {
+      const entries = Object.entries(names);
+      for (let ei = 0; ei < entries.length; ei++) {
+         const [id, name] = entries[ei];
          const existing = playerStats.get(id);
          if (existing) {
             if (!existing.name || existing.name !== name) {
@@ -91,7 +93,8 @@ function clearStatsDynamicProperties() {
 }
 
 export function resetAllStats() {
-   for (const team of TEAMS) {
+   for (let i = 0; i < TEAMS.length; i++) {
+      const team = TEAMS[i];
       setTeamStats(team.id, { kills: 0, deaths: 0 });
    }
 

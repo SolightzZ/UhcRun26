@@ -152,7 +152,11 @@ function openPlayerSurvival(player) {
    form.title('UHCRun26 | Player Survival');
 
    const allPlayers = getAllPlayersSorted();
-   const survivors = allPlayers.filter((p) => p.survivedLast > 0);
+   const survivors = [];
+   for (let fi = 0; fi < allPlayers.length; fi++) {
+      const p = allPlayers[fi];
+      if (p.survivedLast > 0) survivors.push(p);
+   }
    survivors.sort((a, b) => b.survivedLast - a.survivedLast);
 
    if (survivors.length === 0) {
@@ -199,7 +203,11 @@ function openKDABoard(player) {
    }
 
    body += '§eTop Players (K/D)\n';
-   const ranked = allPlayers.filter((p) => p.games > 0);
+   const ranked = [];
+   for (let fi = 0; fi < allPlayers.length; fi++) {
+      const p = allPlayers[fi];
+      if (p.games > 0) ranked.push(p);
+   }
    if (ranked.length === 0) {
       body += '§7No tournament stats yet.\n';
    } else {

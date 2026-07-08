@@ -10,11 +10,11 @@ export let uhcPlayersCache = [];
 
 export function purgeOrphanInventoryCache() {
    let purged = 0;
-   for (const [id] of inventoryCache) {
+   inventoryCache.forEach((_, id) => {
       if (!playerCache.has(id)) {
          inventoryCache.delete(id);
          purged++;
       }
-   }
+   });
    return purged;
 }

@@ -1,7 +1,6 @@
 import { uhcPlayersCache } from '../../features/cache/State_Cache.js';
 import { LRUMap } from '../../shared/LRUMap.js';
 
-// ขีดจำกัดรัศมีการสแกนแบบปรับเปลี่ยนได้ — จะแคบลงเมื่อมีผู้เล่นออนไลน์มากขึ้น
 const ADAPTIVE_RADIUS = Object.freeze({
    BASE: 2.0,
    MEDIUM: 1.5,
@@ -90,14 +89,13 @@ class Model {
    });
 
    toolCache = Object.assign(new LRUMap(60, 1), {
-      // เขียนทับการล้างข้อมูลสำหรับออบเจ็กต์ที่มีคุณสมบัติ .tick
       cleanup(currentTick) {
          if (this._ttl <= 0) return;
-         for (const [key, val] of this._m) {
-            if (!val) continue;
+         this._m.forEach((val, key) => {
+            if (!val) return;
             const t = typeof val === 'object' ? (val.tick ?? -1) : -1;
             if (t >= 0 && currentTick - t > this._ttl) this._m.delete(key);
-         }
+         });
       },
    });
    pendingJobs = new Map();

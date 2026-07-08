@@ -69,19 +69,19 @@ export function trackHit(attacker, victim, cause) {
 
 export function handlerHit() {
    const currentTick = system.currentTick;
-   for (const [victimId, entry] of hitRegistry) {
+   hitRegistry.forEach((entry, victimId) => {
       if (!entry) {
          hitRegistry.delete(victimId);
-         continue;
+         return;
       }
       if (!playerCache.has(victimId)) {
          hitRegistry.delete(victimId);
-         continue;
+         return;
       }
       if (currentTick - entry.tick > HIT_TIMEOUT_TICKS) {
          hitRegistry.delete(victimId);
       }
-   }
+   });
 }
 
 export function resolveKiller(victimId) {

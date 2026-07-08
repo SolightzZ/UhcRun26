@@ -1,38 +1,38 @@
 {
-    "format_version": "1.13.0",
-    "minecraft:feature_rules": {
-        "description": {
-            "identifier": "sp:sulfur_castle1_feature",
-            "places_feature": "sp:sulfur_castle1_feature"
-        },
-        "conditions": {
-            "placement_pass": "first_pass",
-            "minecraft:biome_filter": [
-                {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "sulfur_caverns"
-                }
-            ]
-        },
-        "distribution": {
-            "iterations": 1,
-            "x": {
-                "extent": [0, 16],
-                "distribution": "uniform"
-            },
-            "y": {
-                "extent": [-64, 40],
-                "distribution": "uniform"
-            },
-            "z": {
-                "extent": [0, 16],
-                "distribution": "uniform"
-            },
-            "scatter_chance": {
-                "numerator": 1,
-                "denominator": 800
+   "format_version": "1.13.0",
+   "minecraft:feature_rules": {
+      "description": {
+         "identifier": "sp:sulfur_castle1_feature",
+         "places_feature": "sp:sulfur_castle1_feature"
+      },
+      "conditions": {
+         "placement_pass": "first_pass",
+         "minecraft:biome_filter": [
+            {
+               "test": "has_biome_tag",
+               "operator": "==",
+               "value": "overworld"
             }
-        }
-    }
+         ]
+      },
+      "distribution": {
+         "iterations": 1,
+         "x": {
+            "extent": [0, 16],
+            "distribution": "uniform"
+         },
+         "y": {
+            "extent": [-64, 40],
+            "distribution": "uniform"
+         },
+         "z": {
+            "extent": [0, 16],
+            "distribution": "uniform"
+         },
+         "scatter_chance": {
+            "numerator": 1,
+            "denominator": 600
+         }
+      }
+   }
 }

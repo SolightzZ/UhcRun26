@@ -3,8 +3,7 @@ import { enqueuePlayerSound } from '../../shared/MessageBatcher.js';
 
 class Service {
    resolveShooter = (ev) => {
-      const source = ev.source;
-      if (source?.isValid) return source;
+      if (ev.source?.isValid) return ev.source;
       try {
          return ev.projectile.getComponent('minecraft:projectile')?.owner ?? null;
       } catch (error) {

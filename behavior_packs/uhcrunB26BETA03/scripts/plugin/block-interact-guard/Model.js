@@ -13,11 +13,10 @@ class Model {
       'minecraft:flower_pot',
       'minecraft:smoker',
       'minecraft:respawn_anchor',
-      'minecraft:barrel',
       'minecraft:composter',
    ]);
 
-   SPECTATOR_DENYLIST = new Set(['minecraft:chest', 'minecraft:trapped_chest', 'minecraft:dispenser', 'minecraft:dropper', 'minecraft:chiseled_bookshelf']);
+   SPECTATOR_DENYLIST = new Set(['minecraft:barrel', 'minecraft:chest', 'minecraft:trapped_chest', 'minecraft:dispenser', 'minecraft:dropper', 'minecraft:chiseled_bookshelf']);
 
    DOOR_KEYWORDS = ['gate', 'trapdoor', 'candle', 'decorated_pot', 'crafter'];
    DOOR_REGEX = new RegExp(this.DOOR_KEYWORDS.join('|'));

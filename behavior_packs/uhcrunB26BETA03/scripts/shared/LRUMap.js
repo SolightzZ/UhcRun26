@@ -45,10 +45,10 @@ export class LRUMap {
 
    cleanup(currentTick) {
       if (this._ttl <= 0) return;
-      for (const [key, val] of this._m) {
+      this._m.forEach((val, key) => {
          if (typeof val === 'number' && currentTick - val > this._ttl) {
             this._m.delete(key);
          }
-      }
+      });
    }
 }

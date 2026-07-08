@@ -15,20 +15,21 @@ function buildEmptyDeathsText() {
 export function buildTeamText(teamList) {
    if (!teamList.length) return buildEmptyTeamText();
    const header = `§bTop ${MAX_TEAMS} Teams (Kills)\n\n`;
-   const lines = teamList.map((team, i) => {
-      const rankColor = getRankColor(i);
+   const lines = [];
+   for (let li = 0; li < teamList.length; li++) {
+      const team = teamList[li];
       const memberCount = team.members !== undefined ? team.members : 0;
-      return `${rankColor}#${i + 1} ${team.name} §f: §c${team.kills} Kills §7(${memberCount} Players)`;
-   });
+      lines.push(`${getRankColor(li)}#${li + 1} ${team.name} §f: §c${team.kills} Kills §7(${memberCount} Players)`);
+   }
    return header + lines.join('\n') + '\n';
 }
 
 function buildPlayerLines(sourceMap, filterFn, sortFn, lineFn) {
    const filtered = [];
-   for (const [name, stats] of sourceMap) {
-      if (!filterFn(stats)) continue;
+   sourceMap.forEach((stats, name) => {
+      if (!filterFn(stats)) return;
       filtered.push({ name, st: stats });
-   }
+   });
    filtered.sort(sortFn);
    if (filtered.length > MAX_PLAYERS) filtered.length = MAX_PLAYERS;
    return filtered;
@@ -53,11 +54,12 @@ export function getPlayerText(playerStatsMap) {
    }
 
    const header = `§eTop ${MAX_PLAYERS} Players (Kills)\n\n`;
-   const lines = playerList.map((item, i) => {
-      const rankColor = getRankColor(i);
+   const lines = [];
+   for (let li = 0; li < playerList.length; li++) {
+      const item = playerList[li];
       const teamSuffix = item.st.teamLabel ? ` §8[${item.st.teamLabel}§8]` : '';
-      return `${rankColor}#${i + 1} §a${item.name}${teamSuffix} §f- §c${item.st.kills} Kills §8(§4${item.st.deaths} Deaths§8)`;
-   });
+      lines.push(`${getRankColor(li)}#${li + 1} §a${item.name}${teamSuffix} §f- §c${item.st.kills} Kills §8(§4${item.st.deaths} Deaths§8)`);
+   }
 
    lbCache.lastStatsHash = currentHash;
    lbCache.cachedPlayerText = header + lines.join('\n') + '\n';
@@ -83,11 +85,12 @@ export function getDeathsText(playerStatsMap) {
    }
 
    const header = `§cTop ${MAX_PLAYERS} Deaths\n\n`;
-   const lines = deathsList.map((item, i) => {
-      const rankColor = getRankColor(i);
+   const lines = [];
+   for (let li = 0; li < deathsList.length; li++) {
+      const item = deathsList[li];
       const teamSuffix = item.st.teamLabel ? ` §8[${item.st.teamLabel}§8]` : '';
-      return `${rankColor}#${i + 1} §a${item.name}${teamSuffix} §f- §4${item.st.deaths} Deaths §8(§c${item.st.kills} Kills§8)`;
-   });
+      lines.push(`${getRankColor(li)}#${li + 1} §a${item.name}${teamSuffix} §f- §4${item.st.deaths} Deaths §8(§c${item.st.kills} Kills§8)`);
+   }
 
    lbCache.lastDeathsHash = currentHash;
    lbCache.cachedDeathsText = header + lines.join('\n') + '\n';

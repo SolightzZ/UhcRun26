@@ -154,7 +154,11 @@ function doABFlush() {
 
 function resolveTargets(player) {
    if (Array.isArray(player)) {
-      return player.filter((p) => p?.isValid);
+      const result = [];
+      for (let ri = 0; ri < player.length; ri++) {
+         if (player[ri]?.isValid) result.push(player[ri]);
+      }
+      return result;
    }
    return player?.isValid ? [player] : [];
 }

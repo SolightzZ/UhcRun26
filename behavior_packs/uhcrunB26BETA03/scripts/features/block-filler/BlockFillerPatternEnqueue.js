@@ -37,7 +37,6 @@ class BlockFillerPatternEnqueue {
       const len = this.ACTIVE_LAYERED_TASKS.length;
       if (len === 0) return;
 
-      // จำกัดปริมาณงานต่อติ๊กเพื่อป้องกันปัญหาคอขวด
       const MAX_LAYERED_PER_TICK = Math.min(4, Math.max(1, Math.ceil(len / 4)));
       let processed = 0;
 

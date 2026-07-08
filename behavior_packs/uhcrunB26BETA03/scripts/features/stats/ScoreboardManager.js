@@ -22,7 +22,6 @@ export function refreshScoreboardUI() {
 
       try {
          const teamKills = ensureObjective('uhc_teamkills', 'Team Kills');
-         const deaths = ensureObjective('uhc_deaths', 'Player Deaths');
          const kills = ensureObjective('uhc_kills', 'Player Kills');
 
          world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: teamKills });

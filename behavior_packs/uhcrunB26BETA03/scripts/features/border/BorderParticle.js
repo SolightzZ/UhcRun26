@@ -1,15 +1,15 @@
 import { MolangVariableMap } from '@minecraft/server';
-import { logError } from '../../shared/Util.js';
+import { logWarn } from '../../shared/Util.js';
 import { ctx } from './BorderState.js';
 
 const BORDER_RENDER = Object.freeze({
-   VIEW_DISTANCE: 35, // ค่าพื้นฐาน — ลดลงโดยอัตโนมัติเมื่อมีผู้เล่นออนไลน์จำนวนมาก
+   VIEW_DISTANCE: 25,
    PARTICLE_Y: 100,
 });
 
 const ADAPTIVE = Object.freeze({
    PLAYER_HIGH: 20,
-   VIEW_MIN: 15,
+   VIEW_MIN: 10,
 });
 
 const worldborder_ew = 'worldborder:worldborder_ew';
@@ -35,7 +35,7 @@ class BorderManagerParticle {
       return BORDER_RENDER.VIEW_DISTANCE - reduction;
    }
 
-   particleRendererGetMolang(width = 8) {
+   particleRendererGetMolang(width = 32) {
       const key = `${ctx.currentBorderColor.red},${ctx.currentBorderColor.green},${ctx.currentBorderColor.blue},${width}`;
       if (this.cachedMolang?.key === key) return this.cachedMolang.varMap;
 
@@ -46,14 +46,9 @@ class BorderManagerParticle {
       return molang;
    }
 
-   // จัดกลุ่มผู้เล่นตามเซลล์กริดเพื่อลดรอบการวนลูปประมวลผล
    particleRendererGroupByCell(players) {
       this.groupMaps.clear();
       this.groupsLen = 0;
-
-      const size = CELL_SIZE;
-      const offset = CELL_OFFSET;
-      const range = CELL_RANGE;
 
       for (let i = 0, len = players.length; i < len; i++) {
          const player = players[i];
@@ -62,10 +57,10 @@ class BorderManagerParticle {
          const loc = player.location;
          if (!loc) continue;
 
-         const cellX = (loc.x / size) | 0;
-         const cellZ = (loc.z / size) | 0;
+         const cellX = (loc.x / CELL_SIZE) | 0;
+         const cellZ = (loc.z / CELL_SIZE) | 0;
 
-         const key = (cellX + offset) * range + (cellZ + offset);
+         const key = (cellX + CELL_OFFSET) * CELL_RANGE + (cellZ + CELL_OFFSET);
 
          if (this.groupMaps.has(key)) continue;
          if (this.groupsLen >= GROUPS_POOL_CAP) continue;
@@ -90,11 +85,40 @@ class BorderManagerParticle {
       }
    }
 
-   particleRendererRenderBorderAABB(dim, molang, view) {
-      if (!dim || !this.groupsLen || !ctx.wbBounds) return;
+   particleRendererRenderBorder(dim) {
+      if (!dim || !ctx.wbBounds) return;
+
       const [east, west, north, south] = ctx.wbBounds;
       const pos = this.sharedPos;
       pos.y = BORDER_RENDER.PARTICLE_Y;
+
+      if (ctx.borderRadius <= 100) {
+         const wallLen = south - north;
+         const molang = this.particleRendererGetMolang(wallLen / 2);
+         const zMid = (south + north) / 2;
+         const xMid = (east + west) / 2;
+         try {
+            pos.x = east;
+            pos.z = zMid;
+            dim.spawnParticle(worldborder, pos, molang);
+            pos.x = west;
+            dim.spawnParticle(worldborder, pos, molang);
+            pos.z = north;
+            pos.x = xMid;
+            dim.spawnParticle(worldborder_ew, pos, molang);
+            pos.z = south;
+            dim.spawnParticle(worldborder_ew, pos, molang);
+         } catch (e) {
+            logWarn('BorderParticle', 'spawnParticle blocked');
+         }
+         return;
+      }
+
+      if (!this.groupsLen) return;
+      const view = this.getAdaptiveView();
+      const molang = this.particleRendererGetMolang(8);
+
+      if (!this.anyPlayerNearBorder(view)) return;
 
       const limit = Math.min(this.groupsLen, 24);
       const offset = this.renderTickCounter % Math.max(1, limit);
@@ -103,63 +127,49 @@ class BorderManagerParticle {
          const i = (offset + j) % this.groupsLen;
          const rep = this.groupsPool[i].rep;
          if (!rep?.isValid) continue;
+
          const loc = rep.location;
          if (!loc) continue;
          const px = loc.x,
             pz = loc.z;
 
          try {
-            if (px > east - view) {
+            if (Math.abs(px - east) < view) {
                pos.x = east;
                pos.z = Math.max(north, Math.min(south, pz));
                dim.spawnParticle(worldborder, pos, molang);
             }
-            if (px < west + view) {
+            if (Math.abs(px - west) < view) {
                pos.x = west;
                pos.z = Math.max(north, Math.min(south, pz));
                dim.spawnParticle(worldborder, pos, molang);
             }
-            if (pz < north + view) {
+            if (Math.abs(pz - north) < view) {
                pos.x = Math.max(west, Math.min(east, px));
                pos.z = north;
                dim.spawnParticle(worldborder_ew, pos, molang);
             }
-            if (pz > south - view) {
+            if (Math.abs(pz - south) < view) {
                pos.x = Math.max(west, Math.min(east, px));
                pos.z = south;
                dim.spawnParticle(worldborder_ew, pos, molang);
             }
          } catch (e) {
-            logError('BorderParticle', 'spawnParticle failed', e);
+            logWarn('BorderParticle', 'spawnParticle blocked');
          }
       }
    }
 
-   // ขอบเขตขนาดเล็ก (<100) ยังคงสร้างจุดแสดงผล 4 จุด
-   particleRendererRenderSmall(dim) {
-      const radius = ctx.borderRadius;
-      const molang = this.particleRendererGetMolang(radius);
-
-      const pos = this.sharedPos;
-      pos.y = BORDER_RENDER.PARTICLE_Y;
-
-      try {
-         pos.x = radius;
-         pos.z = 0;
-         dim.spawnParticle(worldborder, pos, molang);
-
-         pos.x = -radius;
-         dim.spawnParticle(worldborder, pos, molang);
-
-         pos.x = 0;
-         pos.z = radius;
-         dim.spawnParticle(worldborder_ew, pos, molang);
-
-         pos.z = -radius;
-         dim.spawnParticle(worldborder_ew, pos, molang);
-      } catch (error) {
-         logError('BorderParticle', 'Render small failed', error);
+   anyPlayerNearBorder(view) {
+      const [east, west, north, south] = ctx.wbBounds;
+      for (let i = 0; i < this.groupsLen; i++) {
+         const rep = this.groupsPool[i].rep;
+         if (!rep?.isValid) continue;
+         const loc = rep.location;
+         if (!loc) continue;
+         if (Math.abs(loc.x - east) < view || Math.abs(loc.x - west) < view || Math.abs(loc.z - north) < view || Math.abs(loc.z - south) < view) return true;
       }
+      return false;
    }
 
    particleRendererTick(players) {
@@ -168,10 +178,24 @@ class BorderManagerParticle {
 
       this._playerCount = players.length;
 
+      let dim = null;
+
+      if (ctx.borderRadius <= 100) {
+         for (let i = 0; i < players.length; i++) {
+            if (players[i]?.isValid) {
+               dim = players[i].dimension;
+               break;
+            }
+         }
+         if (!dim) return;
+         this.renderTickCounter++;
+         this.particleRendererRenderBorder(dim);
+         return;
+      }
+
       this.particleRendererGroupByCell(players);
       if (!this.groupsLen) return;
 
-      let dim = null;
       for (let i = 0; i < this.groupsLen; i++) {
          const rep = this.groupsPool[i].rep;
          if (rep?.isValid) {
@@ -182,14 +206,7 @@ class BorderManagerParticle {
       if (!dim) return;
 
       this.renderTickCounter++;
-
-      if (ctx.borderRadius < 100) {
-         this.particleRendererRenderSmall(dim);
-         return;
-      }
-
-      const view = this.getAdaptiveView();
-      this.particleRendererRenderBorderAABB(dim, this.particleRendererGetMolang(8), view);
+      this.particleRendererRenderBorder(dim);
    }
 }
 

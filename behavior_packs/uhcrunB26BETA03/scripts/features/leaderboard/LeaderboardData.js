@@ -8,7 +8,6 @@ import { TEAM_LOOKUP } from '../team/State_Team.js';
 import { getPlayersByTeam } from '../team/TeamActions.js';
 import { buildTeamText } from './LeaderboardFormat.js';
 
-// แคชการค้นหาคะแนนด้วย TTL เพื่อหลีกเลี่ยงการวนลูปประมวลผลผู้เล่นที่ซ้ำซ้อนในแต่ละรอบการเรนเดอร์
 const _lookupCache = new Map();
 const LOOKUP_CACHE_TTL = 2;
 
@@ -25,7 +24,9 @@ function buildScoreLookup(obj) {
    const map = new Map();
 
    try {
-      for (const p of obj.getParticipants()) {
+      const participants = obj.getParticipants();
+      for (let i = 0; i < participants.length; i++) {
+         const p = participants[i];
          const name = resolveParticipantName(p);
          if (name) map.set(name, obj.getScore(p));
       }
@@ -53,15 +54,15 @@ export function getStats() {
    }
 
    const allNames = new Set();
-   for (const k of killsLookup.keys()) allNames.add(k);
-   for (const k of deathsLookup.keys()) allNames.add(k);
+   killsLookup.forEach((_, k) => allNames.add(k));
+   deathsLookup.forEach((_, k) => allNames.add(k));
 
    const playerStatsMap = new Map();
 
-   for (const name of allNames) {
+   allNames.forEach((name) => {
       const killCount = killsLookup.get(name) ?? 0;
       const deathCount = deathsLookup.get(name) ?? 0;
-      if (!killCount && !deathCount) continue;
+      if (!killCount && !deathCount) return;
 
       let teamId = null;
       for (const [uuid, p] of playerCache) {
@@ -80,7 +81,7 @@ export function getStats() {
          teamId,
          teamLabel,
       });
-   }
+   });
 
    return playerStatsMap;
 }
@@ -90,12 +91,16 @@ function getRuntimeTeamList() {
 
    const teamKillLookup = buildScoreLookup(world.scoreboard?.getObjective('uhc_teamkills'));
 
-   const teamList = TEAMS.map((teamInfo, i) => ({
-      name: teamInfo.color + teamInfo.name,
-      kills: teamKillLookup.get(teamInfo.color + teamInfo.name) ?? 0,
-      members: getPlayersByTeam(teamInfo.id).length,
-      order: i,
-   }));
+   const teamList = [];
+   for (let ti = 0; ti < TEAMS.length; ti++) {
+      const teamInfo = TEAMS[ti];
+      teamList.push({
+         name: teamInfo.color + teamInfo.name,
+         kills: teamKillLookup.get(teamInfo.color + teamInfo.name) ?? 0,
+         members: getPlayersByTeam(teamInfo.id).length,
+         order: ti,
+      });
+   }
 
    teamList.sort((a, b) => {
       if (b.kills !== a.kills) return b.kills - a.kills;
@@ -110,7 +115,8 @@ export function getTeamText() {
    const teamList = getRuntimeTeamList();
 
    let teamHash = '';
-   for (const team of teamList) {
+   for (let i = 0; i < teamList.length; i++) {
+      const team = teamList[i];
       teamHash += `${team.name}${team.kills}${team.members}${team.order}`;
    }
 
