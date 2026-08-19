@@ -74,26 +74,32 @@ class UhcMatchManagerVictory {
       const players = getCachedPlayers();
       const winningPlayers = getPlayersByTeam(winTag);
 
+      const particleTargets = [];
       for (let i = 0, len = winningPlayers.length; i < len; i++) {
          const p = winningPlayers[i];
-
          if (!p?.isValid) continue;
-
-         const loc = p.location,
-            dim = p.dimension;
-
-         if (loc && dim) {
-            try {
-               dim.spawnParticle('minecraft:huge_explosion_emitter', {
-                  x: loc.x,
-                  y: loc.y + 2.5,
-                  z: loc.z,
-               });
-            } catch (error) {
-               logError('Victory', 'Failed to spawn victory particle', error);
-            }
-         }
+         const loc = p.location;
+         if (!loc || !p.dimension) continue;
+         particleTargets.push({ dim: p.dimension, x: loc.x, y: loc.y + 2.5, z: loc.z });
       }
+
+      const PARTICLE_BATCH = 6;
+      let pi = 0;
+      const particleTask = system.runInterval(() => {
+         try {
+            const end = Math.min(pi + PARTICLE_BATCH, particleTargets.length);
+            for (; pi < end; pi++) {
+               const pt = particleTargets[pi];
+               pt.dim.spawnParticle('minecraft:huge_explosion_emitter', { x: pt.x, y: pt.y, z: pt.z });
+            }
+            if (pi >= particleTargets.length) {
+               system.clearRun(particleTask);
+            }
+         } catch (error) {
+            logError('Victory', 'Failed to spawn victory particle', error);
+            system.clearRun(particleTask);
+         }
+      }, 2);
 
       showVictoryMessage(winTag, ctx.uhcTick);
 

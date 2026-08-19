@@ -17,6 +17,7 @@ import { setAliveTeamDirtyHandler } from '../team/State_Team.js';
 import { getCachedPlayers, getPlayerTeam, resetStatePreserveTeams } from '../team/TeamActions.js';
 import MatchTeleport from './MatchTeleport.js';
 import MatchUtil from './MatchUtil.js';
+import victoryManager from './MatchVictory.js';
 import { setCountdownRunning, setGameRunningState } from './State_Game.js';
 
 const PVP_TICK = PVP_TICK_BASE + PVP_DELAY;
@@ -251,6 +252,10 @@ class UhcMatchManager {
          try {
             if (this.#gameLoopGuard()) return;
             ctx.uhcTick++;
+
+            if (ctx.uhcTick % 60 === 0 && ctx.teleportComplete) {
+               victoryManager.victoryManagerCheck();
+            }
 
             if (ctx.teleportComplete) {
                ctx.countdownTicks++;

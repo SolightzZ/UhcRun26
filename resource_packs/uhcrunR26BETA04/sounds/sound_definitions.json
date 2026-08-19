@@ -12,8 +12,6 @@
    "world_noti": { "category": "music", "sounds": [{ "name": "sounds/uhc/world_noti", "stream": true }] },
    "spawn": { "category": "music", "sounds": [{ "name": "sounds/uhc/spawn", "stream": true }] },
 
-   "go": { "category": "music", "sounds": [{ "name": "sounds/2025/go", "stream": true }] },
-
    "rd2_Low_honor": { "category": "music", "sounds": [{ "name": "sounds/2026/rd2_Low_honor", "stream": true }] },
    "rocket-Start-Fortnite-Battle-Royale": { "category": "music", "sounds": [{ "name": "sounds/2026/Rocket-Start-Fortnite-Battle-Royale", "stream": true }] },
    "warzone-Jailbreak-Imminent": { "category": "music", "sounds": [{ "name": "sounds/2026/Warzone-Jailbreak-Imminent", "stream": true }] },
