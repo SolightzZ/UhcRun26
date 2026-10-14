@@ -1,8 +1,9 @@
-import { system, world } from '@minecraft/server';
+import { EquipmentSlot, ItemStack, system, world } from '@minecraft/server';
 import { CONFIG, TEAM_MENU, TEAMS } from '../../constants/game.js';
 import { enqueuePlayerMessage, enqueuePlayerSound } from '../../shared/MessageBatcher.js';
-import { dynamicToast, logError, logWarn, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
-import { clearTeamRuntimeState, refreshPlayerCaches, removePlayerFromRuntimeState } from '../cache/CacheManager.js';
+import { enqueueAddEffect, enqueueRemoveEffect } from '../../shared/AddEffectBatcher.js';
+import { COMPASS_ITEM, dynamicToast, logError, logWarn, setAdventure, setSpectator, SND_BASS, TEX_CANCEL } from '../../shared/Util.js';
+import { clearTeamRuntimeState, getPlayerInventoryContainer, refreshPlayerCaches, removePlayerFromRuntimeState } from '../cache/CacheManager.js';
 import { allPlayersCache, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
 import { hitRegistry } from '../kill/HitTracker.js';
 import { isGameRunning, teamKillObj } from '../match/State_Game.js';
@@ -254,4 +255,126 @@ export function getPlayersByTeam(teamId) {
    }
 
    return result;
+}
+
+// Player setup/teardown owned by the Team module: these mutate team
+// membership state (tags, uhcPlayerIds) plus start/end inventory and
+// effects, so they live behind the Team interface instead of a separate
+// Match-side module. (Moved verbatim from features/match/MatchUtil.js.)
+const UHC_EFFECTS = ['regeneration', 'blindness', 'invisibility', 'resistance', 'conduit_power', 'slow_falling'];
+
+const EFFECT_HIDDEN = { amplifier: 255, showParticles: false };
+
+const START_EFFECTS = [
+   ['regeneration', 26],
+   ['blindness', 26],
+   ['invisibility', 60],
+   ['resistance', 60],
+   ['night_vision', 99999],
+];
+
+export function playerSetupAddItems(player) {
+   if (!player?.isValid) return;
+   const inv = getPlayerInventoryContainer(player);
+   if (!inv) return;
+   inv.addItem(new ItemStack('minecraft:stone_axe', 1));
+   inv.addItem(new ItemStack('minecraft:stone_pickaxe', 1));
+   inv.addItem(new ItemStack('minecraft:cooked_beef', 3));
+   inv.addItem(new ItemStack('minecraft:oak_boat', 1));
+}
+
+export function playerSetupClearEffects(player) {
+   if (!player?.isValid) return;
+   for (let i = 0; i < UHC_EFFECTS.length; i++) {
+      enqueueRemoveEffect(player, UHC_EFFECTS[i]);
+   }
+}
+
+export function playerSetupApplyEndState(player) {
+   if (!player?.isValid) return;
+   try {
+       if (getPlayerTeam(player)) {
+          player.removeTag('uhc');
+          uhcPlayerIds.delete(player.id);
+          enqueueAddEffect(player, 'regeneration', 26 * 20, EFFECT_HIDDEN);
+         return;
+      }
+      setAdventure(player);
+       enqueueRemoveEffect(player, 'conduit_power');
+   } catch (error) {
+      logError('TeamActions', 'Failed to apply end state for ' + player.name, error);
+   }
+}
+
+export function playerSetupApplyStartState(player) {
+   if (!player?.isValid) return;
+
+   try {
+      if (getPlayerTeam(player)) {
+          if (!uhcPlayerIds.has(player.id)) {
+             player.addTag('uhc');
+             uhcPlayerIds.add(player.id);
+          }
+      for (let si = 0; si < START_EFFECTS.length; si++) {
+         const effect = START_EFFECTS[si][0];
+         const seconds = START_EFFECTS[si][1];
+         enqueueAddEffect(player, effect, seconds * 20, EFFECT_HIDDEN);
+      }
+         enqueueAddEffect(player, 'conduit_power', 250 * 20, { amplifier: 0, showParticles: false });
+         return;
+      }
+       setSpectator(player);
+       enqueueAddEffect(player, 'conduit_power', 9999, { amplifier: 0, showParticles: false });
+   } catch (error) {
+      logError('TeamActions', 'Failed to apply start state for ' + player.name, error);
+   }
+}
+
+export function playerSetupClearItemsKeepCompass(targetPlayer) {
+   const players = targetPlayer && targetPlayer.isValid ? [targetPlayer] : getCachedPlayers();
+   const total = players.length;
+   if (total === 0) return;
+
+   for (let i = 0; i < total; i++) {
+      const p = players[i];
+      if (!p?.isValid) continue;
+
+      const inv = getPlayerInventoryContainer(p);
+      if (!inv) continue;
+
+      let foundCompass = false;
+
+      for (let slot = 0; slot < inv.size; slot++) {
+         const item = inv.getItem(slot);
+         if (!item) continue;
+
+         if (item.typeId === COMPASS_ITEM) {
+            if (!foundCompass) {
+               foundCompass = true;
+
+               if (item.amount !== 1) {
+                  item.amount = 1;
+                  inv.setItem(slot, item);
+               }
+
+               continue;
+            }
+         }
+
+         inv.setItem(slot, undefined);
+      }
+
+      if (!foundCompass) {
+         inv.setItem(0, new ItemStack(COMPASS_ITEM, 1));
+      }
+
+      const equip = p.getComponent('minecraft:equippable');
+      if (!equip) continue;
+
+      equip.setEquipment(EquipmentSlot.Offhand, undefined);
+      equip.setEquipment(EquipmentSlot.Head, undefined);
+      equip.setEquipment(EquipmentSlot.Chest, undefined);
+      equip.setEquipment(EquipmentSlot.Legs, undefined);
+      equip.setEquipment(EquipmentSlot.Feet, undefined);
+   }
 }

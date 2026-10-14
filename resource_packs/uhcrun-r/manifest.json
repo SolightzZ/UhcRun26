@@ -6,7 +6,7 @@
       "description": "By https://github.com/SolightzZ",
       "uuid": "08b80ad8-636f-4fe9-b318-62e61770812a",
       "version": [1, 0, 6],
-      "min_engine_version": [1, 26, 30],
+      "min_engine_version": [1, 26, 50],
       "pack_scope": "world"
    },
 

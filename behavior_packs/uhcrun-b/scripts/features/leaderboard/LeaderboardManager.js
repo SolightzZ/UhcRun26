@@ -1,8 +1,8 @@
 import { system } from '@minecraft/server';
-import { NPCS, NPC_QUERY_OPTIONS, UI, resetCache } from '../../constants/leaderboard.js';
+import { NPCS, NPC_QUERY_OPTIONS, UI, generateStatsHash, resetCache } from '../../constants/leaderboard.js';
 import { getOverworld, logError } from '../../shared/Util.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
-import { clearLookupCache, getStats, getTeamText } from './LeaderboardData.js';
+import { getStats, getTeamText } from './LeaderboardData.js';
 import { getDeathsText, getPlayerText } from './LeaderboardFormat.js';
 
 function collectNpcsByTag(allNpcs) {
@@ -38,9 +38,11 @@ export function renderBoard() {
 
    if (!teamNpcs.length && !playerNpcs.length && !deathNpcs.length) return;
 
-   clearLookupCache();
-
    const playerStats = getStats();
+
+   // One hash per render serves both player + deaths text (it used to run
+   // once per panel on the same map).
+   const statsHash = generateStatsHash(playerStats);
 
    if (teamNpcs.length) {
       const teamText = getTeamText();
@@ -48,12 +50,12 @@ export function renderBoard() {
    }
 
    if (playerNpcs.length) {
-      const playerText = getPlayerText(playerStats);
+      const playerText = getPlayerText(playerStats, statsHash);
       updateNpcText(playerNpcs, `${UI.HEAD}${playerText}${UI.FOOT}`);
    }
 
    if (deathNpcs.length) {
-      const deathsText = getDeathsText(playerStats);
+      const deathsText = getDeathsText(playerStats, statsHash);
       updateNpcText(deathNpcs, `${UI.HEAD}${deathsText}${UI.FOOT}`);
    }
 }
@@ -111,19 +113,32 @@ function spawnLeaderboardNPCNow() {
    }
 }
 
-export function updateLeaderboard() {
+// Coalesces overlapping render requests (join-storm: one refresh per join)
+// into a single delayed render. A pending request absorbs later ones; if
+// any of them needs a player-cache refresh, the merged run refreshes.
+let boardTaskPending = false;
+let boardTaskNeedsPlayerRefresh = false;
+
+function scheduleBoardRender({ refreshPlayers, delay }) {
+   boardTaskNeedsPlayerRefresh = boardTaskNeedsPlayerRefresh || refreshPlayers;
+   if (boardTaskPending) return;
+   boardTaskPending = true;
    system.runTimeout(() => {
+      const needRefresh = boardTaskNeedsPlayerRefresh;
+      boardTaskPending = false;
+      boardTaskNeedsPlayerRefresh = false;
       resetCache();
-      refreshPlayerCaches();
+      if (needRefresh) refreshPlayerCaches();
       renderBoard();
-   }, 40);
+   }, delay);
+}
+
+export function updateLeaderboard() {
+   scheduleBoardRender({ refreshPlayers: true, delay: 40 });
 }
 
 export function refreshLeaderboard() {
-   system.runTimeout(() => {
-      resetCache();
-      renderBoard();
-   }, 20);
+   scheduleBoardRender({ refreshPlayers: false, delay: 20 });
 }
 
 export function spawnLeaderboardNPC() {

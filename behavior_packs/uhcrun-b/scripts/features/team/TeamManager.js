@@ -7,7 +7,6 @@ import { openMainMenu } from '../../ui/menu/MenuMain.js';
 import { onUseReviveItem } from '../../ui/revive/ReviveUI.js';
 import { purgePlayerCacheOnLeave, rebuildTeamRuntimeState } from '../cache/CacheManager.js';
 import { allPlayersCache, playerCache, playerTeamCache, uhcPlayerIds, uhcPlayersCache } from '../cache/State_Cache.js';
-import MatchUtil from '../match/MatchUtil.js';
 import { isGameRunning, setKdHistoryObj, setTeamKillObj, setUhcDeathsObj, setUhcKillsObj } from '../match/State_Game.js';
 import { cancelReviveForPlayer } from '../revive/ReviveManager.js';
 import { REVIVE_ITEM_ID } from '../revive/State_Revive.js';
@@ -15,7 +14,7 @@ import { handleDeath } from '../death/DeathManager.js';
 import { ensureObjective, refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { scheduleSaveStats } from '../stats/StatsManager.js';
 import { addToTeamIndex, deathLocation, playerStats, setPlayerStats, TEAM_LOOKUP, teamStats } from './State_Team.js';
-import { getCachedPlayers, setTeam } from './TeamActions.js';
+import { getCachedPlayers, playerSetupClearItemsKeepCompass, setTeam } from './TeamActions.js';
 import { teleportToSpawn } from './TeleportManager.js';
 
 function clearAllPlayerNametags() {
@@ -128,7 +127,7 @@ export function HandlerOnSpawn(ev) {
    if (ev.initialSpawn && !isGameRunning) {
       teleportToSpawn(player);
       setAdventure(player);
-      MatchUtil.playerSetupClearItemsKeepCompass(player);
+      playerSetupClearItemsKeepCompass(player);
    }
 
    if (!dynamicTeam) {

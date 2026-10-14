@@ -9,7 +9,10 @@ import { getPlayersByTeam } from '../team/TeamActions.js';
 import { buildTeamText } from './LeaderboardFormat.js';
 
 const _lookupCache = new Map();
-const LOOKUP_CACHE_TTL = 2;
+// Scoreboard scans are shared between consecutive renders (kills, deaths,
+// teamkills hit on separate keys). Renders are seconds apart, so the TTL
+// covers several renders; the board can lag real scores by up to ~5s.
+const LOOKUP_CACHE_TTL = 100;
 
 function buildScoreLookup(obj) {
    if (!obj) return new Map();
@@ -59,18 +62,20 @@ export function getStats() {
 
    const playerStatsMap = new Map();
 
+   // One pass over the player cache per render: name -> teamId index, so
+   // resolving N scoreboard names costs O(players + names), not O(names x players).
+   const nameToTeam = new Map();
+   playerCache.forEach((p, uuid) => {
+      if (!p?.isValid || typeof p.name !== 'string' || nameToTeam.has(p.name)) return;
+      nameToTeam.set(p.name, playerTeamCache.get(uuid) ?? null);
+   });
+
    allNames.forEach((name) => {
       const killCount = killsLookup.get(name) ?? 0;
       const deathCount = deathsLookup.get(name) ?? 0;
       if (!killCount && !deathCount) return;
 
-      let teamId = null;
-      for (const [uuid, p] of playerCache) {
-         if (p?.name === name) {
-            teamId = playerTeamCache.get(uuid);
-            break;
-         }
-      }
+      const teamId = nameToTeam.get(name) ?? null;
 
       const teamInfo = teamId ? TEAM_LOOKUP.get(teamId) : null;
       const teamLabel = teamInfo ? teamInfo.color + teamInfo.name : null;

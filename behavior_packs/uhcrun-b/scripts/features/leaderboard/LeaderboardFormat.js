@@ -35,9 +35,9 @@ function buildPlayerLines(sourceMap, filterFn, sortFn, lineFn) {
    return filtered;
 }
 
-export function getPlayerText(playerStatsMap) {
-   const currentHash = generateStatsHash(playerStatsMap);
-   if (currentHash === lbCache.lastStatsHash && lbCache.cachedPlayerText) {
+export function getPlayerText(playerStatsMap, currentHash) {
+   const hash = currentHash ?? generateStatsHash(playerStatsMap);
+   if (hash === lbCache.lastStatsHash && lbCache.cachedPlayerText) {
       return lbCache.cachedPlayerText;
    }
 
@@ -48,7 +48,7 @@ export function getPlayerText(playerStatsMap) {
    );
 
    if (!playerList.length) {
-      lbCache.lastStatsHash = currentHash;
+      lbCache.lastStatsHash = hash;
       lbCache.cachedPlayerText = buildEmptyPlayerText();
       return lbCache.cachedPlayerText;
    }
@@ -61,14 +61,14 @@ export function getPlayerText(playerStatsMap) {
       lines.push(`${getRankColor(li)}#${li + 1} §a${item.name}${teamSuffix} §f- §c${item.st.kills} Kills §8(§4${item.st.deaths} Deaths§8)`);
    }
 
-   lbCache.lastStatsHash = currentHash;
+   lbCache.lastStatsHash = hash;
    lbCache.cachedPlayerText = header + lines.join('\n') + '\n';
    return lbCache.cachedPlayerText;
 }
 
-export function getDeathsText(playerStatsMap) {
-   const currentHash = generateStatsHash(playerStatsMap);
-   if (currentHash === lbCache.lastDeathsHash && lbCache.cachedDeathsText) {
+export function getDeathsText(playerStatsMap, currentHash) {
+   const hash = currentHash ?? generateStatsHash(playerStatsMap);
+   if (hash === lbCache.lastDeathsHash && lbCache.cachedDeathsText) {
       return lbCache.cachedDeathsText;
    }
 
@@ -79,7 +79,7 @@ export function getDeathsText(playerStatsMap) {
    );
 
    if (!deathsList.length) {
-      lbCache.lastDeathsHash = currentHash;
+      lbCache.lastDeathsHash = hash;
       lbCache.cachedDeathsText = buildEmptyDeathsText();
       return lbCache.cachedDeathsText;
    }
@@ -92,7 +92,7 @@ export function getDeathsText(playerStatsMap) {
       lines.push(`${getRankColor(li)}#${li + 1} §a${item.name}${teamSuffix} §f- §4${item.st.deaths} Deaths §8(§c${item.st.kills} Kills§8)`);
    }
 
-   lbCache.lastDeathsHash = currentHash;
+   lbCache.lastDeathsHash = hash;
    lbCache.cachedDeathsText = header + lines.join('\n') + '\n';
    return lbCache.cachedDeathsText;
 }

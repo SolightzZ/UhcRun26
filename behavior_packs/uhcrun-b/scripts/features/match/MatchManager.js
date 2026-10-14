@@ -10,15 +10,25 @@ import BorderManager from '../border/BorderManager.js';
 import { icons, MinecraftColor, renderCache, ticks } from '../border/BorderState.js';
 import { refreshPlayerCaches } from '../cache/CacheManager.js';
 import { allPlayersCache, uhcPlayersCache } from '../cache/State_Cache.js';
-import { flushIfDirty } from '../rank/RankData.js';
+import { flushIfDirty, recordGamesPlayed, recordPlacement, recordWin } from '../rank/RankData.js';
 import { refreshScoreboardUI } from '../stats/ScoreboardManager.js';
 import { resetAnnouncer } from '../kill/KillAnnouncer.js';
-import { setAliveTeamDirtyHandler } from '../team/State_Team.js';
-import { getCachedPlayers, getPlayerTeam, resetStatePreserveTeams } from '../team/TeamActions.js';
+import { TEAM_LOOKUP, setAliveTeamDirtyHandler } from '../team/State_Team.js';
+import {
+   getCachedPlayers,
+   getPlayerTeam,
+   getPlayersByTeam,
+   playerSetupAddItems,
+   playerSetupApplyEndState,
+   playerSetupApplyStartState,
+   playerSetupClearEffects,
+   playerSetupClearItemsKeepCompass,
+   resetStatePreserveTeams,
+} from '../team/TeamActions.js';
+import { showVictoryMessage } from '../team/TeamManager.js';
 import MatchTeleport from './MatchTeleport.js';
-import MatchUtil from './MatchUtil.js';
 import victoryManager from './MatchVictory.js';
-import { setCountdownRunning, setGameRunningState } from './State_Game.js';
+import { countdownRunning, setCountdownRunning, setGameRunningState } from './State_Game.js';
 
 const PVP_TICK = PVP_TICK_BASE + PVP_DELAY;
 const PVP_WARN = PVP_TICK - 20;
@@ -167,7 +177,7 @@ class UhcMatchManager {
                enqueueBroadcast('[UHC] Good Luck, Have Fun');
                const uhcPlayers = uhcPlayersCache;
                for (let i = 0; i < uhcPlayers.length; i++) {
-                  if (uhcPlayers[i]?.isValid) MatchUtil.playerSetupAddItems(uhcPlayers[i]);
+                   if (uhcPlayers[i]?.isValid) playerSetupAddItems(uhcPlayers[i]);
                }
             });
             break;
@@ -227,7 +237,10 @@ class UhcMatchManager {
 
       renderCache.scoreboardUpdateThrottle++;
 
-      if (ctx.objective && ctx.uhcTick && renderCache.scoreboardUpdateThrottle) {
+      // Scoreboard is refreshed at most every 5 loop runs (the loop fires
+      // every `ticks` game ticks), plus one forced refresh right after the
+      // throttle is reset to 0 (see BorderManager borderManagerSyncGeometry).
+      if (ctx.objective && ctx.uhcTick && (renderCache.scoreboardUpdateThrottle === 1 || ctx.uhcTick % 5 === 0)) {
          this._scoreboardUpdate();
       }
 
@@ -240,7 +253,11 @@ class UhcMatchManager {
          }
       }
 
-      BorderManager.particleRendererTick(uhcPlayers);
+      // Particles stay on the fast path but run every other loop run to
+      // leave tick budget for damage + scoreboard work (watchdog safety).
+      if (ctx.uhcTick % 2 === 0) {
+         BorderManager.particleRendererTick(uhcPlayers);
+      }
    }
 
    #gameLoopGuard() {
@@ -254,7 +271,10 @@ class UhcMatchManager {
             ctx.uhcTick++;
 
             if (ctx.uhcTick % 60 === 0 && ctx.teleportComplete) {
-               victoryManager.victoryManagerCheck();
+               const result = victoryManager.evaluate(this.getUhcPlayersCached(), getPlayerTeam);
+               if (result.outcome !== 'none') {
+                  this.handleVictoryOutcome(result);
+               }
             }
 
             if (ctx.teleportComplete) {
@@ -274,7 +294,123 @@ class UhcMatchManager {
    }
 
    markAliveTeamDirty() {
-      ctx.aliveTeamDirty = true;
+      // Single owner of the alive-team dirty flag: renderCache (read by
+      // BorderScoreboard). The old ctx.aliveTeamDirty write had no readers.
+      renderCache.aliveTeamDirty = true;
+   }
+
+   // Single writer for the victory/end path phase flags. The running-path
+   // writer is #initMatchContext + #initGameRunning (see startGameUhc).
+   #beginVictoryEnd() {
+      ctx.isRunning = false;
+      this.stopGameLoop();
+      world.gameRules.pvp = false;
+   }
+
+   handleVictoryOutcome(result) {
+      const eliminated = result.eliminated ?? [];
+      for (let i = 0; i < eliminated.length; i++) {
+         recordPlacement(eliminated[i].teamId, eliminated[i].placement);
+      }
+      if (result.outcome === 'win') {
+         this.triggerVictoryWin(result.winTag);
+      } else if (result.outcome === 'draw') {
+         this.triggerVictoryDraw();
+      }
+   }
+
+   triggerVictoryDraw() {
+      if (!ctx.isRunning) return;
+      this.#beginVictoryEnd();
+
+      const uhcPlayers = this.getUhcPlayersCached();
+      const allPlayerNames = [];
+      for (let mi = 0; mi < uhcPlayers.length; mi++) allPlayerNames.push(uhcPlayers[mi].name);
+      recordGamesPlayed(allPlayerNames);
+
+      BorderManager.broadcast(getCachedPlayers(), { message: '[x]: No Team Survived', sound: SND_PLING });
+      this.startEndCountdown();
+   }
+
+   startEndCountdown() {
+      if (countdownRunning) return;
+      setCountdownRunning(true);
+
+      let time = 10;
+
+      ctx.countdownIntervalId = system.runInterval(() => {
+         time--;
+
+         if (time <= 5 && time > 0) {
+            enqueueBroadcast(`${MinecraftColor.red}${icons.Hourglass} Game ending in ${time}`);
+         }
+
+         if (time <= 0) {
+            if (ctx.countdownIntervalId !== null) {
+               system.clearRun(ctx.countdownIntervalId);
+               ctx.countdownIntervalId = null;
+            }
+            setCountdownRunning(false);
+            this.endGameUhc();
+         }
+      }, 20);
+   }
+
+   triggerVictoryWin(winTag) {
+      if (!ctx.isRunning) return;
+
+      this.#beginVictoryEnd();
+
+      const uhcPlayers = this.getUhcPlayersCached();
+      const allPlayerNames = [];
+      for (let mi = 0; mi < uhcPlayers.length; mi++) allPlayerNames.push(uhcPlayers[mi].name);
+      const winPlayersArr = getPlayersByTeam(winTag);
+      const winPlayers = [];
+      for (let wi = 0; wi < winPlayersArr.length; wi++) winPlayers.push(winPlayersArr[wi].name);
+      recordWin(winTag, winPlayers);
+      recordGamesPlayed(allPlayerNames);
+
+      const teamInfo = TEAM_LOOKUP.get(winTag) ?? null;
+      const teamName = teamInfo ? `${teamInfo.color}${teamInfo.name}` : winTag;
+      const players = getCachedPlayers();
+      const winningPlayers = getPlayersByTeam(winTag);
+
+      const particleTargets = [];
+      for (let i = 0, len = winningPlayers.length; i < len; i++) {
+         const p = winningPlayers[i];
+         if (!p?.isValid) continue;
+         const loc = p.location;
+         if (!loc || !p.dimension) continue;
+         particleTargets.push({ dim: p.dimension, x: loc.x, y: loc.y + 2.5, z: loc.z });
+      }
+
+      const PARTICLE_BATCH = 6;
+      let pi = 0;
+      const particleTask = system.runInterval(() => {
+         try {
+            const end = Math.min(pi + PARTICLE_BATCH, particleTargets.length);
+            for (; pi < end; pi++) {
+               const pt = particleTargets[pi];
+               pt.dim.spawnParticle('minecraft:huge_explosion_emitter', { x: pt.x, y: pt.y, z: pt.z });
+            }
+            if (pi >= particleTargets.length) {
+               system.clearRun(particleTask);
+            }
+         } catch (error) {
+            logError('Victory', 'Failed to spawn victory particle', error);
+            system.clearRun(particleTask);
+         }
+      }, 2);
+
+      showVictoryMessage(winTag, ctx.uhcTick);
+
+      BorderManager.broadcast(players, {
+         title: MinecraftColor.white + 'VICTORY',
+         subtitle: `${teamName} Wins`,
+         sound: 'warzone-Plunder-You-Placed-1st',
+      });
+
+      this.startEndCountdown();
    }
 
    #clearUhcCountdown() {
@@ -311,8 +447,7 @@ class UhcMatchManager {
    }
 
    #initTeleport() {
-      MatchTeleport.safeYCache.clear();
-      MatchTeleport.abortAllTeleportQueues();
+      MatchTeleport.prepare();
    }
 
    #initGameRunning() {
@@ -337,10 +472,10 @@ class UhcMatchManager {
 
    _batchSetupPlayers(players, index, batchSize) {
       for (let i = 0; i < batchSize && index < players.length; i++, index++) {
-         const player = players[index];
-         if (!player?.isValid) continue;
-         MatchUtil.playerSetupClearItemsKeepCompass(player);
-         MatchUtil.playerSetupApplyStartState(player);
+          const player = players[index];
+          if (!player?.isValid) continue;
+          playerSetupClearItemsKeepCompass(player);
+          playerSetupApplyStartState(player);
       }
       if (index < players.length) {
          system.runTimeout(() => this._batchSetupPlayers(players, index, batchSize), 1);
@@ -381,9 +516,9 @@ class UhcMatchManager {
    }
 
    _batchResetPlayerStates(players, index, batchSize) {
-      for (let i = 0; i < batchSize && index < players.length; i++, index++) {
-         MatchUtil.playerSetupApplyEndState(players[index]);
-      }
+       for (let i = 0; i < batchSize && index < players.length; i++, index++) {
+          playerSetupApplyEndState(players[index]);
+       }
       if (index < players.length) {
          system.runTimeout(() => this._batchResetPlayerStates(players, index, batchSize), 1);
       }
@@ -407,11 +542,10 @@ class UhcMatchManager {
    }
 
    cleanupResetState() {
-      MatchTeleport.safeYCache.clear();
+      MatchTeleport.prepare();
       BlockFiller.fillReset();
       BorderManager.resetContext(ctx);
       BorderManager.endSequenceReset();
-      MatchTeleport.abortAllTeleportQueues();
 
       setGameRunningState(false);
       BorderManager.scoreboardClear();
@@ -428,11 +562,11 @@ class UhcMatchManager {
    _batchResetAllPlayers(players, index, batchSize) {
       for (let i = 0; i < batchSize && index < players.length; i++, index++) {
          const p = players[index];
-         if (!p?.isValid) continue;
+          if (!p?.isValid) continue;
 
-         MatchUtil.playerSetupClearEffects(p);
-         MatchUtil.playerSetupApplyEndState(p);
-         MatchUtil.playerSetupClearItemsKeepCompass(p);
+          playerSetupClearEffects(p);
+          playerSetupApplyEndState(p);
+          playerSetupClearItemsKeepCompass(p);
       }
       if (index < players.length) {
          system.runTimeout(() => this._batchResetAllPlayers(players, index, batchSize), 1);

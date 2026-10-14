@@ -22,6 +22,14 @@ class UhcMatchManagerTeleport {
    safeYCache = new Map();
    teleportQueueAbortHandlers = [];
 
+   // Lifecycle seam: reset all scatter state (safe-Y cache + pending
+   // teleport queues). Callers must use this instead of touching
+   // safeYCache / teleportQueueAbortHandlers directly.
+   prepare() {
+      this.safeYCache.clear();
+      this.abortAllTeleportQueues();
+   }
+
    teleportManagerGetSafeY(dimension, x, z) {
       if (!Number.isFinite(x) || !Number.isFinite(z)) return TELEPORT_CONFIG.DEFAULT_Y;
 

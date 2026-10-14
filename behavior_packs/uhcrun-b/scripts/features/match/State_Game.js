@@ -1,5 +1,14 @@
 import { system } from '@minecraft/server';
 
+// Match phase state. Single-owner convention:
+// - The flags below (isGameRunning, countdownRunning, statsDirty, ...)
+//   are written only by the Match lifecycle module (MatchManager).
+// - BorderState.ctx mirrors loop counters + border geometry for the
+//   border/team/event readers; ctx.isRunning is written only on the
+//   running path (#initMatchContext) and the victory/end path
+//   (#beginVictoryEnd), never scattered across features.
+// - The alive-team dirty flag lives only in BorderState.renderCache
+//   (read by BorderScoreboard); do not add a second copy on ctx.
 export let isGameRunning = false;
 
 export function setGameRunningState(state) {
